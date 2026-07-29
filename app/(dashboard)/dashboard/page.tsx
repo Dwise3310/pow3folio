@@ -67,8 +67,15 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-primary">Edit now →</p>
           </Link>
 
+          <Link
+            href="/dashboard/writing"
+            className="card transition-colors hover:border-primary/40"
+          >
+            <h3 className="font-medium">Writing</h3>
+            <p className="mt-1 text-xs text-primary">Manage →</p>
+          </Link>
+
           {[
-            { title: "Writing", status: "Coming next" },
             { title: "Trading Record", status: "Coming next" },
             { title: "Community", status: "Coming next" },
             { title: "Airdrops", status: "Phase 2" },
