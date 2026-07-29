@@ -12,9 +12,14 @@ export default async function DashboardPage() {
     redirect("/login");
   }
 
+  const { data: profile } = await supabase
+    .from("profiles")
+    .select("username")
+    .eq("id", user.id)
+    .maybeSingle();
+
   return (
     <div className="min-h-screen">
-      {/* Top bar */}
       <header className="border-b border-border">
         <div className="container-app flex h-14 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -26,6 +31,15 @@ export default async function DashboardPage() {
             </span>
           </Link>
           <div className="flex items-center gap-3 text-sm text-foreground-muted">
+            {profile?.username && (
+              <Link
+                href={`/${profile.username}`}
+                className="btn-ghost text-xs hidden sm:inline-flex"
+                target="_blank"
+              >
+                View profile
+              </Link>
+            )}
             <span className="hidden sm:inline">{user.email}</span>
             <form action="/auth/signout" method="post">
               <button type="submit" className="btn-ghost text-xs">
@@ -40,36 +54,47 @@ export default async function DashboardPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Stage 0 complete. Profile & proof sections come next.
+            Manage your proof of work and public profile.
           </p>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <Link
+            href="/dashboard/profile"
+            className="card transition-colors hover:border-primary/40"
+          >
+            <h3 className="font-medium">Profile</h3>
+            <p className="mt-1 text-xs text-primary">Edit now →</p>
+          </Link>
+
           {[
-            { title: "Profile", status: "Coming in Stage 1" },
-            { title: "Writing", status: "Coming in Stage 1" },
-            { title: "Trading Record", status: "Coming in Stage 1" },
-            { title: "Community", status: "Coming in Stage 1" },
+            { title: "Writing", status: "Coming next" },
+            { title: "Trading Record", status: "Coming next" },
+            { title: "Community", status: "Coming next" },
             { title: "Airdrops", status: "Phase 2" },
             { title: "Docs & NFTs", status: "Phase 2" },
           ].map((item) => (
-            <div key={item.title} className="card">
+            <div key={item.title} className="card opacity-80">
               <h3 className="font-medium">{item.title}</h3>
               <p className="mt-1 text-xs text-foreground-subtle">{item.status}</p>
             </div>
           ))}
         </div>
 
-        <div className="mt-10 rounded-xl border border-primary/20 bg-primary/5 p-6">
-          <h2 className="font-semibold text-primary">You're in</h2>
-          <p className="mt-2 text-sm text-foreground-muted">
-            Auth is working. Next we build the profile editor, public
-            <code className="mx-1 rounded bg-surface px-1.5 py-0.5 text-xs">
-              /username
-            </code>
-            pages, and the proof-of-work sections.
-          </p>
-        </div>
+        {profile?.username && (
+          <div className="mt-10 rounded-xl border border-primary/20 bg-primary/5 p-6">
+            <h2 className="font-semibold text-primary">Your public link</h2>
+            <p className="mt-2 text-sm text-foreground-muted">
+              <Link
+                href={`/${profile.username}`}
+                className="text-primary hover:underline"
+                target="_blank"
+              >
+                pow3folio.vercel.app/{profile.username}
+              </Link>
+            </p>
+          </div>
+        )}
       </main>
     </div>
   );
