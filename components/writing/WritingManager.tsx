@@ -17,6 +17,7 @@ const emptyForm = {
   tags: "",
   published_at: "",
   is_visible: true,
+  thumbnail_url: "" as string | null,
 };
 
 export default function WritingManager({ userId, initialItems }: Props) {
@@ -25,6 +26,7 @@ export default function WritingManager({ userId, initialItems }: Props) {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   function startEdit(item: Writing) {
@@ -36,6 +38,7 @@ export default function WritingManager({ userId, initialItems }: Props) {
       tags: (item.tags ?? []).join(", "),
       published_at: item.published_at ?? "",
       is_visible: item.is_visible,
+      thumbnail_url: item.thumbnail_url,
     });
   }
 
@@ -43,6 +46,43 @@ export default function WritingManager({ userId, initialItems }: Props) {
     setEditingId(null);
     setForm(emptyForm);
     setError(null);
+  }
+
+  async function handleThumbnail(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setError("Thumbnail must be an image");
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError("Thumbnail must be under 2MB");
+      return;
+    }
+
+    setUploading(true);
+    setError(null);
+    const supabase = createClient();
+    const ext = file.name.split(".").pop() || "jpg";
+    const path = `${userId}/writing-${Date.now()}.${ext}`;
+
+    const { error: uploadError } = await supabase.storage
+      .from("avatars")
+      .upload(path, file, { upsert: true });
+
+    setUploading(false);
+
+    if (uploadError) {
+      setError(uploadError.message);
+      return;
+    }
+
+    const {
+      data: { publicUrl },
+    } = supabase.storage.from("avatars").getPublicUrl(path);
+
+    setForm((prev) => ({ ...prev, thumbnail_url: publicUrl }));
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -61,6 +101,7 @@ export default function WritingManager({ userId, initialItems }: Props) {
         .filter(Boolean),
       published_at: form.published_at || null,
       is_visible: form.is_visible,
+      thumbnail_url: form.thumbnail_url || null,
       user_id: userId,
     };
 
@@ -147,6 +188,48 @@ export default function WritingManager({ userId, initialItems }: Props) {
         )}
 
         <div>
+          <label className="label">Thumbnail</label>
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+            <div className="h-24 w-full max-w-[160px] overflow-hidden rounded-lg border border-border bg-surface-elevated">
+              {form.thumbnail_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={form.thumbnail_url}
+                  alt="Thumbnail preview"
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
+                  No image
+                </div>
+              )}
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="btn-secondary cursor-pointer text-sm w-fit">
+                {uploading ? "Uploading…" : "Upload thumbnail"}
+                <input
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleThumbnail}
+                  disabled={uploading}
+                />
+              </label>
+              {form.thumbnail_url && (
+                <button
+                  type="button"
+                  className="btn-ghost text-xs w-fit text-danger"
+                  onClick={() => setForm((p) => ({ ...p, thumbnail_url: null }))}
+                >
+                  Remove
+                </button>
+              )}
+              <p className="text-xs text-foreground-subtle">JPG/PNG, max 2MB</p>
+            </div>
+          </div>
+        </div>
+
+        <div>
           <label className="label">Title *</label>
           <input
             className="input"
@@ -210,8 +293,8 @@ export default function WritingManager({ userId, initialItems }: Props) {
           Visible on public profile
         </label>
 
-        <div className="flex gap-3">
-          <button type="submit" disabled={loading} className="btn-primary">
+        <div className="flex flex-wrap gap-3">
+          <button type="submit" disabled={loading || uploading} className="btn-primary">
             {loading ? "Saving…" : editingId ? "Update" : "Add writing"}
           </button>
           {editingId && (
@@ -228,27 +311,40 @@ export default function WritingManager({ userId, initialItems }: Props) {
           <p className="text-sm text-foreground-subtle">No writings yet.</p>
         )}
         {items.map((item) => (
-          <div key={item.id} className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <div className="min-w-0">
-              <a
-                href={item.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="font-medium text-primary hover:underline"
-              >
-                {item.title}
-              </a>
-              {item.description && (
-                <p className="mt-1 text-sm text-foreground-muted line-clamp-2">
-                  {item.description}
-                </p>
+          <div
+            key={item.id}
+            className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
+          >
+            <div className="flex min-w-0 gap-3">
+              {item.thumbnail_url && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={item.thumbnail_url}
+                  alt=""
+                  className="h-14 w-14 shrink-0 rounded-lg object-cover"
+                />
               )}
-              <p className="mt-1 text-xs text-foreground-subtle">
-                {item.is_visible ? "Public" : "Hidden"}
-                {item.published_at ? ` · ${item.published_at}` : ""}
-              </p>
+              <div className="min-w-0">
+                <a
+                  href={item.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-primary hover:underline break-words"
+                >
+                  {item.title}
+                </a>
+                {item.description && (
+                  <p className="mt-1 text-sm text-foreground-muted line-clamp-2">
+                    {item.description}
+                  </p>
+                )}
+                <p className="mt-1 text-xs text-foreground-subtle">
+                  {item.is_visible ? "Public" : "Hidden"}
+                  {item.published_at ? ` · ${item.published_at}` : ""}
+                </p>
+              </div>
             </div>
-            <div className="flex shrink-0 gap-2">
+            <div className="flex shrink-0 flex-wrap gap-2">
               <button
                 type="button"
                 onClick={() => toggleVisible(item)}
