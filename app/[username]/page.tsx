@@ -52,7 +52,6 @@ export default async function PublicProfilePage({ params }: Props) {
     .select("*")
     .eq("user_id", p.id)
     .eq("is_visible", true)
-    .order("published_at", { ascending: false, nullsFirst: false })
     .order("created_at", { ascending: false });
 
   const writingItems = (writings as Writing[]) ?? [];
@@ -66,7 +65,7 @@ export default async function PublicProfilePage({ params }: Props) {
   ].filter((s) => s.href);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-background text-foreground">
       <header className="border-b border-border/60">
         <div className="container-app flex h-14 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 min-w-0">
@@ -82,9 +81,21 @@ export default async function PublicProfilePage({ params }: Props) {
       </header>
 
       <main className="container-app max-w-5xl py-6 sm:py-10">
-        <div className="mb-6 h-24 sm:h-32 rounded-xl bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
+        {/* Banner / header image */}
+        <div className="mb-6 h-28 sm:h-40 overflow-hidden rounded-xl border border-border bg-surface-elevated">
+          {p.banner_url ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={p.banner_url}
+              alt=""
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <div className="h-full w-full bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
+          )}
+        </div>
 
-        <div className="-mt-12 sm:-mt-14 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
+        <div className="-mt-12 sm:-mt-16 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
           <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shrink-0">
             {p.avatar_url ? (
               // eslint-disable-next-line @next/next/no-img-element
@@ -158,7 +169,7 @@ export default async function PublicProfilePage({ params }: Props) {
             {writingItems.length === 0 ? (
               <div className="card text-sm text-foreground-subtle">No writings yet.</div>
             ) : (
-              <div className="writing-grid">
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {writingItems.map((w) => (
                   <article
                     key={w.id}
