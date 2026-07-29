@@ -10,39 +10,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        // Core surfaces
-        background: "#09090b",
+        background: "var(--background)",
         surface: {
-          DEFAULT: "#18181b",
-          elevated: "#27272a",
-          hover: "#3f3f46",
+          DEFAULT: "var(--surface)",
+          elevated: "var(--surface-elevated)",
+          hover: "var(--surface-hover)",
         },
         border: {
-          DEFAULT: "#27272a",
-          strong: "#3f3f46",
+          DEFAULT: "var(--border)",
+          strong: "var(--border-strong)",
         },
-        // Brand / Proof accent (Emerald = credibility & growth)
         primary: {
-          DEFAULT: "#10b981",
-          hover: "#059669",
-          muted: "#064e3b",
-          foreground: "#ecfdf5",
+          DEFAULT: "var(--primary)",
+          hover: "var(--primary-hover)",
+          muted: "var(--primary-muted)",
+          foreground: "var(--primary-foreground)",
         },
-        // Secondary accent
         accent: {
-          DEFAULT: "#22d3ee",
-          muted: "#083344",
+          DEFAULT: "var(--accent)",
+          muted: "var(--accent-muted)",
         },
-        // Text
         foreground: {
-          DEFAULT: "#fafafa",
-          muted: "#a1a1aa",
-          subtle: "#71717a",
+          DEFAULT: "var(--foreground)",
+          muted: "var(--foreground-muted)",
+          subtle: "var(--foreground-subtle)",
         },
-        // Semantic
-        success: "#22c55e",
-        warning: "#f59e0b",
-        danger: "#ef4444",
+        success: "var(--success)",
+        warning: "var(--warning)",
+        danger: "var(--danger)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
@@ -54,7 +49,7 @@ const config: Config = {
       },
       backgroundImage: {
         "grid-pattern":
-          "linear-gradient(to right, #27272a 1px, transparent 1px), linear-gradient(to bottom, #27272a 1px, transparent 1px)",
+          "linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px)",
       },
     },
   },
