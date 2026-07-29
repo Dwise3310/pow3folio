@@ -1,16 +1,20 @@
 import Link from "next/link";
+import { createClient } from "@/lib/supabase/server";
 
-export default function HomePage() {
+export default async function HomePage() {
+  const supabase = await createClient();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
   return (
     <div className="relative min-h-screen overflow-hidden">
-      {/* Background grid */}
       <div
         className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.15]"
         style={{ backgroundSize: "48px 48px" }}
       />
       <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-primary/5 via-transparent to-transparent" />
 
-      {/* Nav */}
       <header className="relative z-10 border-b border-border/60">
         <div className="container-app flex h-16 items-center justify-between">
           <Link href="/" className="flex items-center gap-2">
@@ -23,17 +27,26 @@ export default function HomePage() {
           </Link>
 
           <div className="flex items-center gap-3">
-            <Link href="/login" className="btn-ghost">
-              Log in
-            </Link>
-            <Link href="/signup" className="btn-primary">
-              Get started
-            </Link>
+            {user ? (
+              <>
+                <Link href="/dashboard" className="btn-primary">
+                  Dashboard
+                </Link>
+              </>
+            ) : (
+              <>
+                <Link href="/login" className="btn-ghost">
+                  Log in
+                </Link>
+                <Link href="/signup" className="btn-primary">
+                  Get started
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
 
-      {/* Hero */}
       <main className="relative z-10">
         <section className="container-app flex flex-col items-center py-24 text-center sm:py-32">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-border bg-surface px-3 py-1 text-xs text-foreground-muted">
@@ -55,15 +68,22 @@ export default function HomePage() {
           </p>
 
           <div className="mt-10 flex flex-col gap-3 sm:flex-row">
-            <Link href="/signup" className="btn-primary px-6 py-3 text-base">
-              Create your portfolio
-            </Link>
-            <Link href="/login" className="btn-secondary px-6 py-3 text-base">
-              Log in
-            </Link>
+            {user ? (
+              <Link href="/dashboard" className="btn-primary px-6 py-3 text-base">
+                Go to dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/signup" className="btn-primary px-6 py-3 text-base">
+                  Create your portfolio
+                </Link>
+                <Link href="/login" className="btn-secondary px-6 py-3 text-base">
+                  Log in
+                </Link>
+              </>
+            )}
           </div>
 
-          {/* Feature preview cards */}
           <div className="mt-20 grid w-full max-w-4xl gap-4 sm:grid-cols-3">
             {[
               {
