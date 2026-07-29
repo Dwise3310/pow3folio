@@ -22,3 +22,20 @@ export type Profile = {
 export type ProfileUpdate = Partial<
   Omit<Profile, "id" | "created_at" | "updated_at">
 >;
+
+export type Writing = {
+  id: string;
+  user_id: string;
+  title: string;
+  url: string;
+  thumbnail_url: string | null;
+  description: string | null;
+  tags: string[] | null;
+  published_at: string | null;
+  likes: number;
+  views: number;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
