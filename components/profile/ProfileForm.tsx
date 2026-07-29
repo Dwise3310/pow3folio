@@ -27,8 +27,10 @@ export default function ProfileForm({ profile }: Props) {
     is_public: profile.is_public ?? true,
   });
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
+  const [bannerUrl, setBannerUrl] = useState(profile.banner_url);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingBanner, setUploadingBanner] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
@@ -36,41 +38,58 @@ export default function ProfileForm({ profile }: Props) {
     setForm((prev) => ({ ...prev, [key]: value }));
   }
 
-  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
+  async function uploadImage(
+    file: File,
+    kind: "avatar" | "banner"
+  ): Promise<string | null> {
     if (!file.type.startsWith("image/")) {
       setError("Please upload an image file");
-      return;
+      return null;
     }
-    if (file.size > 2 * 1024 * 1024) {
-      setError("Avatar must be under 2MB");
-      return;
+    const max = kind === "banner" ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
+    if (file.size > max) {
+      setError(kind === "banner" ? "Banner must be under 4MB" : "Avatar must be under 2MB");
+      return null;
     }
 
-    setUploading(true);
-    setError(null);
     const supabase = createClient();
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `${profile.id}/avatar-${Date.now()}.${ext}`;
+    const path = `${profile.id}/${kind}-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
       .upload(path, file, { upsert: true });
 
     if (uploadError) {
-      setUploading(false);
       setError(uploadError.message);
-      return;
+      return null;
     }
 
     const {
       data: { publicUrl },
     } = supabase.storage.from("avatars").getPublicUrl(path);
 
-    setAvatarUrl(publicUrl);
+    return publicUrl;
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    setError(null);
+    const url = await uploadImage(file, "avatar");
+    if (url) setAvatarUrl(url);
     setUploading(false);
+  }
+
+  async function handleBannerChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingBanner(true);
+    setError(null);
+    const url = await uploadImage(file, "banner");
+    if (url) setBannerUrl(url);
+    setUploadingBanner(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -104,6 +123,7 @@ export default function ProfileForm({ profile }: Props) {
         website_url: form.website_url.trim() || null,
         is_public: form.is_public,
         avatar_url: avatarUrl,
+        banner_url: bannerUrl,
       })
       .eq("id", profile.id);
 
@@ -134,6 +154,45 @@ export default function ProfileForm({ profile }: Props) {
           {message}
         </div>
       )}
+
+      {/* Banner / header image */}
+      <div>
+        <label className="label">Profile header (banner)</label>
+        <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
+          <div className="relative h-28 sm:h-36 w-full">
+            {bannerUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={bannerUrl} alt="Banner" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full items-center justify-center bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10 text-xs text-foreground-subtle">
+                No banner yet
+              </div>
+            )}
+          </div>
+        </div>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <label className="btn-secondary cursor-pointer text-sm">
+            {uploadingBanner ? "Uploading…" : "Upload banner"}
+            <input
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={handleBannerChange}
+              disabled={uploadingBanner}
+            />
+          </label>
+          {bannerUrl && (
+            <button
+              type="button"
+              className="btn-ghost text-xs text-danger"
+              onClick={() => setBannerUrl(null)}
+            >
+              Remove banner
+            </button>
+          )}
+          <p className="text-xs text-foreground-subtle">Wide image, max 4MB</p>
+        </div>
+      </div>
 
       {/* Avatar */}
       <div className="flex items-center gap-4">
@@ -167,8 +226,10 @@ export default function ProfileForm({ profile }: Props) {
           <label className="label" htmlFor="username">
             Username *
           </label>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-foreground-subtle">pow3folio.vercel.app/</span>
+          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+            <span className="text-xs sm:text-sm text-foreground-subtle shrink-0">
+              pow3folio.vercel.app/
+            </span>
             <input
               id="username"
               className="input"
@@ -313,7 +374,7 @@ export default function ProfileForm({ profile }: Props) {
         </div>
       </div>
 
-      <button type="submit" disabled={saving} className="btn-primary">
+      <button type="submit" disabled={saving || uploading || uploadingBanner} className="btn-primary">
         {saving ? "Saving…" : "Save profile"}
       </button>
     </form>
