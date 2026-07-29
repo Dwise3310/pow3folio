@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile } from "@/types/database";
+import type { Profile, Writing } from "@/types/database";
 import type { Metadata } from "next";
 
 type Props = {
@@ -45,6 +45,16 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const p = profile as Profile;
 
+  const { data: writings } = await supabase
+    .from("writings")
+    .select("*")
+    .eq("user_id", p.id)
+    .eq("is_visible", true)
+    .order("published_at", { ascending: false, nullsFirst: false })
+    .order("created_at", { ascending: false });
+
+  const writingItems = (writings as Writing[]) ?? [];
+
   const socials = [
     { label: "X", href: p.x_url },
     { label: "Discord", href: p.discord_url },
@@ -69,7 +79,6 @@ export default async function PublicProfilePage({ params }: Props) {
       </header>
 
       <main className="container-app max-w-3xl py-10">
-        {/* Banner placeholder */}
         <div className="mb-6 h-28 rounded-xl bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
 
         <div className="-mt-14 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
@@ -138,9 +147,45 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         )}
 
-        {/* PoW placeholders */}
         <div className="mt-10 space-y-6">
-          {["Writing", "Trading Record", "Community"].map((section) => (
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Writing</h2>
+            {writingItems.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No writings yet.</div>
+            ) : (
+              <div className="space-y-3">
+                {writingItems.map((w) => (
+                  <a
+                    key={w.id}
+                    href={w.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="card block transition-colors hover:border-primary/40"
+                  >
+                    <h3 className="font-medium text-primary">{w.title}</h3>
+                    {w.description && (
+                      <p className="mt-1 text-sm text-foreground-muted line-clamp-2">
+                        {w.description}
+                      </p>
+                    )}
+                    <div className="mt-2 flex flex-wrap gap-2 text-xs text-foreground-subtle">
+                      {w.published_at && <span>{w.published_at}</span>}
+                      {(w.tags ?? []).map((tag) => (
+                        <span
+                          key={tag}
+                          className="rounded-full bg-surface-elevated px-2 py-0.5"
+                        >
+                          {tag}
+                        </span>
+                      ))}
+                    </div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </section>
+
+          {["Trading Record", "Community"].map((section) => (
             <section key={section}>
               <h2 className="mb-3 text-lg font-semibold">{section}</h2>
               <div className="card text-sm text-foreground-subtle">
