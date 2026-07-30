@@ -10,34 +10,34 @@ const config: Config = {
   theme: {
     extend: {
       colors: {
-        background: "var(--background)",
+        background: "rgb(var(--background) / <alpha-value>)",
         surface: {
-          DEFAULT: "var(--surface)",
-          elevated: "var(--surface-elevated)",
-          hover: "var(--surface-hover)",
+          DEFAULT: "rgb(var(--surface) / <alpha-value>)",
+          elevated: "rgb(var(--surface-elevated) / <alpha-value>)",
+          hover: "rgb(var(--surface-hover) / <alpha-value>)",
         },
         border: {
-          DEFAULT: "var(--border)",
-          strong: "var(--border-strong)",
+          DEFAULT: "rgb(var(--border) / <alpha-value>)",
+          strong: "rgb(var(--border-strong) / <alpha-value>)",
         },
         primary: {
-          DEFAULT: "var(--primary)",
-          hover: "var(--primary-hover)",
-          muted: "var(--primary-muted)",
-          foreground: "var(--primary-foreground)",
+          DEFAULT: "rgb(var(--primary) / <alpha-value>)",
+          hover: "rgb(var(--primary-hover) / <alpha-value>)",
+          muted: "rgb(var(--primary-muted) / <alpha-value>)",
+          foreground: "rgb(var(--primary-foreground) / <alpha-value>)",
         },
         accent: {
-          DEFAULT: "var(--accent)",
-          muted: "var(--accent-muted)",
+          DEFAULT: "rgb(var(--accent) / <alpha-value>)",
+          muted: "rgb(var(--accent-muted) / <alpha-value>)",
         },
         foreground: {
-          DEFAULT: "var(--foreground)",
-          muted: "var(--foreground-muted)",
-          subtle: "var(--foreground-subtle)",
+          DEFAULT: "rgb(var(--foreground) / <alpha-value>)",
+          muted: "rgb(var(--foreground-muted) / <alpha-value>)",
+          subtle: "rgb(var(--foreground-subtle) / <alpha-value>)",
         },
-        success: "var(--success)",
-        warning: "var(--warning)",
-        danger: "var(--danger)",
+        success: "rgb(var(--success) / <alpha-value>)",
+        warning: "rgb(var(--warning) / <alpha-value>)",
+        danger: "rgb(var(--danger) / <alpha-value>)",
       },
       fontFamily: {
         sans: ["var(--font-geist-sans)", "system-ui", "sans-serif"],
@@ -49,7 +49,7 @@ const config: Config = {
       },
       backgroundImage: {
         "grid-pattern":
-          "linear-gradient(to right, var(--border) 1px, transparent 1px), linear-gradient(to bottom, var(--border) 1px, transparent 1px)",
+          "linear-gradient(to right, rgb(var(--border)) 1px, transparent 1px), linear-gradient(to bottom, rgb(var(--border)) 1px, transparent 1px)",
       },
     },
   },
