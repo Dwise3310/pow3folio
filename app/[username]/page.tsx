@@ -90,7 +90,7 @@ export default async function PublicProfilePage({ params }: Props) {
     { label: "X", href: p.x_url },
     { label: "GitHub", href: p.github_url },
     { label: "Telegram", href: p.telegram_url },
-    { label: "My URL", href: p.website_url },
+    { label: "Website", href: p.website_url },
   ].filter((s) => s.href);
 
   const hasContacts = socials.length > 0 || !!p.wallet_address || !!p.ens_name;
@@ -140,7 +140,6 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Name + bio */}
         <div className="mt-12 sm:mt-14 space-y-1.5 pl-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
@@ -154,7 +153,6 @@ export default async function PublicProfilePage({ params }: Props) {
           )}
         </div>
 
-        {/* Contact / links — directly under bio */}
         {hasContacts && (
           <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-1">
             {socials.map((s) => (
@@ -181,7 +179,6 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         )}
 
-        {/* About */}
         {p.long_bio && (
           <div className="mt-4 card p-3 sm:p-4">
             <h2 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">About</h2>
