@@ -52,6 +52,7 @@ export default async function PublicProfilePage({ params }: Props) {
     .select("*")
     .eq("user_id", p.id)
     .eq("is_visible", true)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   const writingItems = (writings as Writing[]) ?? [];
@@ -81,50 +82,55 @@ export default async function PublicProfilePage({ params }: Props) {
       </header>
 
       <main className="container-app max-w-5xl py-6 sm:py-10">
-        {/* Banner / header image */}
-        <div className="mb-6 h-28 sm:h-40 overflow-hidden rounded-xl border border-border bg-surface-elevated">
-          {p.banner_url ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={p.banner_url}
-              alt=""
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <div className="h-full w-full bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
-          )}
-        </div>
-
-        <div className="-mt-12 sm:-mt-16 flex flex-col items-start gap-4 sm:flex-row sm:items-end">
-          <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shrink-0">
-            {p.avatar_url ? (
+        {/* Banner + avatar: only avatar overlaps banner; name/bio stay below */}
+        <div className="relative">
+          <div className="h-32 sm:h-44 md:h-52 overflow-hidden rounded-xl border border-border bg-surface-elevated">
+            {p.banner_url ? (
               // eslint-disable-next-line @next/next/no-img-element
               <img
-                src={p.avatar_url}
-                alt={p.display_name || p.username}
+                src={p.banner_url}
+                alt=""
                 className="h-full w-full object-cover"
               />
             ) : (
-              <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-foreground-subtle">
-                {(p.display_name || p.username).charAt(0).toUpperCase()}
-              </div>
+              <div className="h-full w-full bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
             )}
           </div>
 
-          <div className="flex-1 pb-1 min-w-0">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
-                {p.display_name || p.username}
-              </h1>
-              {p.open_to_work && (
-                <span className="badge-open">Open to opportunities</span>
+          <div className="absolute -bottom-10 left-4 sm:-bottom-12 sm:left-6">
+            <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
+              {p.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={p.avatar_url}
+                  alt={p.display_name || p.username}
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-foreground-subtle">
+                  {(p.display_name || p.username).charAt(0).toUpperCase()}
+                </div>
               )}
             </div>
-            <p className="text-sm text-foreground-muted">@{p.username}</p>
-            {p.bio && (
-              <p className="mt-2 text-sm text-foreground-muted break-words">{p.bio}</p>
+          </div>
+        </div>
+
+        {/* Name, badge, bio — always below banner, never on top of image */}
+        <div className="mt-12 sm:mt-14 pl-1 sm:pl-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words text-foreground">
+              {p.display_name || p.username}
+            </h1>
+            {p.open_to_work && (
+              <span className="badge-open">Open to opportunities</span>
             )}
           </div>
+          <p className="text-sm text-foreground-muted">@{p.username}</p>
+          {p.bio && (
+            <p className="mt-2 max-w-2xl text-sm text-foreground-muted break-words">
+              {p.bio}
+            </p>
+          )}
         </div>
 
         {p.long_bio && (
