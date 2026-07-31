@@ -10,11 +10,24 @@ type Props = {
   onClose: () => void;
 };
 
-function statusClass(status: string) {
-  if (status === "win") return "text-success";
-  if (status === "loss") return "text-danger";
-  if (status === "breakeven") return "text-warning";
-  return "text-foreground-muted";
+function statusBadge(status: string) {
+  if (status === "win") return "bg-success/15 text-success border-success/30";
+  if (status === "loss") return "bg-danger/15 text-danger border-danger/30";
+  if (status === "breakeven") return "bg-warning/15 text-warning border-warning/30";
+  return "bg-accent/15 text-accent border-accent/30";
+}
+
+function roiBadge(roi: number) {
+  if (roi > 0) return "bg-success/15 text-success border-success/30";
+  if (roi < 0) return "bg-danger/15 text-danger border-danger/30";
+  return "bg-warning/15 text-warning border-warning/30";
+}
+
+function directionBadge(direction: string | null) {
+  if (direction === "long") return "bg-success/10 text-success border-success/25";
+  if (direction === "short") return "bg-danger/10 text-danger border-danger/25";
+  if (direction === "spot") return "bg-primary/10 text-primary border-primary/25";
+  return "bg-surface-elevated text-foreground-muted border-border";
 }
 
 export default function TradeUpdatesModal({ trade, updates, open, onClose }: Props) {
@@ -52,19 +65,33 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
       >
         <div className="sticky top-0 z-10 flex items-start justify-between gap-3 border-b border-border bg-surface px-4 py-3">
           <div className="min-w-0">
-            <h2 className="font-semibold truncate">
+            <h2 className="truncate font-semibold">
               {trade.ticker}
               {trade.pair ? ` · ${trade.pair}` : ""}
             </h2>
-            <div className="mt-1 flex flex-wrap gap-2 text-xs">
+            <div className="mt-1.5 flex flex-wrap gap-1">
               {trade.direction && (
-                <span className="uppercase text-foreground-subtle">{trade.direction}</span>
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${directionBadge(
+                    trade.direction
+                  )}`}
+                >
+                  {trade.direction}
+                </span>
               )}
-              <span className={`font-semibold uppercase ${statusClass(trade.status)}`}>
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase ${statusBadge(
+                  trade.status
+                )}`}
+              >
                 {trade.status}
               </span>
               {trade.roi != null && (
-                <span className={statusClass(trade.status)}>
+                <span
+                  className={`rounded border px-1.5 py-0.5 text-[10px] font-bold ${roiBadge(
+                    trade.roi
+                  )}`}
+                >
                   {trade.roi > 0 ? "+" : ""}
                   {trade.roi}%
                 </span>
@@ -147,7 +174,7 @@ function TimelineItem({
         </div>
       )}
       {caption && (
-        <p className="text-sm text-foreground-muted whitespace-pre-wrap">{caption}</p>
+        <p className="whitespace-pre-wrap text-sm text-foreground-muted">{caption}</p>
       )}
       {postUrl && (
         <a
