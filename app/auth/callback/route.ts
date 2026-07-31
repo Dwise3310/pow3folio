@@ -10,7 +10,6 @@ export async function GET(request: Request) {
     const supabase = await createClient();
     const { error } = await supabase.auth.exchangeCodeForSession(code);
     if (!error) {
-      // Pull linked provider handles into the profile for public links
       try {
         const {
           data: { user },
@@ -21,8 +20,13 @@ export async function GET(request: Request) {
 
           for (const id of identities) {
             const meta = (id.identity_data ?? {}) as Record<string, string>;
-            if (id.provider === "twitter") {
-              const handle = meta.user_name || meta.preferred_username || meta.screen_name;
+            // OAuth 2.0 provider is "x"; legacy is "twitter"
+            if (id.provider === "twitter" || id.provider === "x") {
+              const handle =
+                meta.user_name ||
+                meta.preferred_username ||
+                meta.screen_name ||
+                meta.username;
               if (handle) updates.x_url = `https://x.com/${handle}`;
             }
             if (id.provider === "github") {
