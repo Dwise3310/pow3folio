@@ -16,6 +16,8 @@ type Props = {
 const URL_IN_BIO =
   /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|eth)\b/i;
 
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
   if (!text) return null;
   const cls =
@@ -43,6 +45,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     telegram_url: profile.telegram_url ?? "",
     github_url: profile.github_url ?? "",
     website_url: profile.website_url ?? "",
+    secondary_email: profile.secondary_email ?? "",
     is_public: profile.is_public ?? true,
   });
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
@@ -52,7 +55,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [linking, setLinking] = useState<string | null>(null);
 
-  // Per-action feedback (shows under the relevant button)
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [xMsg, setXMsg] = useState<string | null>(null);
@@ -67,6 +69,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [avatarErr, setAvatarErr] = useState<string | null>(null);
   const [bannerMsg, setBannerMsg] = useState<string | null>(null);
   const [bannerErr, setBannerErr] = useState<string | null>(null);
+  const [showSecondEmail, setShowSecondEmail] = useState(!!profile.secondary_email);
 
   const hasX = linkedProviders.includes("twitter") || !!form.x_url;
   const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
@@ -80,7 +83,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   function explainLinkError(raw: string): string {
     const lower = raw.toLowerCase();
     if (lower.includes("manual linking is disabled")) {
-      return "Manual linking is disabled in Supabase. Open Supabase → Authentication → Settings (or Providers) and turn ON “Enable Manual Linking”, then try again.";
+      return "Manual linking is disabled in Supabase. Open Authentication → Sign In / Providers (scroll the page) and enable Manual Linking, then try again.";
     }
     if (lower.includes("already") || lower.includes("identity")) {
       return raw + " If this account is already used on another Pow3Folio profile, unlink it there first.";
@@ -187,7 +190,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       return;
     }
 
-    // Redirect should happen; if not, show status
     if (id === "twitter") setXMsg("Redirecting to X…");
     else if (id === "github") setGhMsg("Redirecting to GitHub…");
     else setGoogleMsg("Redirecting to Google…");
@@ -291,6 +293,20 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       return;
     }
 
+    const secondary = form.secondary_email.trim().toLowerCase();
+    if (secondary) {
+      if (!EMAIL_RE.test(secondary)) {
+        setSaveErr("Second email looks invalid");
+        setSaving(false);
+        return;
+      }
+      if (email && secondary === email.toLowerCase()) {
+        setSaveErr("Second email must be different from your login email");
+        setSaving(false);
+        return;
+      }
+    }
+
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("profiles")
@@ -306,6 +322,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         telegram_url: form.telegram_url.trim() || null,
         github_url: form.github_url.trim() || null,
         website_url: form.website_url.trim() || null,
+        secondary_email: secondary || null,
         is_public: form.is_public,
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
@@ -317,6 +334,8 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     if (updateError) {
       if (updateError.code === "23505") {
         setSaveErr("That username is already taken");
+      } else if (updateError.message?.includes("secondary_email")) {
+        setSaveErr("Run the secondary_email SQL in Supabase first (see chat instructions).");
       } else {
         setSaveErr(updateError.message);
       }
@@ -447,19 +466,56 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       <div className="border-t border-border pt-5 space-y-3">
         <h3 className="font-medium text-sm">Contact & connected accounts</h3>
         <p className="text-xs text-foreground-subtle">
-          Connect socials with OAuth so you can log in with them on this same account. Telegram and My website accept pasted links.
+          Max 2 emails: login email + one optional second email. Socials use Connect for login on the same account.
         </p>
 
-        {email && (
-          <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm">
-            <span className="text-foreground-subtle">Email: </span>
-            <span className="font-medium">{email}</span>
-            <span className="ml-2 text-xs text-primary">(from your login)</span>
+        <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 space-y-2">
+          <div className="text-sm">
+            <span className="text-foreground-subtle">Email 1 (login): </span>
+            <span className="font-medium">{email || "—"}</span>
           </div>
-        )}
+
+          {!showSecondEmail ? (
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setShowSecondEmail(true)}
+            >
+              + Add second email
+            </button>
+          ) : (
+            <div className="space-y-2">
+              <label className="label mb-0" htmlFor="secondary_email">
+                Email 2 (optional)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                <input
+                  id="secondary_email"
+                  type="email"
+                  className="input text-sm flex-1 min-w-[12rem]"
+                  value={form.secondary_email}
+                  onChange={(e) => update("secondary_email", e.target.value)}
+                  placeholder="second@email.com"
+                />
+                <button
+                  type="button"
+                  className="btn-ghost text-xs text-danger"
+                  onClick={() => {
+                    update("secondary_email", "");
+                    setShowSecondEmail(false);
+                  }}
+                >
+                  Remove
+                </button>
+              </div>
+              <p className="text-[11px] text-foreground-subtle">
+                Contact email only (does not change login). Save profile to keep it.
+              </p>
+            </div>
+          )}
+        </div>
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {/* X */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -476,22 +532,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 {hasX ? (
                   <>
                     <span className="text-xs font-medium text-success">Connected</span>
-                    <button
-                      type="button"
-                      disabled={!!linking}
-                      onClick={() => disconnectProvider("twitter")}
-                      className="btn-ghost text-xs text-danger"
-                    >
+                    <button type="button" disabled={!!linking} onClick={() => disconnectProvider("twitter")} className="btn-ghost text-xs text-danger">
                       {linking === "unlink-twitter" ? "…" : "Disconnect"}
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={!!linking}
-                    onClick={() => linkProvider("twitter", "twitter")}
-                    className="btn-secondary text-xs"
-                  >
+                  <button type="button" disabled={!!linking} onClick={() => linkProvider("twitter", "twitter")} className="btn-secondary text-xs">
                     {linking === "twitter" ? "…" : "Connect X"}
                   </button>
                 )}
@@ -501,7 +547,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             <Feedback text={xErr} tone="err" />
           </div>
 
-          {/* GitHub */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -518,22 +563,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 {hasGitHub ? (
                   <>
                     <span className="text-xs font-medium text-success">Connected</span>
-                    <button
-                      type="button"
-                      disabled={!!linking}
-                      onClick={() => disconnectProvider("github")}
-                      className="btn-ghost text-xs text-danger"
-                    >
+                    <button type="button" disabled={!!linking} onClick={() => disconnectProvider("github")} className="btn-ghost text-xs text-danger">
                       {linking === "unlink-github" ? "…" : "Disconnect"}
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={!!linking}
-                    onClick={() => linkProvider("github", "github")}
-                    className="btn-secondary text-xs"
-                  >
+                  <button type="button" disabled={!!linking} onClick={() => linkProvider("github", "github")} className="btn-secondary text-xs">
                     {linking === "github" ? "…" : "Connect GitHub"}
                   </button>
                 )}
@@ -543,7 +578,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             <Feedback text={ghErr} tone="err" />
           </div>
 
-          {/* Google */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -558,22 +592,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 {hasGoogle ? (
                   <>
                     <span className="text-xs font-medium text-success">Connected</span>
-                    <button
-                      type="button"
-                      disabled={!!linking}
-                      onClick={() => disconnectProvider("google")}
-                      className="btn-ghost text-xs text-danger"
-                    >
+                    <button type="button" disabled={!!linking} onClick={() => disconnectProvider("google")} className="btn-ghost text-xs text-danger">
                       {linking === "unlink-google" ? "…" : "Disconnect"}
                     </button>
                   </>
                 ) : (
-                  <button
-                    type="button"
-                    disabled={!!linking}
-                    onClick={() => linkProvider("google", "google")}
-                    className="btn-secondary text-xs"
-                  >
+                  <button type="button" disabled={!!linking} onClick={() => linkProvider("google", "google")} className="btn-secondary text-xs">
                     {linking === "google" ? "…" : "Connect Google"}
                   </button>
                 )}
@@ -583,7 +607,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             <Feedback text={googleErr} tone="err" />
           </div>
 
-          {/* Wallet */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -602,12 +625,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                     <button type="button" disabled={!!linking} onClick={connectWallet} className="btn-secondary text-xs">
                       {linking === "wallet" ? "…" : "Change"}
                     </button>
-                    <button
-                      type="button"
-                      disabled={!!linking}
-                      onClick={disconnectWallet}
-                      className="btn-ghost text-xs text-danger"
-                    >
+                    <button type="button" disabled={!!linking} onClick={disconnectWallet} className="btn-ghost text-xs text-danger">
                       {linking === "unlink-wallet" ? "…" : "Disconnect"}
                     </button>
                   </>
@@ -624,42 +642,23 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">My website</span>
-            <input
-              className="input text-xs"
-              value={form.website_url}
-              onChange={(e) => update("website_url", e.target.value)}
-              placeholder="https://yoursite.com"
-            />
+            <input className="input text-xs" value={form.website_url} onChange={(e) => update("website_url", e.target.value)} placeholder="https://yoursite.com" />
           </div>
 
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">Telegram</span>
-            <input
-              className="input text-xs"
-              value={form.telegram_url}
-              onChange={(e) => update("telegram_url", e.target.value)}
-              placeholder="https://t.me/username"
-            />
+            <input className="input text-xs" value={form.telegram_url} onChange={(e) => update("telegram_url", e.target.value)} placeholder="https://t.me/username" />
           </div>
 
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">ENS</span>
-            <input
-              className="input text-xs"
-              value={form.ens_name}
-              onChange={(e) => update("ens_name", e.target.value)}
-              placeholder="name.eth"
-            />
+            <input className="input text-xs" value={form.ens_name} onChange={(e) => update("ens_name", e.target.value)} placeholder="name.eth" />
           </div>
         </div>
       </div>
 
       <div>
-        <button
-          type="submit"
-          disabled={saving || uploading || uploadingBanner || bioHasLink}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={saving || uploading || uploadingBanner || bioHasLink} className="btn-primary">
           {saving ? "Saving…" : "Save profile"}
         </button>
         <Feedback text={saveMsg} tone="ok" />
