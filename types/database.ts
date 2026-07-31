@@ -54,10 +54,23 @@ export type Trade = {
   entry_price: number | null;
   exit_price: number | null;
   chart_url: string | null;
+  chart_url_2: string | null;
+  post_url: string | null;
   analysis: string | null;
   traded_at: string | null;
   is_visible: boolean;
   sort_order: number;
   created_at: string;
   updated_at: string;
+};
+
+export type TradeUpdate = {
+  id: string;
+  trade_id: string;
+  user_id: string;
+  label: string;
+  chart_url: string | null;
+  caption: string | null;
+  post_url: string | null;
+  created_at: string;
 };
