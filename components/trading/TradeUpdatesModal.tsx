@@ -33,9 +33,11 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
 
   if (!open) return null;
 
-  const sorted = [...updates].sort(
-    (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
-  );
+  const sorted = [...updates].sort((a, b) => {
+    const da = a.occurred_at || a.created_at;
+    const db = b.occurred_at || b.created_at;
+    return new Date(da).getTime() - new Date(db).getTime();
+  });
 
   return (
     <div
@@ -80,7 +82,6 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
         </div>
 
         <div className="space-y-0 p-4">
-          {/* Original call */}
           <TimelineItem
             label="Original Call"
             date={trade.traded_at || trade.created_at?.slice(0, 10)}
@@ -99,7 +100,7 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
               </div>
               <TimelineItem
                 label={u.label || `Update ${i + 1}`}
-                date={u.created_at?.slice(0, 10)}
+                date={u.occurred_at || u.created_at?.slice(0, 10)}
                 chartUrl={u.chart_url}
                 caption={u.caption}
                 postUrl={u.post_url}
