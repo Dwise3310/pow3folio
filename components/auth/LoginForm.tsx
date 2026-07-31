@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { connectEthereumWallet } from "@/lib/wallet";
 import type { Provider } from "@supabase/supabase-js";
 
 async function attachPendingWallet(userId: string) {
@@ -150,27 +151,7 @@ export default function LoginForm() {
     setError(null);
     setOauthLoading("wallet");
     try {
-      const eth = (
-        window as unknown as {
-          ethereum?: {
-            request: (args: { method: string; params?: unknown[] }) => Promise<string[]>;
-          };
-        }
-      ).ethereum;
-
-      if (!eth) {
-        setError("No Web3 wallet found. Install MetaMask or another ETH wallet.");
-        setOauthLoading(null);
-        return;
-      }
-
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const address = accounts?.[0];
-      if (!address) {
-        setError("Wallet connection cancelled.");
-        setOauthLoading(null);
-        return;
-      }
+      const address = await connectEthereumWallet();
 
       const supabase = createClient();
       const {
@@ -180,13 +161,13 @@ export default function LoginForm() {
       if (user) {
         await supabase
           .from("profiles")
-          .update({ wallet_address: address.toLowerCase() })
+          .update({ wallet_address: address })
           .eq("id", user.id);
         router.replace("/dashboard");
         router.refresh();
       } else {
         try {
-          localStorage.setItem("pow3folio_pending_wallet", address.toLowerCase());
+          localStorage.setItem("pow3folio_pending_wallet", address);
         } catch {
           /* ignore */
         }
