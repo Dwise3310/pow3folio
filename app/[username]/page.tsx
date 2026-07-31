@@ -1,10 +1,11 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, Writing, Trade } from "@/types/database";
+import type { Profile, Writing, Trade, TradeUpdate } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import ShareButton from "@/components/writing/ShareButton";
+import TradeCard from "@/components/trading/TradeCard";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -28,13 +29,6 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     title: data.display_name || data.username,
     description: data.bio || `${data.username} on Pow3Folio`,
   };
-}
-
-function statusClass(status: string) {
-  if (status === "win") return "text-success";
-  if (status === "loss") return "text-danger";
-  if (status === "breakeven") return "text-warning";
-  return "text-foreground-muted";
 }
 
 export default async function PublicProfilePage({ params }: Props) {
@@ -73,6 +67,24 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const writingItems = (writings as Writing[]) ?? [];
   const tradeItems = (trades as Trade[]) ?? [];
+
+  const tradeIds = tradeItems.map((t) => t.id);
+  let updatesByTrade: Record<string, TradeUpdate[]> = {};
+
+  if (tradeIds.length > 0) {
+    const { data: updates } = await supabase
+      .from("trade_updates")
+      .select("*")
+      .in("trade_id", tradeIds)
+      .order("created_at", { ascending: true });
+
+    for (const u of (updates as TradeUpdate[]) ?? []) {
+      if (!updatesByTrade[u.trade_id]) updatesByTrade[u.trade_id] = [];
+      updatesByTrade[u.trade_id].push(u);
+    }
+  }
+
+  const profileUrl = `https://pow3folio.vercel.app/${p.username}`;
 
   const socials = [
     { label: "X", href: p.x_url },
@@ -249,66 +261,14 @@ export default async function PublicProfilePage({ params }: Props) {
               <div className="card text-sm text-foreground-subtle">No trades yet.</div>
             ) : (
               <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-                {tradeItems.map((t) => {
-                  const shareUrl =
-                    t.chart_url ||
-                    `https://pow3folio.vercel.app/${p.username}`;
-                  const title = `${t.ticker}${t.pair ? ` ${t.pair}` : ""} · ${t.status}`;
-                  return (
-                    <article
-                      key={t.id}
-                      className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40"
-                    >
-                      <div className="aspect-[16/10] w-full bg-surface-elevated">
-                        {t.chart_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img
-                            src={t.chart_url}
-                            alt=""
-                            className="h-full w-full object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
-                            No chart
-                          </div>
-                        )}
-                      </div>
-                      <div className="flex flex-1 flex-col p-3 sm:p-4">
-                        <div className="flex flex-wrap items-center gap-2">
-                          <h3 className="font-semibold">{t.ticker}</h3>
-                          {t.direction && (
-                            <span className="text-xs uppercase text-foreground-subtle">
-                              {t.direction}
-                            </span>
-                          )}
-                          <span className={`text-xs font-semibold uppercase ${statusClass(t.status)}`}>
-                            {t.status}
-                          </span>
-                        </div>
-                        {t.pair && (
-                          <p className="text-sm text-foreground-muted">{t.pair}</p>
-                        )}
-                        {t.roi != null && (
-                          <p className={`mt-1 text-sm font-medium ${statusClass(t.status)}`}>
-                            {t.roi > 0 ? "+" : ""}
-                            {t.roi}%
-                          </p>
-                        )}
-                        {t.analysis && (
-                          <p className="mt-2 text-sm text-foreground-muted line-clamp-3">
-                            {t.analysis}
-                          </p>
-                        )}
-                        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
-                          <span className="text-xs text-foreground-subtle">
-                            {t.traded_at || ""}
-                          </span>
-                          <ShareButton title={title} url={shareUrl} />
-                        </div>
-                      </div>
-                    </article>
-                  );
-                })}
+                {tradeItems.map((t) => (
+                  <TradeCard
+                    key={t.id}
+                    trade={t}
+                    updates={updatesByTrade[t.id] ?? []}
+                    profileUrl={profileUrl}
+                  />
+                ))}
               </div>
             )}
           </section>
