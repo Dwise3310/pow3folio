@@ -20,14 +20,24 @@ const emptyForm = {
   thumbnail_url: "" as string | null,
 };
 
+function sortItems(list: Writing[]) {
+  return [...list].sort((a, b) => {
+    const ao = a.sort_order ?? 0;
+    const bo = b.sort_order ?? 0;
+    if (ao !== bo) return ao - bo;
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+}
+
 export default function WritingManager({ userId, initialItems }: Props) {
   const router = useRouter();
-  const [items, setItems] = useState<Writing[]>(initialItems);
+  const [items, setItems] = useState<Writing[]>(() => sortItems(initialItems));
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [reordering, setReordering] = useState(false);
 
   function startEdit(item: Writing) {
     setEditingId(item.id);
@@ -91,7 +101,7 @@ export default function WritingManager({ userId, initialItems }: Props) {
     setError(null);
 
     const supabase = createClient();
-    const payload = {
+    const payload: Record<string, unknown> = {
       title: form.title.trim(),
       url: form.url.trim(),
       description: form.description.trim() || null,
@@ -119,8 +129,16 @@ export default function WritingManager({ userId, initialItems }: Props) {
         setError(err.message);
         return;
       }
-      setItems((prev) => prev.map((i) => (i.id === editingId ? (data as Writing) : i)));
+      setItems((prev) =>
+        sortItems(prev.map((i) => (i.id === editingId ? (data as Writing) : i)))
+      );
     } else {
+      const maxOrder = items.reduce(
+        (m, i) => Math.max(m, i.sort_order ?? 0),
+        -1
+      );
+      payload.sort_order = maxOrder + 1;
+
       const { data, error: err } = await supabase
         .from("writings")
         .insert(payload)
@@ -132,7 +150,7 @@ export default function WritingManager({ userId, initialItems }: Props) {
         setError(err.message);
         return;
       }
-      setItems((prev) => [data as Writing, ...prev]);
+      setItems((prev) => sortItems([...(prev as Writing[]), data as Writing]));
     }
 
     resetForm();
@@ -171,6 +189,50 @@ export default function WritingManager({ userId, initialItems }: Props) {
       return;
     }
     setItems((prev) => prev.map((i) => (i.id === item.id ? (data as Writing) : i)));
+    router.refresh();
+  }
+
+  async function moveItem(index: number, direction: "up" | "down") {
+    const target = direction === "up" ? index - 1 : index + 1;
+    if (target < 0 || target >= items.length) return;
+
+    setReordering(true);
+    setError(null);
+
+    const a = items[index];
+    const b = items[target];
+    const orderA = a.sort_order ?? index;
+    const orderB = b.sort_order ?? target;
+
+    const supabase = createClient();
+    const [resA, resB] = await Promise.all([
+      supabase
+        .from("writings")
+        .update({ sort_order: orderB })
+        .eq("id", a.id)
+        .eq("user_id", userId)
+        .select()
+        .single(),
+      supabase
+        .from("writings")
+        .update({ sort_order: orderA })
+        .eq("id", b.id)
+        .eq("user_id", userId)
+        .select()
+        .single(),
+    ]);
+
+    setReordering(false);
+
+    if (resA.error || resB.error) {
+      setError(resA.error?.message || resB.error?.message || "Reorder failed");
+      return;
+    }
+
+    const next = [...items];
+    next[index] = { ...a, sort_order: orderB };
+    next[target] = { ...b, sort_order: orderA };
+    setItems(sortItems(next));
     router.refresh();
   }
 
@@ -307,15 +369,38 @@ export default function WritingManager({ userId, initialItems }: Props) {
 
       <div className="space-y-3">
         <h2 className="font-semibold">Your writings ({items.length})</h2>
+        <p className="text-xs text-foreground-subtle">
+          Use ↑ ↓ to reorder how they appear on your public profile.
+        </p>
         {items.length === 0 && (
           <p className="text-sm text-foreground-subtle">No writings yet.</p>
         )}
-        {items.map((item) => (
+        {items.map((item, index) => (
           <div
             key={item.id}
             className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
           >
             <div className="flex min-w-0 gap-3">
+              <div className="flex flex-col gap-1 shrink-0">
+                <button
+                  type="button"
+                  disabled={reordering || index === 0}
+                  onClick={() => moveItem(index, "up")}
+                  className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
+                  aria-label="Move up"
+                >
+                  ↑
+                </button>
+                <button
+                  type="button"
+                  disabled={reordering || index === items.length - 1}
+                  onClick={() => moveItem(index, "down")}
+                  className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
+                  aria-label="Move down"
+                >
+                  ↓
+                </button>
+              </div>
               {item.thumbnail_url && (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
