@@ -31,6 +31,8 @@ export default async function ProfileEditPage() {
     );
   }
 
+  const identities = (user.identities ?? []).map((i) => i.provider);
+
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
@@ -59,7 +61,11 @@ export default async function ProfileEditPage() {
         </div>
 
         <div className="card">
-          <ProfileForm profile={profile as Profile} />
+          <ProfileForm
+            profile={profile as Profile}
+            email={user.email ?? null}
+            linkedProviders={identities}
+          />
         </div>
 
         <p className="mt-6 text-center text-sm text-foreground-muted">
