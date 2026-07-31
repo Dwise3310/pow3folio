@@ -1,9 +1,24 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+
+async function attachPendingWallet(userId: string) {
+  try {
+    const pending = localStorage.getItem("pow3folio_pending_wallet");
+    if (!pending) return;
+    const supabase = createClient();
+    await supabase
+      .from("profiles")
+      .update({ wallet_address: pending.toLowerCase() })
+      .eq("id", userId);
+    localStorage.removeItem("pow3folio_pending_wallet");
+  } catch {
+    /* ignore */
+  }
+}
 
 export default function LoginForm() {
   const router = useRouter();
@@ -13,6 +28,28 @@ export default function LoginForm() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  // If session already exists (middleware miss / soft navigation), go to dashboard
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const supabase = createClient();
+      const {
+        data: { user },
+      } = await supabase.auth.getUser();
+      if (!cancelled && user) {
+        await attachPendingWallet(user.id);
+        router.replace("/dashboard");
+        router.refresh();
+        return;
+      }
+      if (!cancelled) setChecking(false);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -20,7 +57,7 @@ export default function LoginForm() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
@@ -30,6 +67,10 @@ export default function LoginForm() {
     if (error) {
       setError(error.message);
       return;
+    }
+
+    if (data.user) {
+      await attachPendingWallet(data.user.id);
     }
 
     router.replace("/dashboard");
@@ -59,7 +100,10 @@ export default function LoginForm() {
       const eth = (
         window as unknown as {
           ethereum?: {
-            request: (args: { method: string; params?: unknown[] }) => Promise<string[]>;
+            request: (args: {
+              method: string;
+              params?: unknown[];
+            }) => Promise<string[]>;
           };
         }
       ).ethereum;
@@ -91,20 +135,29 @@ export default function LoginForm() {
         router.replace("/dashboard");
         router.refresh();
       } else {
-        // Persist intent so after email/OAuth login they can attach it from profile
         try {
           localStorage.setItem("pow3folio_pending_wallet", address.toLowerCase());
         } catch {
           /* ignore */
         }
         setError(
-          `Wallet ${address.slice(0, 6)}…${address.slice(-4)} detected. Sign in with Email, Google, or X first — your wallet will be linked on the next login, or save it from Profile.`
+          `Wallet ${address.slice(0, 6)}…${address.slice(
+            -4
+          )} saved. Sign in with Email, Google, or X — wallet will be linked automatically.`
         );
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "Wallet connection failed");
     }
     setOauthLoading(null);
+  }
+
+  if (checking) {
+    return (
+      <div className="card py-10 text-center text-sm text-foreground-muted">
+        Checking session…
+      </div>
+    );
   }
 
   return (
@@ -190,13 +243,33 @@ export default function LoginForm() {
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
                   <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
               ) : (
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="18"
+                  height="18"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
