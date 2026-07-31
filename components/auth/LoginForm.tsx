@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { connectEthereumWallet } from "@/lib/wallet";
+import { startXAuth } from "@/lib/x-oauth";
 import type { Provider } from "@supabase/supabase-js";
 
 async function attachPendingWallet(userId: string) {
@@ -66,7 +67,7 @@ const OAUTH_BUTTONS: {
   icon: React.ReactNode;
 }[] = [
   { id: "google", provider: "google", label: "Continue with Google", icon: <GoogleIcon /> },
-  { id: "twitter", provider: "twitter", label: "Continue with X", icon: <XIcon /> },
+  { id: "x", provider: "twitter", label: "Continue with X", icon: <XIcon /> },
   { id: "github", provider: "github", label: "Continue with GitHub", icon: <GitHubIcon /> },
 ];
 
@@ -130,19 +131,40 @@ export default function LoginForm() {
     setError(null);
     setOauthLoading(id);
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithOAuth({
+    const redirectTo = `${window.location.origin}/auth/callback`;
+
+    if (id === "x") {
+      const { error } = await startXAuth(supabase, "signIn", redirectTo);
+      if (error) {
+        setError(error);
+        setOauthLoading(null);
+      }
+      return;
+    }
+
+    const { data, error } = await supabase.auth.signInWithOAuth({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback`,
+        redirectTo,
+        skipBrowserRedirect: true,
       },
     });
+
     if (error) {
       setError(
         error.message +
           (error.message.toLowerCase().includes("provider")
-            ? " Enable this provider in Supabase → Authentication → Providers and paste Client ID/Secret."
+            ? " Enable this provider in Supabase → Authentication → Sign In / Providers and paste Client ID/Secret."
             : "")
       );
+      setOauthLoading(null);
+      return;
+    }
+
+    if (data?.url) {
+      window.location.assign(data.url);
+    } else {
+      setError("No OAuth URL returned. Check provider settings in Supabase.");
       setOauthLoading(null);
     }
   }
