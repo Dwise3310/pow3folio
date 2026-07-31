@@ -13,12 +13,9 @@ type Props = {
 };
 
 function statusBadge(status: string) {
-  if (status === "win")
-    return "bg-success/15 text-success border-success/30";
-  if (status === "loss")
-    return "bg-danger/15 text-danger border-danger/30";
-  if (status === "breakeven")
-    return "bg-warning/15 text-warning border-warning/30";
+  if (status === "win") return "bg-success/15 text-success border-success/30";
+  if (status === "loss") return "bg-danger/15 text-danger border-danger/30";
+  if (status === "breakeven") return "bg-warning/15 text-warning border-warning/30";
   return "bg-accent/15 text-accent border-accent/30"; // open
 }
 
@@ -42,6 +39,17 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
   const title = `${trade.ticker}${trade.pair ? ` ${trade.pair}` : ""} · ${trade.status}`;
   const post = trade.post_url;
 
+  const titleBlock = (
+    <>
+      <span className="text-sm font-semibold leading-tight text-primary">
+        {trade.ticker}
+      </span>
+      {trade.pair && (
+        <span className="text-xs leading-tight text-foreground-muted">{trade.pair}</span>
+      )}
+    </>
+  );
+
   return (
     <>
       <article className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40">
@@ -52,26 +60,21 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
         />
 
         <div className="flex flex-1 flex-col gap-1.5 p-3">
-          {/* Title row — hyperlinked like writings */}
-          <div className="flex flex-wrap items-center gap-1.5">
-            {post ? (
-              <a
-                href={post}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-sm font-semibold leading-none text-primary hover:underline"
-              >
-                {trade.ticker}
-              </a>
-            ) : (
-              <h3 className="text-sm font-semibold leading-none">{trade.ticker}</h3>
-            )}
-            {trade.pair && (
-              <span className="text-xs leading-none text-foreground-muted">{trade.pair}</span>
-            )}
-          </div>
+          {/* Title — hyperlinked to original post like writings */}
+          {post ? (
+            <a
+              href={post}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5 hover:underline"
+            >
+              {titleBlock}
+            </a>
+          ) : (
+            <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">{titleBlock}</div>
+          )}
 
-          {/* Badges row — direction / status / ROI */}
+          {/* Colored badges — direction / status / ROI */}
           <div className="flex flex-wrap items-center gap-1">
             {trade.direction && (
               <span
@@ -102,12 +105,23 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
           </div>
 
           {trade.analysis && (
-            <p className="text-xs leading-snug text-foreground-muted line-clamp-2">
-              {trade.analysis}
-            </p>
+            post ? (
+              <a
+                href={post}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-xs leading-snug text-foreground-muted line-clamp-2 hover:text-foreground"
+              >
+                {trade.analysis}
+              </a>
+            ) : (
+              <p className="text-xs leading-snug text-foreground-muted line-clamp-2">
+                {trade.analysis}
+              </p>
+            )
           )}
 
-          <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1">
+          <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1.5">
             {post && (
               <a
                 href={post}
