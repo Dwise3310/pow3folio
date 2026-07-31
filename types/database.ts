@@ -39,3 +39,25 @@ export type Writing = {
   created_at: string;
   updated_at: string;
 };
+
+export type TradeDirection = "long" | "short" | "spot";
+export type TradeStatus = "win" | "loss" | "breakeven" | "open";
+
+export type Trade = {
+  id: string;
+  user_id: string;
+  ticker: string;
+  pair: string | null;
+  direction: TradeDirection | null;
+  status: TradeStatus;
+  roi: number | null;
+  entry_price: number | null;
+  exit_price: number | null;
+  chart_url: string | null;
+  analysis: string | null;
+  traded_at: string | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
