@@ -72,5 +72,6 @@ export type TradeUpdate = {
   chart_url: string | null;
   caption: string | null;
   post_url: string | null;
+  occurred_at: string | null;
   created_at: string;
 };
