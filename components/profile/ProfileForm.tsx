@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
@@ -11,6 +11,9 @@ type Props = {
   email: string | null;
   linkedProviders: string[];
 };
+
+const URL_IN_BIO =
+  /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|eth)\b/i;
 
 export default function ProfileForm({ profile, email, linkedProviders }: Props) {
   const router = useRouter();
@@ -40,6 +43,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
   const hasX = linkedProviders.includes("twitter") || !!form.x_url;
   const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
+  const bioHasLink = useMemo(() => URL_IN_BIO.test(form.bio), [form.bio]);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -116,6 +120,50 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     }
   }
 
+  async function disconnectProvider(provider: "twitter" | "github") {
+    setLinking(`unlink-${provider}`);
+    setError(null);
+    const supabase = createClient();
+    const {
+      data: { user },
+    } = await supabase.auth.getUser();
+    const identity = user?.identities?.find((i) => i.provider === provider);
+
+    if (identity) {
+      const { error } = await supabase.auth.unlinkIdentity(identity);
+      if (error) {
+        setError(error.message);
+        setLinking(null);
+        return;
+      }
+    }
+
+    const clear =
+      provider === "twitter"
+        ? { x_url: null as string | null }
+        : { github_url: null as string | null };
+
+    await supabase.from("profiles").update(clear).eq("id", profile.id);
+
+    if (provider === "twitter") update("x_url", "");
+    else update("github_url", "");
+
+    setMessage(provider === "twitter" ? "X disconnected" : "GitHub disconnected");
+    setLinking(null);
+    router.refresh();
+  }
+
+  async function disconnectWallet() {
+    setLinking("unlink-wallet");
+    setWalletError(null);
+    const supabase = createClient();
+    await supabase.from("profiles").update({ wallet_address: null }).eq("id", profile.id);
+    update("wallet_address", "");
+    setMessage("Wallet disconnected");
+    setLinking(null);
+    router.refresh();
+  }
+
   async function connectWallet() {
     setWalletError(null);
     setError(null);
@@ -125,14 +173,19 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         window as unknown as {
           ethereum?: {
             request: (args: { method: string }) => Promise<string[]>;
+            isMetaMask?: boolean;
           };
         }
       ).ethereum;
+
       if (!eth) {
-        setWalletError("No Web3 wallet found. Install MetaMask or another ETH wallet extension.");
+        setWalletError(
+          "No browser wallet detected. Install MetaMask, Rabby, or another ETH extension, then try again. (WalletConnect mobile flow coming next.)"
+        );
         setLinking(null);
         return;
       }
+
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const address = accounts?.[0];
       if (!address) {
@@ -140,6 +193,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         setLinking(null);
         return;
       }
+
       update("wallet_address", address.toLowerCase());
       const supabase = createClient();
       await supabase
@@ -160,6 +214,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     setError(null);
     setWalletError(null);
     setMessage(null);
+
+    if (bioHasLink) {
+      setError("Remove the link from Short bio before saving.");
+      setSaving(false);
+      return;
+    }
 
     const username = form.username.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,30}$/.test(username)) {
@@ -207,12 +267,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
+        <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger animate-fade-in">
           {error}
         </div>
       )}
       {message && (
-        <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary">
+        <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary animate-fade-in">
           {message}
         </div>
       )}
@@ -284,7 +344,23 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
       <div>
         <label className="label" htmlFor="bio">Short bio</label>
-        <input id="bio" className="input" value={form.bio} onChange={(e) => update("bio", e.target.value)} maxLength={160} placeholder="One-line intro" />
+        <textarea
+          id="bio"
+          className={`input min-h-[96px] resize-y ${bioHasLink ? "border-danger focus:border-danger focus:ring-danger" : ""}`}
+          value={form.bio}
+          onChange={(e) => update("bio", e.target.value)}
+          maxLength={160}
+          placeholder="One-line intro — no links"
+        />
+        <div className="mt-1 flex items-start justify-between gap-2">
+          <p className="text-xs text-foreground-subtle">{form.bio.length}/160</p>
+        </div>
+        {bioHasLink && (
+          <p className="mt-1.5 text-xs text-danger animate-fade-in">
+            Links are not accepted in the bio. Best place for a custom link is{" "}
+            <strong>My website</strong>.
+          </p>
+        )}
       </div>
 
       <div>
@@ -318,7 +394,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
-          {/* X — Connect only */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -331,23 +406,33 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   <p className="text-xs text-foreground-subtle">Not connected</p>
                 )}
               </div>
-              {!hasX && (
-                <button
-                  type="button"
-                  disabled={!!linking}
-                  onClick={() => linkProvider("twitter", "twitter")}
-                  className="btn-secondary shrink-0 text-xs"
-                >
-                  {linking === "twitter" ? "…" : "Connect X"}
-                </button>
-              )}
-              {hasX && (
-                <span className="shrink-0 text-xs font-medium text-success">Connected</span>
-              )}
+              <div className="flex shrink-0 items-center gap-1.5">
+                {hasX ? (
+                  <>
+                    <span className="text-xs font-medium text-success">Connected</span>
+                    <button
+                      type="button"
+                      disabled={!!linking}
+                      onClick={() => disconnectProvider("twitter")}
+                      className="btn-ghost text-xs text-danger"
+                    >
+                      {linking === "unlink-twitter" ? "…" : "Disconnect"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!!linking}
+                    onClick={() => linkProvider("twitter", "twitter")}
+                    className="btn-secondary text-xs"
+                  >
+                    {linking === "twitter" ? "…" : "Connect X"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* GitHub — Connect only */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -360,23 +445,33 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   <p className="text-xs text-foreground-subtle">Not connected</p>
                 )}
               </div>
-              {!hasGitHub && (
-                <button
-                  type="button"
-                  disabled={!!linking}
-                  onClick={() => linkProvider("github", "github")}
-                  className="btn-secondary shrink-0 text-xs"
-                >
-                  {linking === "github" ? "…" : "Connect GitHub"}
-                </button>
-              )}
-              {hasGitHub && (
-                <span className="shrink-0 text-xs font-medium text-success">Connected</span>
-              )}
+              <div className="flex shrink-0 items-center gap-1.5">
+                {hasGitHub ? (
+                  <>
+                    <span className="text-xs font-medium text-success">Connected</span>
+                    <button
+                      type="button"
+                      disabled={!!linking}
+                      onClick={() => disconnectProvider("github")}
+                      className="btn-ghost text-xs text-danger"
+                    >
+                      {linking === "unlink-github" ? "…" : "Disconnect"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!!linking}
+                    onClick={() => linkProvider("github", "github")}
+                    className="btn-secondary text-xs"
+                  >
+                    {linking === "github" ? "…" : "Connect GitHub"}
+                  </button>
+                )}
+              </div>
             </div>
           </div>
 
-          {/* Wallet — Connect only + local error */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -389,27 +484,35 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   <p className="text-xs text-foreground-subtle">Not connected</p>
                 )}
               </div>
-              <button
-                type="button"
-                disabled={!!linking}
-                onClick={connectWallet}
-                className="btn-secondary shrink-0 text-xs"
-              >
-                {linking === "wallet"
-                  ? "…"
-                  : form.wallet_address
-                    ? "Change wallet"
-                    : "Connect wallet"}
-              </button>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {form.wallet_address ? (
+                  <>
+                    <button type="button" disabled={!!linking} onClick={connectWallet} className="btn-secondary text-xs">
+                      {linking === "wallet" ? "…" : "Change"}
+                    </button>
+                    <button
+                      type="button"
+                      disabled={!!linking}
+                      onClick={disconnectWallet}
+                      className="btn-ghost text-xs text-danger"
+                    >
+                      {linking === "unlink-wallet" ? "…" : "Disconnect"}
+                    </button>
+                  </>
+                ) : (
+                  <button type="button" disabled={!!linking} onClick={connectWallet} className="btn-secondary text-xs">
+                    {linking === "wallet" ? "…" : "Connect wallet"}
+                  </button>
+                )}
+              </div>
             </div>
             {walletError && (
-              <div className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
+              <div className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-xs text-danger animate-fade-in">
                 {walletError}
               </div>
             )}
           </div>
 
-          {/* My website — paste allowed */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">My website</span>
             <input
@@ -420,7 +523,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             />
           </div>
 
-          {/* Telegram — paste allowed */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">Telegram</span>
             <input
@@ -431,7 +533,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             />
           </div>
 
-          {/* ENS — optional text */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">ENS</span>
             <input
@@ -444,7 +545,11 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         </div>
       </div>
 
-      <button type="submit" disabled={saving || uploading || uploadingBanner} className="btn-primary">
+      <button
+        type="submit"
+        disabled={saving || uploading || uploadingBanner || bioHasLink}
+        className="btn-primary"
+      >
         {saving ? "Saving…" : "Save profile"}
       </button>
     </form>
