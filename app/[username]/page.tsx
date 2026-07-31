@@ -6,6 +6,7 @@ import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import ShareButton from "@/components/writing/ShareButton";
 import TradeCard from "@/components/trading/TradeCard";
+import ImageLightbox from "@/components/ui/ImageLightbox";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -85,6 +86,9 @@ export default async function PublicProfilePage({ params }: Props) {
   }
 
   const profileUrl = `https://pow3folio.vercel.app/${p.username}`;
+  const arkhamUrl = p.wallet_address
+    ? `https://arkm.com/explorer/address/${p.wallet_address}`
+    : null;
 
   const socials = [
     { label: "X", href: p.x_url },
@@ -112,11 +116,16 @@ export default async function PublicProfilePage({ params }: Props) {
       </header>
 
       <main className="container-app max-w-5xl py-5 sm:py-8">
-        <div className="relative">
+        <div className="relative animate-fade-in">
           <div className="h-32 sm:h-44 md:h-52 overflow-hidden rounded-xl border border-border bg-surface-elevated">
             {p.banner_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={p.banner_url} alt="" className="h-full w-full object-cover" />
+              <ImageLightbox
+                src={p.banner_url}
+                alt="Profile banner"
+                className="h-full w-full"
+                imgClassName="h-full w-full object-cover"
+                rounded="xl"
+              />
             ) : (
               <div className="h-full w-full bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
             )}
@@ -125,11 +134,12 @@ export default async function PublicProfilePage({ params }: Props) {
           <div className="absolute -bottom-10 left-4 sm:-bottom-12 sm:left-6">
             <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
               {p.avatar_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img
+                <ImageLightbox
                   src={p.avatar_url}
                   alt={p.display_name || p.username}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full"
+                  imgClassName="h-full w-full object-cover"
+                  rounded="full"
                 />
               ) : (
                 <div className="flex h-full w-full items-center justify-center text-2xl font-bold text-foreground-subtle">
@@ -140,12 +150,17 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="mt-12 sm:mt-14 space-y-1.5 pl-1">
+        <div className="mt-12 sm:mt-14 space-y-1.5 pl-1 animate-slide-up">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
               {p.display_name || p.username}
             </h1>
-            {p.open_to_work && <span className="badge-open">Open to opportunities</span>}
+            {p.open_to_work && (
+              <span className="badge-open">
+                <span className="badge-open-dot" aria-hidden />
+                Open to opportunities
+              </span>
+            )}
           </div>
           <p className="text-sm text-foreground-muted">@{p.username}</p>
           {p.bio && (
@@ -154,14 +169,14 @@ export default async function PublicProfilePage({ params }: Props) {
         </div>
 
         {hasContacts && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-1">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-1 animate-slide-up">
             {socials.map((s) => (
               <a
                 key={s.label}
                 href={s.href!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium hover:border-primary/40 hover:text-primary"
+                className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary hover:scale-105"
               >
                 {s.label}
               </a>
@@ -171,16 +186,22 @@ export default async function PublicProfilePage({ params }: Props) {
                 {p.ens_name}
               </span>
             )}
-            {p.wallet_address && (
-              <span className="rounded-full border border-border px-2.5 py-1 font-mono text-[10px] text-foreground-subtle">
+            {p.wallet_address && arkhamUrl && (
+              <a
+                href={arkhamUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                title="View on Arkham"
+                className="rounded-full border border-border px-2.5 py-1 font-mono text-[10px] text-foreground-subtle transition-all hover:border-primary/40 hover:text-primary"
+              >
                 {p.wallet_address.slice(0, 6)}…{p.wallet_address.slice(-4)}
-              </span>
+              </a>
             )}
           </div>
         )}
 
         {p.long_bio && (
-          <div className="mt-4 card p-3 sm:p-4">
+          <div className="mt-4 card p-3 sm:p-4 animate-fade-in">
             <h2 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">About</h2>
             <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed break-words">
               {p.long_bio}
@@ -189,7 +210,7 @@ export default async function PublicProfilePage({ params }: Props) {
         )}
 
         <div className="mt-6 sm:mt-8 space-y-6">
-          <section>
+          <section className="animate-fade-in">
             <h2 className="mb-3 text-lg font-semibold">Writing</h2>
             {writingItems.length === 0 ? (
               <div className="card text-sm text-foreground-subtle">No writings yet.</div>
@@ -198,7 +219,7 @@ export default async function PublicProfilePage({ params }: Props) {
                 {writingItems.map((w) => (
                   <article
                     key={w.id}
-                    className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40"
+                    className="card flex flex-col overflow-hidden p-0 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
                   >
                     <a href={w.url} target="_blank" rel="noopener noreferrer" className="block">
                       <div className="aspect-[16/10] w-full bg-surface-elevated">
@@ -242,7 +263,7 @@ export default async function PublicProfilePage({ params }: Props) {
             )}
           </section>
 
-          <section>
+          <section className="animate-fade-in">
             <h2 className="mb-3 text-lg font-semibold">Trading Record</h2>
             {tradeItems.length === 0 ? (
               <div className="card text-sm text-foreground-subtle">No trades yet.</div>
