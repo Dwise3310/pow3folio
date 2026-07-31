@@ -199,40 +199,33 @@ export default function WritingManager({ userId, initialItems }: Props) {
     setReordering(true);
     setError(null);
 
-    const a = items[index];
-    const b = items[target];
-    const orderA = a.sort_order ?? index;
-    const orderB = b.sort_order ?? target;
+    const next = [...items];
+    const tmp = next[index];
+    next[index] = next[target];
+    next[target] = tmp;
+
+    const normalized = next.map((item, i) => ({ ...item, sort_order: i }));
 
     const supabase = createClient();
-    const [resA, resB] = await Promise.all([
-      supabase
-        .from("writings")
-        .update({ sort_order: orderB })
-        .eq("id", a.id)
-        .eq("user_id", userId)
-        .select()
-        .single(),
-      supabase
-        .from("writings")
-        .update({ sort_order: orderA })
-        .eq("id", b.id)
-        .eq("user_id", userId)
-        .select()
-        .single(),
-    ]);
+    const results = await Promise.all(
+      normalized.map((item) =>
+        supabase
+          .from("writings")
+          .update({ sort_order: item.sort_order })
+          .eq("id", item.id)
+          .eq("user_id", userId)
+      )
+    );
 
     setReordering(false);
 
-    if (resA.error || resB.error) {
-      setError(resA.error?.message || resB.error?.message || "Reorder failed");
+    const failed = results.find((r) => r.error);
+    if (failed?.error) {
+      setError(failed.error.message);
       return;
     }
 
-    const next = [...items];
-    next[index] = { ...a, sort_order: orderB };
-    next[target] = { ...b, sort_order: orderA };
-    setItems(sortItems(next));
+    setItems(normalized);
     router.refresh();
   }
 
