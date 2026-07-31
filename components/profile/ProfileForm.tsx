@@ -36,6 +36,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [linking, setLinking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [walletError, setWalletError] = useState<string | null>(null);
 
   const hasX = linkedProviders.includes("twitter") || !!form.x_url;
   const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
@@ -101,6 +102,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   async function linkProvider(provider: Provider, id: string) {
     setLinking(id);
     setError(null);
+    setWalletError(null);
     const supabase = createClient();
     const { error } = await supabase.auth.linkIdentity({
       provider,
@@ -115,6 +117,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   }
 
   async function connectWallet() {
+    setWalletError(null);
     setError(null);
     setLinking("wallet");
     try {
@@ -126,14 +129,14 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         }
       ).ethereum;
       if (!eth) {
-        setError("No Web3 wallet found. Install MetaMask.");
+        setWalletError("No Web3 wallet found. Install MetaMask or another ETH wallet extension.");
         setLinking(null);
         return;
       }
       const accounts = await eth.request({ method: "eth_requestAccounts" });
       const address = accounts?.[0];
       if (!address) {
-        setError("Cancelled");
+        setWalletError("Wallet connection cancelled.");
         setLinking(null);
         return;
       }
@@ -146,7 +149,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       setMessage("Wallet connected");
       router.refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Wallet failed");
+      setWalletError(err instanceof Error ? err.message : "Wallet connection failed");
     }
     setLinking(null);
   }
@@ -155,6 +158,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     e.preventDefault();
     setSaving(true);
     setError(null);
+    setWalletError(null);
     setMessage(null);
 
     const username = form.username.trim().toLowerCase();
@@ -299,11 +303,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         </label>
       </div>
 
-      {/* Connected accounts */}
       <div className="border-t border-border pt-5 space-y-3">
         <h3 className="font-medium text-sm">Contact & connected accounts</h3>
         <p className="text-xs text-foreground-subtle">
-          Connect socials with OAuth so you can log in with them later on the same account.
+          X, GitHub and wallet use Connect only. Telegram and My website accept links.
         </p>
 
         {email && (
@@ -315,71 +318,100 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
-          <div className="rounded-lg border border-border p-3 space-y-2">
+          {/* X — Connect only */}
+          <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">X</span>
-              {hasX ? (
-                <span className="text-xs text-success">Connected</span>
-              ) : (
+              <div className="min-w-0">
+                <p className="text-sm font-medium">X</p>
+                {hasX && form.x_url ? (
+                  <p className="truncate text-xs text-foreground-muted">{form.x_url}</p>
+                ) : hasX ? (
+                  <p className="text-xs text-success">Connected</p>
+                ) : (
+                  <p className="text-xs text-foreground-subtle">Not connected</p>
+                )}
+              </div>
+              {!hasX && (
                 <button
                   type="button"
                   disabled={!!linking}
                   onClick={() => linkProvider("twitter", "twitter")}
-                  className="btn-secondary text-xs"
+                  className="btn-secondary shrink-0 text-xs"
                 >
                   {linking === "twitter" ? "…" : "Connect X"}
                 </button>
               )}
+              {hasX && (
+                <span className="shrink-0 text-xs font-medium text-success">Connected</span>
+              )}
             </div>
-            <input
-              className="input text-xs"
-              value={form.x_url}
-              onChange={(e) => update("x_url", e.target.value)}
-              placeholder="https://x.com/username"
-            />
           </div>
 
-          <div className="rounded-lg border border-border p-3 space-y-2">
+          {/* GitHub — Connect only */}
+          <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">GitHub</span>
-              {hasGitHub ? (
-                <span className="text-xs text-success">Connected</span>
-              ) : (
+              <div className="min-w-0">
+                <p className="text-sm font-medium">GitHub</p>
+                {hasGitHub && form.github_url ? (
+                  <p className="truncate text-xs text-foreground-muted">{form.github_url}</p>
+                ) : hasGitHub ? (
+                  <p className="text-xs text-success">Connected</p>
+                ) : (
+                  <p className="text-xs text-foreground-subtle">Not connected</p>
+                )}
+              </div>
+              {!hasGitHub && (
                 <button
                   type="button"
                   disabled={!!linking}
                   onClick={() => linkProvider("github", "github")}
-                  className="btn-secondary text-xs"
+                  className="btn-secondary shrink-0 text-xs"
                 >
                   {linking === "github" ? "…" : "Connect GitHub"}
                 </button>
               )}
+              {hasGitHub && (
+                <span className="shrink-0 text-xs font-medium text-success">Connected</span>
+              )}
             </div>
-            <input
-              className="input text-xs"
-              value={form.github_url}
-              onChange={(e) => update("github_url", e.target.value)}
-              placeholder="https://github.com/username"
-            />
           </div>
 
+          {/* Wallet — Connect only + local error */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <div className="flex items-center justify-between gap-2">
-              <span className="text-sm font-medium">Wallet</span>
-              <button type="button" disabled={!!linking} onClick={connectWallet} className="btn-secondary text-xs">
-                {linking === "wallet" ? "…" : form.wallet_address ? "Change" : "Connect"}
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Wallet</p>
+                {form.wallet_address ? (
+                  <p className="truncate font-mono text-xs text-foreground-muted">
+                    {form.wallet_address.slice(0, 8)}…{form.wallet_address.slice(-6)}
+                  </p>
+                ) : (
+                  <p className="text-xs text-foreground-subtle">Not connected</p>
+                )}
+              </div>
+              <button
+                type="button"
+                disabled={!!linking}
+                onClick={connectWallet}
+                className="btn-secondary shrink-0 text-xs"
+              >
+                {linking === "wallet"
+                  ? "…"
+                  : form.wallet_address
+                    ? "Change wallet"
+                    : "Connect wallet"}
               </button>
             </div>
-            <input
-              className="input font-mono text-xs"
-              value={form.wallet_address}
-              onChange={(e) => update("wallet_address", e.target.value)}
-              placeholder="0x…"
-            />
+            {walletError && (
+              <div className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-xs text-danger">
+                {walletError}
+              </div>
+            )}
           </div>
 
+          {/* My website — paste allowed */}
           <div className="rounded-lg border border-border p-3 space-y-2">
-            <span className="text-sm font-medium">My URL</span>
+            <span className="text-sm font-medium">My website</span>
             <input
               className="input text-xs"
               value={form.website_url}
@@ -388,6 +420,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             />
           </div>
 
+          {/* Telegram — paste allowed */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">Telegram</span>
             <input
@@ -398,6 +431,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             />
           </div>
 
+          {/* ENS — optional text */}
           <div className="rounded-lg border border-border p-3 space-y-2">
             <span className="text-sm font-medium">ENS</span>
             <input
