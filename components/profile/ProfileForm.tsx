@@ -4,12 +4,15 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Profile } from "@/types/database";
+import type { Provider } from "@supabase/supabase-js";
 
 type Props = {
   profile: Profile;
+  email: string | null;
+  linkedProviders: string[];
 };
 
-export default function ProfileForm({ profile }: Props) {
+export default function ProfileForm({ profile, email, linkedProviders }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({
     username: profile.username ?? "",
@@ -20,7 +23,6 @@ export default function ProfileForm({ profile }: Props) {
     wallet_address: profile.wallet_address ?? "",
     ens_name: profile.ens_name ?? "",
     x_url: profile.x_url ?? "",
-    discord_url: profile.discord_url ?? "",
     telegram_url: profile.telegram_url ?? "",
     github_url: profile.github_url ?? "",
     website_url: profile.website_url ?? "",
@@ -31,8 +33,12 @@ export default function ProfileForm({ profile }: Props) {
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
+  const [linking, setLinking] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+
+  const hasX = linkedProviders.includes("twitter") || !!form.x_url;
+  const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -92,6 +98,59 @@ export default function ProfileForm({ profile }: Props) {
     setUploadingBanner(false);
   }
 
+  async function linkProvider(provider: Provider, id: string) {
+    setLinking(id);
+    setError(null);
+    const supabase = createClient();
+    const { error } = await supabase.auth.linkIdentity({
+      provider,
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/profile`,
+      },
+    });
+    if (error) {
+      setError(error.message);
+      setLinking(null);
+    }
+  }
+
+  async function connectWallet() {
+    setError(null);
+    setLinking("wallet");
+    try {
+      const eth = (
+        window as unknown as {
+          ethereum?: {
+            request: (args: { method: string }) => Promise<string[]>;
+          };
+        }
+      ).ethereum;
+      if (!eth) {
+        setError("No Web3 wallet found. Install MetaMask.");
+        setLinking(null);
+        return;
+      }
+      const accounts = await eth.request({ method: "eth_requestAccounts" });
+      const address = accounts?.[0];
+      if (!address) {
+        setError("Cancelled");
+        setLinking(null);
+        return;
+      }
+      update("wallet_address", address.toLowerCase());
+      const supabase = createClient();
+      await supabase
+        .from("profiles")
+        .update({ wallet_address: address.toLowerCase() })
+        .eq("id", profile.id);
+      setMessage("Wallet connected");
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Wallet failed");
+    }
+    setLinking(null);
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
@@ -117,7 +176,6 @@ export default function ProfileForm({ profile }: Props) {
         wallet_address: form.wallet_address.trim() || null,
         ens_name: form.ens_name.trim() || null,
         x_url: form.x_url.trim() || null,
-        discord_url: form.discord_url.trim() || null,
         telegram_url: form.telegram_url.trim() || null,
         github_url: form.github_url.trim() || null,
         website_url: form.website_url.trim() || null,
@@ -143,7 +201,7 @@ export default function ProfileForm({ profile }: Props) {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-8">
+    <form onSubmit={handleSubmit} className="space-y-6">
       {error && (
         <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
           {error}
@@ -155,7 +213,6 @@ export default function ProfileForm({ profile }: Props) {
         </div>
       )}
 
-      {/* Banner / header image */}
       <div>
         <label className="label">Profile header (banner)</label>
         <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
@@ -173,63 +230,36 @@ export default function ProfileForm({ profile }: Props) {
         <div className="mt-2 flex flex-wrap items-center gap-2">
           <label className="btn-secondary cursor-pointer text-sm">
             {uploadingBanner ? "Uploading…" : "Upload banner"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBannerChange}
-              disabled={uploadingBanner}
-            />
+            <input type="file" accept="image/*" className="hidden" onChange={handleBannerChange} disabled={uploadingBanner} />
           </label>
           {bannerUrl && (
-            <button
-              type="button"
-              className="btn-ghost text-xs text-danger"
-              onClick={() => setBannerUrl(null)}
-            >
-              Remove banner
+            <button type="button" className="btn-ghost text-xs text-danger" onClick={() => setBannerUrl(null)}>
+              Remove
             </button>
           )}
-          <p className="text-xs text-foreground-subtle">Wide image, max 4MB</p>
         </div>
       </div>
 
-      {/* Avatar */}
       <div className="flex items-center gap-4">
         <div className="h-20 w-20 overflow-hidden rounded-full border border-border bg-surface-elevated">
           {avatarUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
           ) : (
-            <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">
-              No photo
-            </div>
+            <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">No photo</div>
           )}
         </div>
-        <div>
-          <label className="btn-secondary cursor-pointer text-sm">
-            {uploading ? "Uploading…" : "Change avatar"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-              disabled={uploading}
-            />
-          </label>
-          <p className="mt-1 text-xs text-foreground-subtle">JPG/PNG, max 2MB</p>
-        </div>
+        <label className="btn-secondary cursor-pointer text-sm">
+          {uploading ? "Uploading…" : "Change avatar"}
+          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
+        </label>
       </div>
 
-      <div className="grid gap-5 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label" htmlFor="username">
-            Username *
-          </label>
+          <label className="label" htmlFor="username">Username *</label>
           <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-            <span className="text-xs sm:text-sm text-foreground-subtle shrink-0">
-              pow3folio.vercel.app/
-            </span>
+            <span className="text-xs text-foreground-subtle shrink-0">pow3folio.vercel.app/</span>
             <input
               id="username"
               className="input"
@@ -242,119 +272,104 @@ export default function ProfileForm({ profile }: Props) {
             />
           </div>
         </div>
-
         <div>
-          <label className="label" htmlFor="display_name">
-            Display name
-          </label>
-          <input
-            id="display_name"
-            className="input"
-            value={form.display_name}
-            onChange={(e) => update("display_name", e.target.value)}
-            placeholder="Your name"
-          />
+          <label className="label" htmlFor="display_name">Display name</label>
+          <input id="display_name" className="input" value={form.display_name} onChange={(e) => update("display_name", e.target.value)} />
         </div>
       </div>
 
       <div>
-        <label className="label" htmlFor="bio">
-          Short bio
-        </label>
-        <input
-          id="bio"
-          className="input"
-          value={form.bio}
-          onChange={(e) => update("bio", e.target.value)}
-          placeholder="One-line intro"
-          maxLength={160}
-        />
+        <label className="label" htmlFor="bio">Short bio</label>
+        <input id="bio" className="input" value={form.bio} onChange={(e) => update("bio", e.target.value)} maxLength={160} placeholder="One-line intro" />
       </div>
 
       <div>
-        <label className="label" htmlFor="long_bio">
-          About
-        </label>
-        <textarea
-          id="long_bio"
-          className="input min-h-[100px]"
-          value={form.long_bio}
-          onChange={(e) => update("long_bio", e.target.value)}
-          placeholder="Tell people what you do in Web3…"
-        />
+        <label className="label" htmlFor="long_bio">About</label>
+        <textarea id="long_bio" className="input min-h-[90px]" value={form.long_bio} onChange={(e) => update("long_bio", e.target.value)} placeholder="Tell people what you do in Web3…" />
       </div>
 
       <div className="flex flex-wrap gap-6">
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.open_to_work}
-            onChange={(e) => update("open_to_work", e.target.checked)}
-            className="h-4 w-4 rounded border-border"
-          />
+          <input type="checkbox" checked={form.open_to_work} onChange={(e) => update("open_to_work", e.target.checked)} className="h-4 w-4 rounded border-border" />
           Open to opportunities
         </label>
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.is_public}
-            onChange={(e) => update("is_public", e.target.checked)}
-            className="h-4 w-4 rounded border-border"
-          />
+          <input type="checkbox" checked={form.is_public} onChange={(e) => update("is_public", e.target.checked)} className="h-4 w-4 rounded border-border" />
           Public profile
         </label>
       </div>
 
-      <div className="border-t border-border pt-6">
-        <h3 className="mb-4 font-medium">Social & Web3</h3>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">X (Twitter)</label>
+      {/* Connected accounts */}
+      <div className="border-t border-border pt-5 space-y-3">
+        <h3 className="font-medium text-sm">Contact & connected accounts</h3>
+        <p className="text-xs text-foreground-subtle">
+          Connect socials with OAuth so you can log in with them later on the same account.
+        </p>
+
+        {email && (
+          <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-sm">
+            <span className="text-foreground-subtle">Email: </span>
+            <span className="font-medium">{email}</span>
+            <span className="ml-2 text-xs text-primary">(from your login)</span>
+          </div>
+        )}
+
+        <div className="grid gap-2 sm:grid-cols-2">
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">X</span>
+              {hasX ? (
+                <span className="text-xs text-success">Connected</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!!linking}
+                  onClick={() => linkProvider("twitter", "twitter")}
+                  className="btn-secondary text-xs"
+                >
+                  {linking === "twitter" ? "…" : "Connect X"}
+                </button>
+              )}
+            </div>
             <input
-              className="input"
+              className="input text-xs"
               value={form.x_url}
               onChange={(e) => update("x_url", e.target.value)}
               placeholder="https://x.com/username"
             />
           </div>
-          <div>
-            <label className="label">Discord</label>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">GitHub</span>
+              {hasGitHub ? (
+                <span className="text-xs text-success">Connected</span>
+              ) : (
+                <button
+                  type="button"
+                  disabled={!!linking}
+                  onClick={() => linkProvider("github", "github")}
+                  className="btn-secondary text-xs"
+                >
+                  {linking === "github" ? "…" : "Connect GitHub"}
+                </button>
+              )}
+            </div>
             <input
-              className="input"
-              value={form.discord_url}
-              onChange={(e) => update("discord_url", e.target.value)}
-              placeholder="username or invite link"
-            />
-          </div>
-          <div>
-            <label className="label">Telegram</label>
-            <input
-              className="input"
-              value={form.telegram_url}
-              onChange={(e) => update("telegram_url", e.target.value)}
-              placeholder="https://t.me/username"
-            />
-          </div>
-          <div>
-            <label className="label">GitHub</label>
-            <input
-              className="input"
+              className="input text-xs"
               value={form.github_url}
               onChange={(e) => update("github_url", e.target.value)}
               placeholder="https://github.com/username"
             />
           </div>
-          <div>
-            <label className="label">Website</label>
-            <input
-              className="input"
-              value={form.website_url}
-              onChange={(e) => update("website_url", e.target.value)}
-              placeholder="https://yoursite.com"
-            />
-          </div>
-          <div>
-            <label className="label">Wallet address</label>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-sm font-medium">Wallet</span>
+              <button type="button" disabled={!!linking} onClick={connectWallet} className="btn-secondary text-xs">
+                {linking === "wallet" ? "…" : form.wallet_address ? "Change" : "Connect"}
+              </button>
+            </div>
             <input
               className="input font-mono text-xs"
               value={form.wallet_address}
@@ -362,10 +377,31 @@ export default function ProfileForm({ profile }: Props) {
               placeholder="0x…"
             />
           </div>
-          <div>
-            <label className="label">ENS</label>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <span className="text-sm font-medium">My URL</span>
             <input
-              className="input"
+              className="input text-xs"
+              value={form.website_url}
+              onChange={(e) => update("website_url", e.target.value)}
+              placeholder="https://yoursite.com"
+            />
+          </div>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <span className="text-sm font-medium">Telegram</span>
+            <input
+              className="input text-xs"
+              value={form.telegram_url}
+              onChange={(e) => update("telegram_url", e.target.value)}
+              placeholder="https://t.me/username"
+            />
+          </div>
+
+          <div className="rounded-lg border border-border p-3 space-y-2">
+            <span className="text-sm font-medium">ENS</span>
+            <input
+              className="input text-xs"
               value={form.ens_name}
               onChange={(e) => update("ens_name", e.target.value)}
               placeholder="name.eth"
