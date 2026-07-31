@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, Writing } from "@/types/database";
+import type { Profile, Writing, Trade } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import ShareButton from "@/components/writing/ShareButton";
@@ -30,6 +30,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   };
 }
 
+function statusClass(status: string) {
+  if (status === "win") return "text-success";
+  if (status === "loss") return "text-danger";
+  if (status === "breakeven") return "text-warning";
+  return "text-foreground-muted";
+}
+
 export default async function PublicProfilePage({ params }: Props) {
   const { username } = await params;
   const supabase = await createClient();
@@ -47,15 +54,25 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const p = profile as Profile;
 
-  const { data: writings } = await supabase
-    .from("writings")
-    .select("*")
-    .eq("user_id", p.id)
-    .eq("is_visible", true)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
+  const [{ data: writings }, { data: trades }] = await Promise.all([
+    supabase
+      .from("writings")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("trades")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+  ]);
 
   const writingItems = (writings as Writing[]) ?? [];
+  const tradeItems = (trades as Trade[]) ?? [];
 
   const socials = [
     { label: "X", href: p.x_url },
@@ -82,16 +99,11 @@ export default async function PublicProfilePage({ params }: Props) {
       </header>
 
       <main className="container-app max-w-5xl py-6 sm:py-10">
-        {/* Banner + avatar: only avatar overlaps banner; name/bio stay below */}
         <div className="relative">
           <div className="h-32 sm:h-44 md:h-52 overflow-hidden rounded-xl border border-border bg-surface-elevated">
             {p.banner_url ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={p.banner_url}
-                alt=""
-                className="h-full w-full object-cover"
-              />
+              <img src={p.banner_url} alt="" className="h-full w-full object-cover" />
             ) : (
               <div className="h-full w-full bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10" />
             )}
@@ -115,7 +127,6 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Name, badge, bio — always below banner, never on top of image */}
         <div className="mt-12 sm:mt-14 pl-1 sm:pl-2">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words text-foreground">
@@ -181,12 +192,7 @@ export default async function PublicProfilePage({ params }: Props) {
                     key={w.id}
                     className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40"
                   >
-                    <a
-                      href={w.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="block"
-                    >
+                    <a href={w.url} target="_blank" rel="noopener noreferrer" className="block">
                       <div className="aspect-[16/10] w-full bg-surface-elevated">
                         {w.thumbnail_url ? (
                           // eslint-disable-next-line @next/next/no-img-element
@@ -237,14 +243,82 @@ export default async function PublicProfilePage({ params }: Props) {
             )}
           </section>
 
-          {["Trading Record", "Community"].map((section) => (
-            <section key={section}>
-              <h2 className="mb-3 text-lg font-semibold">{section}</h2>
-              <div className="card text-sm text-foreground-subtle">
-                No items yet — coming soon from the dashboard.
+          <section>
+            <h2 className="mb-4 text-lg font-semibold">Trading Record</h2>
+            {tradeItems.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No trades yet.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                {tradeItems.map((t) => {
+                  const shareUrl =
+                    t.chart_url ||
+                    `https://pow3folio.vercel.app/${p.username}`;
+                  const title = `${t.ticker}${t.pair ? ` ${t.pair}` : ""} · ${t.status}`;
+                  return (
+                    <article
+                      key={t.id}
+                      className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40"
+                    >
+                      <div className="aspect-[16/10] w-full bg-surface-elevated">
+                        {t.chart_url ? (
+                          // eslint-disable-next-line @next/next/no-img-element
+                          <img
+                            src={t.chart_url}
+                            alt=""
+                            className="h-full w-full object-cover"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
+                            No chart
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex flex-1 flex-col p-3 sm:p-4">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <h3 className="font-semibold">{t.ticker}</h3>
+                          {t.direction && (
+                            <span className="text-xs uppercase text-foreground-subtle">
+                              {t.direction}
+                            </span>
+                          )}
+                          <span className={`text-xs font-semibold uppercase ${statusClass(t.status)}`}>
+                            {t.status}
+                          </span>
+                        </div>
+                        {t.pair && (
+                          <p className="text-sm text-foreground-muted">{t.pair}</p>
+                        )}
+                        {t.roi != null && (
+                          <p className={`mt-1 text-sm font-medium ${statusClass(t.status)}`}>
+                            {t.roi > 0 ? "+" : ""}
+                            {t.roi}%
+                          </p>
+                        )}
+                        {t.analysis && (
+                          <p className="mt-2 text-sm text-foreground-muted line-clamp-3">
+                            {t.analysis}
+                          </p>
+                        )}
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+                          <span className="text-xs text-foreground-subtle">
+                            {t.traded_at || ""}
+                          </span>
+                          <ShareButton title={title} url={shareUrl} />
+                        </div>
+                      </div>
+                    </article>
+                  );
+                })}
               </div>
-            </section>
-          ))}
+            )}
+          </section>
+
+          <section>
+            <h2 className="mb-3 text-lg font-semibold">Community</h2>
+            <div className="card text-sm text-foreground-subtle">
+              No items yet — coming soon from the dashboard.
+            </div>
+          </section>
         </div>
       </main>
     </div>
