@@ -3,7 +3,8 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Trade, TradeDirection, TradeStatus, TradeUpdate } from "@/types/database";
+import type { Trade, TradeDirection, TradeStatus } from "@/types/database";
+import TradeUpdatesEditor from "@/components/trading/TradeUpdatesEditor";
 
 type Props = {
   userId: string;
@@ -26,13 +27,6 @@ const emptyForm = {
   chart_url_2: "" as string | null,
 };
 
-const emptyUpdate = {
-  label: "Update",
-  caption: "",
-  post_url: "",
-  chart_url: "" as string | null,
-};
-
 function sortItems(list: Trade[]) {
   return [...list].sort((a, b) => {
     const ao = a.sort_order ?? 0;
@@ -46,7 +40,7 @@ function statusColor(status: TradeStatus) {
   if (status === "win") return "text-success";
   if (status === "loss") return "text-danger";
   if (status === "breakeven") return "text-warning";
-  return "text-foreground-muted";
+  return "text-accent";
 }
 
 export default function TradeManager({ userId, initialItems }: Props) {
@@ -58,12 +52,7 @@ export default function TradeManager({ userId, initialItems }: Props) {
   const [uploading, setUploading] = useState(false);
   const [reordering, setReordering] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  // Updates panel
   const [updatesTradeId, setUpdatesTradeId] = useState<string | null>(null);
-  const [updates, setUpdates] = useState<TradeUpdate[]>([]);
-  const [updateForm, setUpdateForm] = useState(emptyUpdate);
-  const [updateLoading, setUpdateLoading] = useState(false);
 
   useEffect(() => {
     setItems(sortItems(initialItems));
@@ -119,10 +108,7 @@ export default function TradeManager({ userId, initialItems }: Props) {
     return publicUrl;
   }
 
-  async function handleChart(
-    e: React.ChangeEvent<HTMLInputElement>,
-    slot: 1 | 2
-  ) {
+  async function handleChart(e: React.ChangeEvent<HTMLInputElement>, slot: 1 | 2) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
@@ -165,7 +151,6 @@ export default function TradeManager({ userId, initialItems }: Props) {
         .eq("user_id", userId)
         .select()
         .single();
-
       setLoading(false);
       if (err) {
         setError(err.message);
@@ -177,13 +162,11 @@ export default function TradeManager({ userId, initialItems }: Props) {
     } else {
       const maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
       payload.sort_order = maxOrder + 1;
-
       const { data, error: err } = await supabase
         .from("trades")
         .insert(payload)
         .select()
         .single();
-
       setLoading(false);
       if (err) {
         setError(err.message);
@@ -204,7 +187,6 @@ export default function TradeManager({ userId, initialItems }: Props) {
       .delete()
       .eq("id", id)
       .eq("user_id", userId);
-
     if (err) {
       setError(err.message);
       return;
@@ -223,7 +205,6 @@ export default function TradeManager({ userId, initialItems }: Props) {
       .eq("id", item.id)
       .select()
       .single();
-
     if (err) {
       setError(err.message);
       return;
@@ -232,7 +213,6 @@ export default function TradeManager({ userId, initialItems }: Props) {
     router.refresh();
   }
 
-  /** Reorder by swapping then normalizing sequential sort_order */
   async function moveItem(index: number, direction: "up" | "down") {
     const target = direction === "up" ? index - 1 : index + 1;
     if (target < 0 || target >= items.length) return;
@@ -244,8 +224,6 @@ export default function TradeManager({ userId, initialItems }: Props) {
     const tmp = next[index];
     next[index] = next[target];
     next[target] = tmp;
-
-    // Normalize 0..n-1 so equal sort_order never blocks reorder
     const normalized = next.map((item, i) => ({ ...item, sort_order: i }));
 
     const supabase = createClient();
@@ -260,87 +238,12 @@ export default function TradeManager({ userId, initialItems }: Props) {
     );
 
     setReordering(false);
-
     const failed = results.find((r) => r.error);
     if (failed?.error) {
       setError(failed.error.message);
       return;
     }
-
     setItems(normalized);
-    router.refresh();
-  }
-
-  async function openUpdates(tradeId: string) {
-    setUpdatesTradeId(tradeId);
-    setUpdateForm(emptyUpdate);
-    const supabase = createClient();
-    const { data, error: err } = await supabase
-      .from("trade_updates")
-      .select("*")
-      .eq("trade_id", tradeId)
-      .order("created_at", { ascending: true });
-
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setUpdates((data as TradeUpdate[]) ?? []);
-  }
-
-  async function handleUpdateChart(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setUploading(true);
-    setError(null);
-    const url = await uploadImage(file);
-    setUploading(false);
-    if (url) setUpdateForm((p) => ({ ...p, chart_url: url }));
-  }
-
-  async function addUpdate(e: React.FormEvent) {
-    e.preventDefault();
-    if (!updatesTradeId) return;
-    setUpdateLoading(true);
-    setError(null);
-
-    const supabase = createClient();
-    const { data, error: err } = await supabase
-      .from("trade_updates")
-      .insert({
-        trade_id: updatesTradeId,
-        user_id: userId,
-        label: updateForm.label.trim() || "Update",
-        caption: updateForm.caption.trim() || null,
-        post_url: updateForm.post_url.trim() || null,
-        chart_url: updateForm.chart_url || null,
-      })
-      .select()
-      .single();
-
-    setUpdateLoading(false);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setUpdates((prev) => [...prev, data as TradeUpdate]);
-    setUpdateForm(emptyUpdate);
-    router.refresh();
-  }
-
-  async function deleteUpdate(id: string) {
-    if (!confirm("Delete this update?")) return;
-    const supabase = createClient();
-    const { error: err } = await supabase
-      .from("trade_updates")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
-    if (err) {
-      setError(err.message);
-      return;
-    }
-    setUpdates((prev) => prev.filter((u) => u.id !== id));
     router.refresh();
   }
 
@@ -389,9 +292,7 @@ export default function TradeManager({ userId, initialItems }: Props) {
                         className="btn-ghost text-xs text-danger"
                         onClick={() =>
                           setForm((p) =>
-                            slot === 1
-                              ? { ...p, chart_url: null }
-                              : { ...p, chart_url_2: null }
+                            slot === 1 ? { ...p, chart_url: null } : { ...p, chart_url_2: null }
                           )
                         }
                       >
@@ -408,32 +309,15 @@ export default function TradeManager({ userId, initialItems }: Props) {
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
             <label className="label">Ticker *</label>
-            <input
-              className="input"
-              required
-              value={form.ticker}
-              onChange={(e) => setForm({ ...form, ticker: e.target.value })}
-              placeholder="BTC"
-            />
+            <input className="input" required value={form.ticker} onChange={(e) => setForm({ ...form, ticker: e.target.value })} placeholder="BTC" />
           </div>
           <div>
             <label className="label">Pair</label>
-            <input
-              className="input"
-              value={form.pair}
-              onChange={(e) => setForm({ ...form, pair: e.target.value })}
-              placeholder="BTC/USDT"
-            />
+            <input className="input" value={form.pair} onChange={(e) => setForm({ ...form, pair: e.target.value })} placeholder="BTC/USDT" />
           </div>
           <div>
             <label className="label">Direction</label>
-            <select
-              className="input"
-              value={form.direction}
-              onChange={(e) =>
-                setForm({ ...form, direction: e.target.value as TradeDirection })
-              }
-            >
+            <select className="input" value={form.direction} onChange={(e) => setForm({ ...form, direction: e.target.value as TradeDirection })}>
               <option value="long">Long</option>
               <option value="short">Short</option>
               <option value="spot">Spot</option>
@@ -441,13 +325,7 @@ export default function TradeManager({ userId, initialItems }: Props) {
           </div>
           <div>
             <label className="label">Result</label>
-            <select
-              className="input"
-              value={form.status}
-              onChange={(e) =>
-                setForm({ ...form, status: e.target.value as TradeStatus })
-              }
-            >
+            <select className="input" value={form.status} onChange={(e) => setForm({ ...form, status: e.target.value as TradeStatus })}>
               <option value="win">Win</option>
               <option value="loss">Loss</option>
               <option value="breakeven">Breakeven</option>
@@ -456,77 +334,34 @@ export default function TradeManager({ userId, initialItems }: Props) {
           </div>
           <div>
             <label className="label">ROI %</label>
-            <input
-              className="input"
-              type="number"
-              step="any"
-              value={form.roi}
-              onChange={(e) => setForm({ ...form, roi: e.target.value })}
-              placeholder="12.5"
-            />
+            <input className="input" type="number" step="any" value={form.roi} onChange={(e) => setForm({ ...form, roi: e.target.value })} placeholder="12.5" />
           </div>
           <div>
             <label className="label">Trade date</label>
-            <input
-              className="input"
-              type="date"
-              value={form.traded_at}
-              onChange={(e) => setForm({ ...form, traded_at: e.target.value })}
-            />
+            <input className="input" type="date" value={form.traded_at} onChange={(e) => setForm({ ...form, traded_at: e.target.value })} />
           </div>
           <div>
             <label className="label">Entry price</label>
-            <input
-              className="input"
-              type="number"
-              step="any"
-              value={form.entry_price}
-              onChange={(e) => setForm({ ...form, entry_price: e.target.value })}
-            />
+            <input className="input" type="number" step="any" value={form.entry_price} onChange={(e) => setForm({ ...form, entry_price: e.target.value })} />
           </div>
           <div>
             <label className="label">Exit price</label>
-            <input
-              className="input"
-              type="number"
-              step="any"
-              value={form.exit_price}
-              onChange={(e) => setForm({ ...form, exit_price: e.target.value })}
-            />
+            <input className="input" type="number" step="any" value={form.exit_price} onChange={(e) => setForm({ ...form, exit_price: e.target.value })} />
           </div>
         </div>
 
         <div>
           <label className="label">Original post link (X / social)</label>
-          <input
-            className="input"
-            type="url"
-            value={form.post_url}
-            onChange={(e) => setForm({ ...form, post_url: e.target.value })}
-            placeholder="https://x.com/.../status/..."
-          />
-          <p className="mt-1 text-xs text-foreground-subtle">
-            Used by Share and “View Post” on your public profile.
-          </p>
+          <input className="input" type="url" value={form.post_url} onChange={(e) => setForm({ ...form, post_url: e.target.value })} placeholder="https://x.com/.../status/..." />
         </div>
 
         <div>
           <label className="label">Analysis / notes</label>
-          <textarea
-            className="input min-h-[80px]"
-            value={form.analysis}
-            onChange={(e) => setForm({ ...form, analysis: e.target.value })}
-            placeholder="Setup, reasoning, lessons…"
-          />
+          <textarea className="input min-h-[80px]" value={form.analysis} onChange={(e) => setForm({ ...form, analysis: e.target.value })} placeholder="Setup, reasoning, lessons…" />
         </div>
 
         <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.is_visible}
-            onChange={(e) => setForm({ ...form, is_visible: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
-          />
+          <input type="checkbox" checked={form.is_visible} onChange={(e) => setForm({ ...form, is_visible: e.target.checked })} className="h-4 w-4 rounded border-border" />
           Visible on public profile
         </label>
 
@@ -545,38 +380,22 @@ export default function TradeManager({ userId, initialItems }: Props) {
       <div className="space-y-3">
         <h2 className="font-semibold">Your trades ({items.length})</h2>
         <p className="text-xs text-foreground-subtle">Use ↑ ↓ to reorder. Manage updates per trade.</p>
-        {items.length === 0 && (
-          <p className="text-sm text-foreground-subtle">No trades yet.</p>
-        )}
+        {items.length === 0 && <p className="text-sm text-foreground-subtle">No trades yet.</p>}
         {items.map((item, index) => (
           <div key={item.id} className="card space-y-3">
             <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex min-w-0 gap-3">
                 <div className="flex flex-col gap-1 shrink-0">
-                  <button
-                    type="button"
-                    disabled={reordering || index === 0}
-                    onClick={() => moveItem(index, "up")}
-                    className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
-                  >
+                  <button type="button" disabled={reordering || index === 0} onClick={() => moveItem(index, "up")} className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30">
                     ↑
                   </button>
-                  <button
-                    type="button"
-                    disabled={reordering || index === items.length - 1}
-                    onClick={() => moveItem(index, "down")}
-                    className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
-                  >
+                  <button type="button" disabled={reordering || index === items.length - 1} onClick={() => moveItem(index, "down")} className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30">
                     ↓
                   </button>
                 </div>
                 {item.chart_url && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={item.chart_url}
-                    alt=""
-                    className="h-14 w-20 shrink-0 rounded-lg object-cover"
-                  />
+                  <img src={item.chart_url} alt="" className="h-14 w-20 shrink-0 rounded-lg object-cover" />
                 )}
                 <div className="min-w-0">
                   <p className="font-medium">
@@ -597,7 +416,7 @@ export default function TradeManager({ userId, initialItems }: Props) {
               <div className="flex shrink-0 flex-wrap gap-2">
                 <button
                   type="button"
-                  onClick={() => openUpdates(item.id)}
+                  onClick={() => setUpdatesTradeId(updatesTradeId === item.id ? null : item.id)}
                   className="btn-secondary text-xs"
                 >
                   Updates
@@ -608,91 +427,18 @@ export default function TradeManager({ userId, initialItems }: Props) {
                 <button type="button" onClick={() => startEdit(item)} className="btn-secondary text-xs">
                   Edit
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleDelete(item.id)}
-                  className="btn-ghost text-xs text-danger"
-                >
+                <button type="button" onClick={() => handleDelete(item.id)} className="btn-ghost text-xs text-danger">
                   Delete
                 </button>
               </div>
             </div>
 
             {updatesTradeId === item.id && (
-              <div className="border-t border-border pt-3 space-y-3">
-                <h3 className="text-sm font-semibold">Trade updates timeline</h3>
-                {updates.length === 0 && (
-                  <p className="text-xs text-foreground-subtle">No updates yet.</p>
-                )}
-                {updates.map((u) => (
-                  <div
-                    key={u.id}
-                    className="flex items-start justify-between gap-2 rounded-lg border border-border bg-surface-elevated p-2"
-                  >
-                    <div className="min-w-0 text-sm">
-                      <p className="font-medium">{u.label}</p>
-                      {u.caption && (
-                        <p className="text-foreground-muted line-clamp-2">{u.caption}</p>
-                      )}
-                      <p className="text-xs text-foreground-subtle">
-                        {u.created_at?.slice(0, 10)}
-                      </p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => deleteUpdate(u.id)}
-                      className="btn-ghost text-xs text-danger"
-                    >
-                      Delete
-                    </button>
-                  </div>
-                ))}
-
-                <form onSubmit={addUpdate} className="space-y-2 rounded-lg border border-border p-3">
-                  <p className="text-xs font-medium text-foreground-muted">Add update</p>
-                  <input
-                    className="input"
-                    value={updateForm.label}
-                    onChange={(e) => setUpdateForm({ ...updateForm, label: e.target.value })}
-                    placeholder="Label e.g. Partial TP / SL to BE"
-                  />
-                  <textarea
-                    className="input min-h-[60px]"
-                    value={updateForm.caption}
-                    onChange={(e) => setUpdateForm({ ...updateForm, caption: e.target.value })}
-                    placeholder="Caption"
-                  />
-                  <input
-                    className="input"
-                    type="url"
-                    value={updateForm.post_url}
-                    onChange={(e) => setUpdateForm({ ...updateForm, post_url: e.target.value })}
-                    placeholder="X / post link"
-                  />
-                  <div className="flex flex-wrap items-center gap-2">
-                    <label className="btn-secondary cursor-pointer text-xs">
-                      {uploading ? "Uploading…" : "Chart image"}
-                      <input
-                        type="file"
-                        accept="image/*"
-                        className="hidden"
-                        onChange={handleUpdateChart}
-                        disabled={uploading}
-                      />
-                    </label>
-                    {updateForm.chart_url && (
-                      <span className="text-xs text-primary">Image attached</span>
-                    )}
-                    <button
-                      type="submit"
-                      disabled={updateLoading}
-                      className="btn-primary text-xs ml-auto"
-                    >
-                      {updateLoading ? "Saving…" : "Add update"}
-                    </button>
-                  </div>
-                </form>
-              </div>
+              <TradeUpdatesEditor
+                userId={userId}
+                tradeId={item.id}
+                onError={setError}
+              />
             )}
           </div>
         ))}
