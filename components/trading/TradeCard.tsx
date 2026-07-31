@@ -23,17 +23,16 @@ function statusBadge(status: string) {
 }
 
 function directionBadge(direction: string | null) {
-  if (direction === "long") return "bg-success/10 text-success border-success/20";
-  if (direction === "short") return "bg-danger/10 text-danger border-danger/20";
-  if (direction === "spot") return "bg-primary/10 text-primary border-primary/20";
+  if (direction === "long") return "bg-success/10 text-success border-success/25";
+  if (direction === "short") return "bg-danger/10 text-danger border-danger/25";
+  if (direction === "spot") return "bg-primary/10 text-primary border-primary/25";
   return "bg-surface-elevated text-foreground-muted border-border";
 }
 
-function roiClass(roi: number | null) {
-  if (roi == null) return "text-foreground-muted";
-  if (roi > 0) return "text-success";
-  if (roi < 0) return "text-danger";
-  return "text-warning";
+function roiBadge(roi: number) {
+  if (roi > 0) return "bg-success/15 text-success border-success/30";
+  if (roi < 0) return "bg-danger/15 text-danger border-danger/30";
+  return "bg-warning/15 text-warning border-warning/30";
 }
 
 export default function TradeCard({ trade, updates, profileUrl }: Props) {
@@ -41,6 +40,7 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
   const images = [trade.chart_url, trade.chart_url_2].filter(Boolean) as string[];
   const shareUrl = trade.post_url || profileUrl;
   const title = `${trade.ticker}${trade.pair ? ` ${trade.pair}` : ""} · ${trade.status}`;
+  const post = trade.post_url;
 
   return (
     <>
@@ -48,16 +48,31 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
         <TradeImageCarousel
           images={images}
           className="aspect-[16/10] w-full"
-          href={trade.post_url}
+          href={post}
         />
 
         <div className="flex flex-1 flex-col gap-1.5 p-3">
-          {/* Row: ticker + pair + badges */}
+          {/* Title row — hyperlinked like writings */}
           <div className="flex flex-wrap items-center gap-1.5">
-            <h3 className="text-sm font-semibold leading-none">{trade.ticker}</h3>
-            {trade.pair && (
-              <span className="text-xs text-foreground-muted leading-none">{trade.pair}</span>
+            {post ? (
+              <a
+                href={post}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-sm font-semibold leading-none text-primary hover:underline"
+              >
+                {trade.ticker}
+              </a>
+            ) : (
+              <h3 className="text-sm font-semibold leading-none">{trade.ticker}</h3>
             )}
+            {trade.pair && (
+              <span className="text-xs leading-none text-foreground-muted">{trade.pair}</span>
+            )}
+          </div>
+
+          {/* Badges row — direction / status / ROI */}
+          <div className="flex flex-wrap items-center gap-1">
             {trade.direction && (
               <span
                 className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none ${directionBadge(
@@ -75,7 +90,11 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
               {trade.status}
             </span>
             {trade.roi != null && (
-              <span className={`text-xs font-bold leading-none ${roiClass(trade.roi)}`}>
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-bold leading-none ${roiBadge(
+                  trade.roi
+                )}`}
+              >
                 {trade.roi > 0 ? "+" : ""}
                 {trade.roi}%
               </span>
@@ -83,22 +102,22 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
           </div>
 
           {trade.analysis && (
-            <p className="text-xs text-foreground-muted line-clamp-2 leading-snug">
+            <p className="text-xs leading-snug text-foreground-muted line-clamp-2">
               {trade.analysis}
             </p>
           )}
 
-          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
-            {trade.post_url ? (
+          <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1">
+            {post && (
               <a
-                href={trade.post_url}
+                href={post}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-xs font-medium text-primary hover:underline"
               >
                 View Post →
               </a>
-            ) : null}
+            )}
 
             {updates.length > 0 ? (
               <button
