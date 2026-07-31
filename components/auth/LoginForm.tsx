@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import type { Provider } from "@supabase/supabase-js";
 
 async function attachPendingWallet(userId: string) {
   try {
@@ -20,6 +21,84 @@ async function attachPendingWallet(userId: string) {
   }
 }
 
+function GoogleIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+      <path
+        fill="#EA4335"
+        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.5-5.6-5.6S8.9 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 6.9 2.8 2.8 6.9 2.8 12S6.9 21.2 12 21.2c5.2 0 8.6-3.6 8.6-8.7 0-.6-.1-1-.2-1.5H12z"
+      />
+      <path
+        fill="#34A853"
+        d="M3.9 7.3l3 2.2C7.7 7.4 9.7 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 8.5 2.8 5.5 4.8 3.9 7.3z"
+      />
+      <path
+        fill="#4A90E2"
+        d="M12 21.2c2.5 0 4.6-.8 6.1-2.2l-2.9-2.3c-.8.6-1.9 1-3.2 1-2.5 0-4.6-1.7-5.3-4l-3 2.3c1.6 3.1 4.8 5.2 8.3 5.2z"
+      />
+      <path
+        fill="#FBBC05"
+        d="M6.7 13.7c-.2-.6-.3-1.2-.3-1.7s.1-1.2.3-1.7l-3-2.3C3.2 9.2 2.8 10.5 2.8 12s.4 2.8 1.1 4l2.8-2.3z"
+      />
+    </svg>
+  );
+}
+
+function XIcon() {
+  return (
+    <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.746l7.73-8.835L1.254 2.25H8.08l4.253 5.622L18.244 2.25zm-1.161 17.52h1.833L7.084 4.126H5.117L17.083 19.77z" />
+    </svg>
+  );
+}
+
+function GitHubIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.2 0 4.7-2.9 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z" />
+    </svg>
+  );
+}
+
+function DiscordIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="#5865F2" aria-hidden="true">
+      <path d="M20.3 4.4A19 19 0 0 0 15.9 3l-.2.4a17.5 17.5 0 0 1 4 1.9 16.7 16.7 0 0 0-14.4 0A15 15 0 0 1 8.3 3.1 19 19 0 0 0 3.7 4.4C1.4 8 0.7 11.4 1 14.8a19.2 19.2 0 0 0 5.8 3 14 14 0 0 0 1.3-2.1 12.4 12.4 0 0 1-1.9-.9l.5-.4c3.7 1.7 7.7 1.7 11.3 0l.5.4c-.6.4-1.2.7-1.9.9.4.7.8 1.4 1.3 2.1a19 19 0 0 0 5.8-3c.4-4-.6-7.4-2.7-10.4zM8.7 13.5c-1.1 0-2-.9-2-2.1 0-1.1.9-2.1 2-2.1s2 1 2 2.1c0 1.2-.9 2.1-2 2.1zm6.6 0c-1.1 0-2-.9-2-2.1 0-1.1.9-2.1 2-2.1s2 1 2 2.1c0 1.2-.9 2.1-2 2.1z" />
+    </svg>
+  );
+}
+
+function NotionIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+      <path d="M4.5 3.5c-.5 0-1 .3-1.2.7L2 7.2v11.5c0 .9.7 1.6 1.6 1.6h13.5c.5 0 1-.3 1.2-.7l2.6-4.5c.2-.4.3-.8.3-1.2V5.1c0-.9-.7-1.6-1.6-1.6H4.5zm1.3 2h11.8v9.5H8.3L5.8 17V5.5zm3.2 2.2v5.2h1.5V9.3l2.2 3.6h1.3V7.7h-1.5v3.4L10.3 7.7H9z" />
+    </svg>
+  );
+}
+
+function WalletIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4" />
+      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5" />
+      <path d="M18 12a2 2 0 0 0 0 4h4v-4Z" />
+    </svg>
+  );
+}
+
+const OAUTH_BUTTONS: {
+  id: string;
+  provider: Provider;
+  label: string;
+  icon: React.ReactNode;
+}[] = [
+  { id: "google", provider: "google", label: "Continue with Google", icon: <GoogleIcon /> },
+  { id: "twitter", provider: "twitter", label: "Continue with X", icon: <XIcon /> },
+  { id: "github", provider: "github", label: "Continue with GitHub", icon: <GitHubIcon /> },
+  { id: "discord", provider: "discord", label: "Continue with Discord", icon: <DiscordIcon /> },
+  { id: "notion", provider: "notion" as Provider, label: "Continue with Notion", icon: <NotionIcon /> },
+];
+
 export default function LoginForm() {
   const router = useRouter();
   const [email, setEmail] = useState("");
@@ -30,7 +109,6 @@ export default function LoginForm() {
   const [oauthLoading, setOauthLoading] = useState<string | null>(null);
   const [checking, setChecking] = useState(true);
 
-  // If session already exists (middleware miss / soft navigation), go to dashboard
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -77,9 +155,9 @@ export default function LoginForm() {
     router.refresh();
   }
 
-  async function signInWithProvider(provider: "google" | "twitter") {
+  async function signInWithProvider(provider: Provider, id: string) {
     setError(null);
-    setOauthLoading(provider);
+    setOauthLoading(id);
     const supabase = createClient();
     const { error } = await supabase.auth.signInWithOAuth({
       provider,
@@ -88,7 +166,12 @@ export default function LoginForm() {
       },
     });
     if (error) {
-      setError(error.message);
+      setError(
+        error.message +
+          (error.message.toLowerCase().includes("provider")
+            ? " Enable this provider in Supabase → Authentication → Providers and paste Client ID/Secret."
+            : "")
+      );
       setOauthLoading(null);
     }
   }
@@ -100,10 +183,7 @@ export default function LoginForm() {
       const eth = (
         window as unknown as {
           ethereum?: {
-            request: (args: {
-              method: string;
-              params?: unknown[];
-            }) => Promise<string[]>;
+            request: (args: { method: string; params?: unknown[] }) => Promise<string[]>;
           };
         }
       ).ethereum;
@@ -143,7 +223,7 @@ export default function LoginForm() {
         setError(
           `Wallet ${address.slice(0, 6)}…${address.slice(
             -4
-          )} saved. Sign in with Email, Google, or X — wallet will be linked automatically.`
+          )} saved. Sign in with Email or a provider — wallet will be linked automatically.`
         );
       }
     } catch (err) {
@@ -169,28 +249,27 @@ export default function LoginForm() {
       )}
 
       <div className="grid gap-2">
-        <button
-          type="button"
-          disabled={!!oauthLoading}
-          onClick={() => signInWithProvider("google")}
-          className="btn-secondary w-full justify-center text-sm"
-        >
-          {oauthLoading === "google" ? "Redirecting…" : "Continue with Google"}
-        </button>
-        <button
-          type="button"
-          disabled={!!oauthLoading}
-          onClick={() => signInWithProvider("twitter")}
-          className="btn-secondary w-full justify-center text-sm"
-        >
-          {oauthLoading === "twitter" ? "Redirecting…" : "Continue with X"}
-        </button>
+        {OAUTH_BUTTONS.map((btn) => (
+          <button
+            key={btn.id}
+            type="button"
+            disabled={!!oauthLoading}
+            onClick={() => signInWithProvider(btn.provider, btn.id)}
+            className="btn-secondary flex w-full items-center justify-center gap-2.5 text-sm"
+          >
+            <span className="flex h-5 w-5 shrink-0 items-center justify-center">{btn.icon}</span>
+            {oauthLoading === btn.id ? "Redirecting…" : btn.label}
+          </button>
+        ))}
         <button
           type="button"
           disabled={!!oauthLoading}
           onClick={connectWallet}
-          className="btn-secondary w-full justify-center text-sm"
+          className="btn-secondary flex w-full items-center justify-center gap-2.5 text-sm"
         >
+          <span className="flex h-5 w-5 shrink-0 items-center justify-center">
+            <WalletIcon />
+          </span>
           {oauthLoading === "wallet" ? "Connecting…" : "Connect ETH Wallet"}
         </button>
       </div>
@@ -243,33 +322,13 @@ export default function LoginForm() {
               aria-label={showPassword ? "Hide password" : "Show password"}
             >
               {showPassword ? (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94" />
                   <path d="M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19" />
                   <line x1="1" y1="1" x2="23" y2="23" />
                 </svg>
               ) : (
-                <svg
-                  xmlns="http://www.w3.org/2000/svg"
-                  width="18"
-                  height="18"
-                  viewBox="0 0 24 24"
-                  fill="none"
-                  stroke="currentColor"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
                   <circle cx="12" cy="12" r="3" />
                 </svg>
