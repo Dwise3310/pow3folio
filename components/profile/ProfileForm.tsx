@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
+import { connectEthereumWallet } from "@/lib/wallet";
 import type { Profile } from "@/types/database";
 import type { Provider } from "@supabase/supabase-js";
 
@@ -169,36 +170,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     setError(null);
     setLinking("wallet");
     try {
-      const eth = (
-        window as unknown as {
-          ethereum?: {
-            request: (args: { method: string }) => Promise<string[]>;
-            isMetaMask?: boolean;
-          };
-        }
-      ).ethereum;
-
-      if (!eth) {
-        setWalletError(
-          "No browser wallet detected. Install MetaMask, Rabby, or another ETH extension, then try again. (WalletConnect mobile flow coming next.)"
-        );
-        setLinking(null);
-        return;
-      }
-
-      const accounts = await eth.request({ method: "eth_requestAccounts" });
-      const address = accounts?.[0];
-      if (!address) {
-        setWalletError("Wallet connection cancelled.");
-        setLinking(null);
-        return;
-      }
-
-      update("wallet_address", address.toLowerCase());
+      const address = await connectEthereumWallet();
+      update("wallet_address", address);
       const supabase = createClient();
       await supabase
         .from("profiles")
-        .update({ wallet_address: address.toLowerCase() })
+        .update({ wallet_address: address })
         .eq("id", profile.id);
       setMessage("Wallet connected");
       router.refresh();
