@@ -24,22 +24,10 @@ async function attachPendingWallet(userId: string) {
 function GoogleIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
-      <path
-        fill="#EA4335"
-        d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.5-5.6-5.6S8.9 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 6.9 2.8 2.8 6.9 2.8 12S6.9 21.2 12 21.2c5.2 0 8.6-3.6 8.6-8.7 0-.6-.1-1-.2-1.5H12z"
-      />
-      <path
-        fill="#34A853"
-        d="M3.9 7.3l3 2.2C7.7 7.4 9.7 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 8.5 2.8 5.5 4.8 3.9 7.3z"
-      />
-      <path
-        fill="#4A90E2"
-        d="M12 21.2c2.5 0 4.6-.8 6.1-2.2l-2.9-2.3c-.8.6-1.9 1-3.2 1-2.5 0-4.6-1.7-5.3-4l-3 2.3c1.6 3.1 4.8 5.2 8.3 5.2z"
-      />
-      <path
-        fill="#FBBC05"
-        d="M6.7 13.7c-.2-.6-.3-1.2-.3-1.7s.1-1.2.3-1.7l-3-2.3C3.2 9.2 2.8 10.5 2.8 12s.4 2.8 1.1 4l2.8-2.3z"
-      />
+      <path fill="#EA4335" d="M12 10.2v3.6h5.1c-.2 1.2-1.5 3.6-5.1 3.6-3.1 0-5.6-2.5-5.6-5.6S8.9 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 6.9 2.8 2.8 6.9 2.8 12S6.9 21.2 12 21.2c5.2 0 8.6-3.6 8.6-8.7 0-.6-.1-1-.2-1.5H12z" />
+      <path fill="#34A853" d="M3.9 7.3l3 2.2C7.7 7.4 9.7 6.2 12 6.2c1.8 0 3 .7 3.7 1.4l2.5-2.4C16.7 3.7 14.6 2.8 12 2.8 8.5 2.8 5.5 4.8 3.9 7.3z" />
+      <path fill="#4A90E2" d="M12 21.2c2.5 0 4.6-.8 6.1-2.2l-2.9-2.3c-.8.6-1.9 1-3.2 1-2.5 0-4.6-1.7-5.3-4l-3 2.3c1.6 3.1 4.8 5.2 8.3 5.2z" />
+      <path fill="#FBBC05" d="M6.7 13.7c-.2-.6-.3-1.2-.3-1.7s.1-1.2.3-1.7l-3-2.3C3.2 9.2 2.8 10.5 2.8 12s.4 2.8 1.1 4l2.8-2.3z" />
     </svg>
   );
 }
@@ -56,22 +44,6 @@ function GitHubIcon() {
   return (
     <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
       <path d="M12 .3a12 12 0 0 0-3.8 23.4c.6.1.8-.3.8-.6v-2.2c-3.3.7-4-1.6-4-1.6-.5-1.3-1.3-1.7-1.3-1.7-1.1-.7.1-.7.1-.7 1.2.1 1.8 1.2 1.8 1.2 1.1 1.8 2.8 1.3 3.5 1 .1-.8.4-1.3.8-1.6-2.7-.3-5.5-1.3-5.5-6 0-1.3.5-2.4 1.2-3.2-.1-.3-.5-1.5.1-3.1 0 0 1-.3 3.3 1.2a11.5 11.5 0 0 1 6 0c2.3-1.5 3.3-1.2 3.3-1.2.6 1.6.2 2.8.1 3.1.8.8 1.2 1.9 1.2 3.2 0 4.7-2.9 5.7-5.5 6 .4.4.8 1.1.8 2.2v3.3c0 .3.2.7.8.6A12 12 0 0 0 12 .3z" />
-    </svg>
-  );
-}
-
-function DiscordIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="#5865F2" aria-hidden="true">
-      <path d="M20.3 4.4A19 19 0 0 0 15.9 3l-.2.4a17.5 17.5 0 0 1 4 1.9 16.7 16.7 0 0 0-14.4 0A15 15 0 0 1 8.3 3.1 19 19 0 0 0 3.7 4.4C1.4 8 0.7 11.4 1 14.8a19.2 19.2 0 0 0 5.8 3 14 14 0 0 0 1.3-2.1 12.4 12.4 0 0 1-1.9-.9l.5-.4c3.7 1.7 7.7 1.7 11.3 0l.5.4c-.6.4-1.2.7-1.9.9.4.7.8 1.4 1.3 2.1a19 19 0 0 0 5.8-3c.4-4-.6-7.4-2.7-10.4zM8.7 13.5c-1.1 0-2-.9-2-2.1 0-1.1.9-2.1 2-2.1s2 1 2 2.1c0 1.2-.9 2.1-2 2.1zm6.6 0c-1.1 0-2-.9-2-2.1 0-1.1.9-2.1 2-2.1s2 1 2 2.1c0 1.2-.9 2.1-2 2.1z" />
-    </svg>
-  );
-}
-
-function NotionIcon() {
-  return (
-    <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-      <path d="M4.5 3.5c-.5 0-1 .3-1.2.7L2 7.2v11.5c0 .9.7 1.6 1.6 1.6h13.5c.5 0 1-.3 1.2-.7l2.6-4.5c.2-.4.3-.8.3-1.2V5.1c0-.9-.7-1.6-1.6-1.6H4.5zm1.3 2h11.8v9.5H8.3L5.8 17V5.5zm3.2 2.2v5.2h1.5V9.3l2.2 3.6h1.3V7.7h-1.5v3.4L10.3 7.7H9z" />
     </svg>
   );
 }
@@ -95,8 +67,6 @@ const OAUTH_BUTTONS: {
   { id: "google", provider: "google", label: "Continue with Google", icon: <GoogleIcon /> },
   { id: "twitter", provider: "twitter", label: "Continue with X", icon: <XIcon /> },
   { id: "github", provider: "github", label: "Continue with GitHub", icon: <GitHubIcon /> },
-  { id: "discord", provider: "discord", label: "Continue with Discord", icon: <DiscordIcon /> },
-  { id: "notion", provider: "notion" as Provider, label: "Continue with Notion", icon: <NotionIcon /> },
 ];
 
 export default function LoginForm() {
@@ -223,7 +193,7 @@ export default function LoginForm() {
         setError(
           `Wallet ${address.slice(0, 6)}…${address.slice(
             -4
-          )} saved. Sign in with Email or a provider — wallet will be linked automatically.`
+          )} saved. Sign in with Email, Google, X or GitHub — wallet will be linked automatically.`
         );
       }
     } catch (err) {
