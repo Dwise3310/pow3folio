@@ -18,6 +18,7 @@ export default async function WritingPage() {
     .from("writings")
     .select("*")
     .eq("user_id", user.id)
+    .order("sort_order", { ascending: true })
     .order("created_at", { ascending: false });
 
   return (
