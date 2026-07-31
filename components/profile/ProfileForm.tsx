@@ -16,6 +16,19 @@ type Props = {
 const URL_IN_BIO =
   /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|eth)\b/i;
 
+function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
+  if (!text) return null;
+  const cls =
+    tone === "ok"
+      ? "border-primary/30 bg-primary/10 text-primary"
+      : "border-danger/30 bg-danger/10 text-danger";
+  return (
+    <div className={`mt-2 rounded-md border px-2.5 py-1.5 text-xs animate-fade-in ${cls}`}>
+      {text}
+    </div>
+  );
+}
+
 export default function ProfileForm({ profile, email, linkedProviders }: Props) {
   const router = useRouter();
   const [form, setForm] = useState({
@@ -38,16 +51,41 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [uploading, setUploading] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [linking, setLinking] = useState<string | null>(null);
-  const [message, setMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [walletError, setWalletError] = useState<string | null>(null);
+
+  // Per-action feedback (shows under the relevant button)
+  const [saveMsg, setSaveMsg] = useState<string | null>(null);
+  const [saveErr, setSaveErr] = useState<string | null>(null);
+  const [xMsg, setXMsg] = useState<string | null>(null);
+  const [xErr, setXErr] = useState<string | null>(null);
+  const [ghMsg, setGhMsg] = useState<string | null>(null);
+  const [ghErr, setGhErr] = useState<string | null>(null);
+  const [googleMsg, setGoogleMsg] = useState<string | null>(null);
+  const [googleErr, setGoogleErr] = useState<string | null>(null);
+  const [walletMsg, setWalletMsg] = useState<string | null>(null);
+  const [walletErr, setWalletErr] = useState<string | null>(null);
+  const [avatarMsg, setAvatarMsg] = useState<string | null>(null);
+  const [avatarErr, setAvatarErr] = useState<string | null>(null);
+  const [bannerMsg, setBannerMsg] = useState<string | null>(null);
+  const [bannerErr, setBannerErr] = useState<string | null>(null);
 
   const hasX = linkedProviders.includes("twitter") || !!form.x_url;
   const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
+  const hasGoogle = linkedProviders.includes("google");
   const bioHasLink = useMemo(() => URL_IN_BIO.test(form.bio), [form.bio]);
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function explainLinkError(raw: string): string {
+    const lower = raw.toLowerCase();
+    if (lower.includes("manual linking is disabled")) {
+      return "Manual linking is disabled in Supabase. Open Supabase → Authentication → Settings (or Providers) and turn ON “Enable Manual Linking”, then try again.";
+    }
+    if (lower.includes("already") || lower.includes("identity")) {
+      return raw + " If this account is already used on another Pow3Folio profile, unlink it there first.";
+    }
+    return raw;
   }
 
   async function uploadImage(
@@ -55,12 +93,15 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     kind: "avatar" | "banner"
   ): Promise<string | null> {
     if (!file.type.startsWith("image/")) {
-      setError("Please upload an image file");
+      if (kind === "avatar") setAvatarErr("Please upload an image file");
+      else setBannerErr("Please upload an image file");
       return null;
     }
     const max = kind === "banner" ? 4 * 1024 * 1024 : 2 * 1024 * 1024;
     if (file.size > max) {
-      setError(kind === "banner" ? "Banner must be under 4MB" : "Avatar must be under 2MB");
+      const msg = kind === "banner" ? "Banner must be under 4MB" : "Avatar must be under 2MB";
+      if (kind === "avatar") setAvatarErr(msg);
+      else setBannerErr(msg);
       return null;
     }
 
@@ -73,7 +114,8 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       .upload(path, file, { upsert: true });
 
     if (uploadError) {
-      setError(uploadError.message);
+      if (kind === "avatar") setAvatarErr(uploadError.message);
+      else setBannerErr(uploadError.message);
       return null;
     }
 
@@ -88,9 +130,13 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
-    setError(null);
+    setAvatarErr(null);
+    setAvatarMsg(null);
     const url = await uploadImage(file, "avatar");
-    if (url) setAvatarUrl(url);
+    if (url) {
+      setAvatarUrl(url);
+      setAvatarMsg("Avatar uploaded — click Save profile to keep it");
+    }
     setUploading(false);
   }
 
@@ -98,16 +144,32 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     const file = e.target.files?.[0];
     if (!file) return;
     setUploadingBanner(true);
-    setError(null);
+    setBannerErr(null);
+    setBannerMsg(null);
     const url = await uploadImage(file, "banner");
-    if (url) setBannerUrl(url);
+    if (url) {
+      setBannerUrl(url);
+      setBannerMsg("Banner uploaded — click Save profile to keep it");
+    }
     setUploadingBanner(false);
   }
 
-  async function linkProvider(provider: Provider, id: string) {
+  async function linkProvider(
+    provider: Provider,
+    id: "twitter" | "github" | "google"
+  ) {
     setLinking(id);
-    setError(null);
-    setWalletError(null);
+    if (id === "twitter") {
+      setXErr(null);
+      setXMsg(null);
+    } else if (id === "github") {
+      setGhErr(null);
+      setGhMsg(null);
+    } else {
+      setGoogleErr(null);
+      setGoogleMsg(null);
+    }
+
     const supabase = createClient();
     const { error } = await supabase.auth.linkIdentity({
       provider,
@@ -115,15 +177,35 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/profile`,
       },
     });
+
     if (error) {
-      setError(error.message);
+      const msg = explainLinkError(error.message);
+      if (id === "twitter") setXErr(msg);
+      else if (id === "github") setGhErr(msg);
+      else setGoogleErr(msg);
       setLinking(null);
+      return;
     }
+
+    // Redirect should happen; if not, show status
+    if (id === "twitter") setXMsg("Redirecting to X…");
+    else if (id === "github") setGhMsg("Redirecting to GitHub…");
+    else setGoogleMsg("Redirecting to Google…");
   }
 
-  async function disconnectProvider(provider: "twitter" | "github") {
+  async function disconnectProvider(provider: "twitter" | "github" | "google") {
     setLinking(`unlink-${provider}`);
-    setError(null);
+    if (provider === "twitter") {
+      setXErr(null);
+      setXMsg(null);
+    } else if (provider === "github") {
+      setGhErr(null);
+      setGhMsg(null);
+    } else {
+      setGoogleErr(null);
+      setGoogleMsg(null);
+    }
+
     const supabase = createClient();
     const {
       data: { user },
@@ -133,41 +215,46 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     if (identity) {
       const { error } = await supabase.auth.unlinkIdentity(identity);
       if (error) {
-        setError(error.message);
+        const msg = explainLinkError(error.message);
+        if (provider === "twitter") setXErr(msg);
+        else if (provider === "github") setGhErr(msg);
+        else setGoogleErr(msg);
         setLinking(null);
         return;
       }
     }
 
-    const clear =
-      provider === "twitter"
-        ? { x_url: null as string | null }
-        : { github_url: null as string | null };
+    if (provider === "twitter") {
+      await supabase.from("profiles").update({ x_url: null }).eq("id", profile.id);
+      update("x_url", "");
+      setXMsg("X disconnected");
+    } else if (provider === "github") {
+      await supabase.from("profiles").update({ github_url: null }).eq("id", profile.id);
+      update("github_url", "");
+      setGhMsg("GitHub disconnected");
+    } else {
+      setGoogleMsg("Google disconnected");
+    }
 
-    await supabase.from("profiles").update(clear).eq("id", profile.id);
-
-    if (provider === "twitter") update("x_url", "");
-    else update("github_url", "");
-
-    setMessage(provider === "twitter" ? "X disconnected" : "GitHub disconnected");
     setLinking(null);
     router.refresh();
   }
 
   async function disconnectWallet() {
     setLinking("unlink-wallet");
-    setWalletError(null);
+    setWalletErr(null);
+    setWalletMsg(null);
     const supabase = createClient();
     await supabase.from("profiles").update({ wallet_address: null }).eq("id", profile.id);
     update("wallet_address", "");
-    setMessage("Wallet disconnected");
+    setWalletMsg("Wallet disconnected");
     setLinking(null);
     router.refresh();
   }
 
   async function connectWallet() {
-    setWalletError(null);
-    setError(null);
+    setWalletErr(null);
+    setWalletMsg(null);
     setLinking("wallet");
     try {
       const address = await connectEthereumWallet();
@@ -177,10 +264,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         .from("profiles")
         .update({ wallet_address: address })
         .eq("id", profile.id);
-      setMessage("Wallet connected");
+      setWalletMsg("Wallet connected");
       router.refresh();
     } catch (err) {
-      setWalletError(err instanceof Error ? err.message : "Wallet connection failed");
+      setWalletErr(err instanceof Error ? err.message : "Wallet connection failed");
     }
     setLinking(null);
   }
@@ -188,19 +275,18 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setSaving(true);
-    setError(null);
-    setWalletError(null);
-    setMessage(null);
+    setSaveErr(null);
+    setSaveMsg(null);
 
     if (bioHasLink) {
-      setError("Remove the link from Short bio before saving.");
+      setSaveErr("Remove the link from Short bio before saving.");
       setSaving(false);
       return;
     }
 
     const username = form.username.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,30}$/.test(username)) {
-      setError("Username must be 3–30 chars: lowercase letters, numbers, underscore only");
+      setSaveErr("Username must be 3–30 chars: lowercase letters, numbers, underscore only");
       setSaving(false);
       return;
     }
@@ -230,30 +316,19 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
     if (updateError) {
       if (updateError.code === "23505") {
-        setError("That username is already taken");
+        setSaveErr("That username is already taken");
       } else {
-        setError(updateError.message);
+        setSaveErr(updateError.message);
       }
       return;
     }
 
-    setMessage("Profile saved");
+    setSaveMsg("Profile saved");
     router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      {error && (
-        <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger animate-fade-in">
-          {error}
-        </div>
-      )}
-      {message && (
-        <div className="rounded-lg border border-primary/30 bg-primary/10 px-3 py-2 text-sm text-primary animate-fade-in">
-          {message}
-        </div>
-      )}
-
       <div>
         <label className="label">Profile header (banner)</label>
         <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
@@ -274,26 +349,39 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
             <input type="file" accept="image/*" className="hidden" onChange={handleBannerChange} disabled={uploadingBanner} />
           </label>
           {bannerUrl && (
-            <button type="button" className="btn-ghost text-xs text-danger" onClick={() => setBannerUrl(null)}>
+            <button
+              type="button"
+              className="btn-ghost text-xs text-danger"
+              onClick={() => {
+                setBannerUrl(null);
+                setBannerMsg("Banner removed — click Save profile");
+              }}
+            >
               Remove
             </button>
           )}
         </div>
+        <Feedback text={bannerMsg} tone="ok" />
+        <Feedback text={bannerErr} tone="err" />
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="h-20 w-20 overflow-hidden rounded-full border border-border bg-surface-elevated">
-          {avatarUrl ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-          ) : (
-            <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">No photo</div>
-          )}
+      <div>
+        <div className="flex items-center gap-4">
+          <div className="h-20 w-20 overflow-hidden rounded-full border border-border bg-surface-elevated">
+            {avatarUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">No photo</div>
+            )}
+          </div>
+          <label className="btn-secondary cursor-pointer text-sm">
+            {uploading ? "Uploading…" : "Change avatar"}
+            <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
+          </label>
         </div>
-        <label className="btn-secondary cursor-pointer text-sm">
-          {uploading ? "Uploading…" : "Change avatar"}
-          <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
-        </label>
+        <Feedback text={avatarMsg} tone="ok" />
+        <Feedback text={avatarErr} tone="err" />
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
@@ -359,7 +447,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       <div className="border-t border-border pt-5 space-y-3">
         <h3 className="font-medium text-sm">Contact & connected accounts</h3>
         <p className="text-xs text-foreground-subtle">
-          X, GitHub and wallet use Connect only. Telegram and My website accept links.
+          Connect socials with OAuth so you can log in with them on this same account. Telegram and My website accept pasted links.
         </p>
 
         {email && (
@@ -371,6 +459,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         )}
 
         <div className="grid gap-2 sm:grid-cols-2">
+          {/* X */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -408,8 +497,11 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 )}
               </div>
             </div>
+            <Feedback text={xMsg} tone="ok" />
+            <Feedback text={xErr} tone="err" />
           </div>
 
+          {/* GitHub */}
           <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
@@ -447,9 +539,52 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 )}
               </div>
             </div>
+            <Feedback text={ghMsg} tone="ok" />
+            <Feedback text={ghErr} tone="err" />
           </div>
 
-          <div className="rounded-lg border border-border p-3 space-y-2">
+          {/* Google */}
+          <div className="rounded-lg border border-border p-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0">
+                <p className="text-sm font-medium">Google</p>
+                {hasGoogle ? (
+                  <p className="text-xs text-success">Connected for login</p>
+                ) : (
+                  <p className="text-xs text-foreground-subtle">Not connected</p>
+                )}
+              </div>
+              <div className="flex shrink-0 items-center gap-1.5">
+                {hasGoogle ? (
+                  <>
+                    <span className="text-xs font-medium text-success">Connected</span>
+                    <button
+                      type="button"
+                      disabled={!!linking}
+                      onClick={() => disconnectProvider("google")}
+                      className="btn-ghost text-xs text-danger"
+                    >
+                      {linking === "unlink-google" ? "…" : "Disconnect"}
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={!!linking}
+                    onClick={() => linkProvider("google", "google")}
+                    className="btn-secondary text-xs"
+                  >
+                    {linking === "google" ? "…" : "Connect Google"}
+                  </button>
+                )}
+              </div>
+            </div>
+            <Feedback text={googleMsg} tone="ok" />
+            <Feedback text={googleErr} tone="err" />
+          </div>
+
+          {/* Wallet */}
+          <div className="rounded-lg border border-border p-3">
             <div className="flex items-center justify-between gap-2">
               <div className="min-w-0">
                 <p className="text-sm font-medium">Wallet</p>
@@ -483,11 +618,8 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                 )}
               </div>
             </div>
-            {walletError && (
-              <div className="rounded-md border border-danger/30 bg-danger/10 px-2.5 py-1.5 text-xs text-danger animate-fade-in">
-                {walletError}
-              </div>
-            )}
+            <Feedback text={walletMsg} tone="ok" />
+            <Feedback text={walletErr} tone="err" />
           </div>
 
           <div className="rounded-lg border border-border p-3 space-y-2">
@@ -522,13 +654,17 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         </div>
       </div>
 
-      <button
-        type="submit"
-        disabled={saving || uploading || uploadingBanner || bioHasLink}
-        className="btn-primary"
-      >
-        {saving ? "Saving…" : "Save profile"}
-      </button>
+      <div>
+        <button
+          type="submit"
+          disabled={saving || uploading || uploadingBanner || bioHasLink}
+          className="btn-primary"
+        >
+          {saving ? "Saving…" : "Save profile"}
+        </button>
+        <Feedback text={saveMsg} tone="ok" />
+        <Feedback text={saveErr} tone="err" />
+      </div>
     </form>
   );
 }
