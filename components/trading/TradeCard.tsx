@@ -12,11 +12,28 @@ type Props = {
   profileUrl: string;
 };
 
-function statusClass(status: string) {
-  if (status === "win") return "text-success";
-  if (status === "loss") return "text-danger";
-  if (status === "breakeven") return "text-warning";
-  return "text-foreground-muted";
+function statusBadge(status: string) {
+  if (status === "win")
+    return "bg-success/15 text-success border-success/30";
+  if (status === "loss")
+    return "bg-danger/15 text-danger border-danger/30";
+  if (status === "breakeven")
+    return "bg-warning/15 text-warning border-warning/30";
+  return "bg-accent/15 text-accent border-accent/30"; // open
+}
+
+function directionBadge(direction: string | null) {
+  if (direction === "long") return "bg-success/10 text-success border-success/20";
+  if (direction === "short") return "bg-danger/10 text-danger border-danger/20";
+  if (direction === "spot") return "bg-primary/10 text-primary border-primary/20";
+  return "bg-surface-elevated text-foreground-muted border-border";
+}
+
+function roiClass(roi: number | null) {
+  if (roi == null) return "text-foreground-muted";
+  if (roi > 0) return "text-success";
+  if (roi < 0) return "text-danger";
+  return "text-warning";
 }
 
 export default function TradeCard({ trade, updates, profileUrl }: Props) {
@@ -28,63 +45,80 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
   return (
     <>
       <article className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40">
-        <TradeImageCarousel images={images} className="aspect-[16/10] w-full" />
+        <TradeImageCarousel
+          images={images}
+          className="aspect-[16/10] w-full"
+          href={trade.post_url}
+        />
 
-        <div className="flex flex-1 flex-col p-3 sm:p-4">
-          <div className="flex flex-wrap items-center gap-2">
-            <h3 className="font-semibold">{trade.ticker}</h3>
-            {trade.direction && (
-              <span className="text-xs uppercase text-foreground-subtle">{trade.direction}</span>
+        <div className="flex flex-1 flex-col gap-1.5 p-3">
+          {/* Row: ticker + pair + badges */}
+          <div className="flex flex-wrap items-center gap-1.5">
+            <h3 className="text-sm font-semibold leading-none">{trade.ticker}</h3>
+            {trade.pair && (
+              <span className="text-xs text-foreground-muted leading-none">{trade.pair}</span>
             )}
-            <span className={`text-xs font-semibold uppercase ${statusClass(trade.status)}`}>
+            {trade.direction && (
+              <span
+                className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none ${directionBadge(
+                  trade.direction
+                )}`}
+              >
+                {trade.direction}
+              </span>
+            )}
+            <span
+              className={`rounded border px-1.5 py-0.5 text-[10px] font-semibold uppercase leading-none ${statusBadge(
+                trade.status
+              )}`}
+            >
               {trade.status}
             </span>
+            {trade.roi != null && (
+              <span className={`text-xs font-bold leading-none ${roiClass(trade.roi)}`}>
+                {trade.roi > 0 ? "+" : ""}
+                {trade.roi}%
+              </span>
+            )}
           </div>
-          {trade.pair && <p className="text-sm text-foreground-muted">{trade.pair}</p>}
-          {trade.roi != null && (
-            <p className={`mt-1 text-sm font-medium ${statusClass(trade.status)}`}>
-              {trade.roi > 0 ? "+" : ""}
-              {trade.roi}%
+
+          {trade.analysis && (
+            <p className="text-xs text-foreground-muted line-clamp-2 leading-snug">
+              {trade.analysis}
             </p>
           )}
-          {trade.analysis && (
-            <p className="mt-2 text-sm text-foreground-muted line-clamp-3">{trade.analysis}</p>
-          )}
 
-          <div className="mt-auto flex flex-wrap items-center gap-2 pt-3">
+          <div className="mt-auto flex flex-wrap items-center gap-x-2 gap-y-1 pt-1.5">
             {trade.post_url ? (
               <a
                 href={trade.post_url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="btn-secondary text-xs"
+                className="text-xs font-medium text-primary hover:underline"
               >
                 View Post →
               </a>
-            ) : (
-              <span className="text-xs text-foreground-subtle">No post link</span>
-            )}
+            ) : null}
 
             {updates.length > 0 ? (
               <button
                 type="button"
                 onClick={() => setOpen(true)}
-                className="btn-ghost text-xs text-primary"
+                className="text-xs font-medium text-accent hover:underline"
               >
-                View Updates ({updates.length}) →
+                Updates ({updates.length}) →
               </button>
             ) : (
-              <span className="text-xs text-foreground-subtle">No updates yet</span>
+              <span className="text-[11px] text-foreground-subtle">No updates</span>
             )}
 
-            <div className="ml-auto">
+            <div className="ml-auto flex items-center gap-2">
+              {trade.traded_at && (
+                <span className="text-[11px] text-foreground-subtle">{trade.traded_at}</span>
+              )}
               <ShareButton title={title} url={shareUrl} />
             </div>
           </div>
-
-          {trade.traded_at && (
-            <p className="mt-2 text-xs text-foreground-subtle">{trade.traded_at}</p>
-          )}
         </div>
       </article>
 
