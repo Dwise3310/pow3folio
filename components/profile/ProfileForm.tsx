@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { connectEthereumWallet } from "@/lib/wallet";
+import { startXAuth } from "@/lib/x-oauth";
 import type { Profile } from "@/types/database";
 import type { Provider } from "@supabase/supabase-js";
 
@@ -71,7 +72,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [bannerErr, setBannerErr] = useState<string | null>(null);
   const [showSecondEmail, setShowSecondEmail] = useState(!!profile.secondary_email);
 
-  const hasX = linkedProviders.includes("twitter") || !!form.x_url;
+  const hasX =
+    linkedProviders.includes("twitter") ||
+    linkedProviders.includes("x") ||
+    !!form.x_url;
   const hasGitHub = linkedProviders.includes("github") || !!form.github_url;
   const hasGoogle = linkedProviders.includes("google");
   const bioHasLink = useMemo(() => URL_IN_BIO.test(form.bio), [form.bio]);
@@ -83,10 +87,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   function explainLinkError(raw: string): string {
     const lower = raw.toLowerCase();
     if (lower.includes("manual linking is disabled")) {
-      return "Manual linking is disabled in Supabase. Open Authentication → Sign In / Providers (scroll the page) and enable Manual Linking, then try again.";
+      return "Manual linking is disabled in Supabase. Open Authentication → Sign In / Providers and enable Manual Linking, then try again.";
     }
     if (lower.includes("already") || lower.includes("identity")) {
-      return raw + " If this account is already used on another Pow3Folio profile, unlink it there first.";
+      return raw + " If this X account is already used on another Pow3Folio profile, unlink it there first.";
     }
     return raw;
   }
@@ -174,25 +178,47 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     }
 
     const supabase = createClient();
-    const { error } = await supabase.auth.linkIdentity({
+    const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard/profile`;
+
+    // X needs special handling (OAuth 2.0 provider id "x" + forced redirect)
+    if (id === "twitter") {
+      const { error } = await startXAuth(supabase, "link", redirectTo);
+      if (error) {
+        setXErr(explainLinkError(error));
+        setLinking(null);
+        return;
+      }
+      setXMsg("Redirecting to X…");
+      return;
+    }
+
+    const { data, error } = await supabase.auth.linkIdentity({
       provider,
       options: {
-        redirectTo: `${window.location.origin}/auth/callback?next=/dashboard/profile`,
+        redirectTo,
+        skipBrowserRedirect: true,
       },
     });
 
     if (error) {
       const msg = explainLinkError(error.message);
-      if (id === "twitter") setXErr(msg);
-      else if (id === "github") setGhErr(msg);
+      if (id === "github") setGhErr(msg);
       else setGoogleErr(msg);
       setLinking(null);
       return;
     }
 
-    if (id === "twitter") setXMsg("Redirecting to X…");
-    else if (id === "github") setGhMsg("Redirecting to GitHub…");
-    else setGoogleMsg("Redirecting to Google…");
+    if (data?.url) {
+      if (id === "github") setGhMsg("Redirecting to GitHub…");
+      else setGoogleMsg("Redirecting to Google…");
+      window.location.assign(data.url);
+      return;
+    }
+
+    const fail = "No OAuth URL returned. Check provider is enabled in Supabase.";
+    if (id === "github") setGhErr(fail);
+    else setGoogleErr(fail);
+    setLinking(null);
   }
 
   async function disconnectProvider(provider: "twitter" | "github" | "google") {
@@ -212,7 +238,13 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     const {
       data: { user },
     } = await supabase.auth.getUser();
-    const identity = user?.identities?.find((i) => i.provider === provider);
+
+    // Match both legacy twitter and new x identities
+    const identity = user?.identities?.find((i) =>
+      provider === "twitter"
+        ? i.provider === "twitter" || i.provider === "x"
+        : i.provider === provider
+    );
 
     if (identity) {
       const { error } = await supabase.auth.unlinkIdentity(identity);
@@ -335,7 +367,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       if (updateError.code === "23505") {
         setSaveErr("That username is already taken");
       } else if (updateError.message?.includes("secondary_email")) {
-        setSaveErr("Run the secondary_email SQL in Supabase first (see chat instructions).");
+        setSaveErr("Run the secondary_email SQL in Supabase first.");
       } else {
         setSaveErr(updateError.message);
       }
@@ -441,8 +473,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         </div>
         {bioHasLink && (
           <p className="mt-1.5 text-xs text-danger animate-fade-in">
-            Links are not accepted in the bio. Best place for a custom link is{" "}
-            <strong>My website</strong>.
+            Links are not accepted in the bio. Best place for a custom link is <strong>My website</strong>.
           </p>
         )}
       </div>
@@ -476,11 +507,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
           </div>
 
           {!showSecondEmail ? (
-            <button
-              type="button"
-              className="btn-secondary text-xs"
-              onClick={() => setShowSecondEmail(true)}
-            >
+            <button type="button" className="btn-secondary text-xs" onClick={() => setShowSecondEmail(true)}>
               + Add second email
             </button>
           ) : (
@@ -508,9 +535,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   Remove
                 </button>
               </div>
-              <p className="text-[11px] text-foreground-subtle">
-                Contact email only (does not change login). Save profile to keep it.
-              </p>
+              <p className="text-[11px] text-foreground-subtle">Contact email only (does not change login). Save profile to keep it.</p>
             </div>
           )}
         </div>
