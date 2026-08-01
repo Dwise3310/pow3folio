@@ -102,6 +102,11 @@
     animation: open-dot-blink 1.8s ease-in-out infinite;
   }
 
+  .location-dot {
+    @apply inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-sky-400;
+    animation: location-dot-blink 1.8s ease-in-out infinite;
+  }
+
   .writing-grid {
     @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
   }
@@ -128,6 +133,18 @@
   50% {
     opacity: 0.35;
     box-shadow: 0 0 0 5px rgba(52, 211, 153, 0);
+  }
+}
+
+@keyframes location-dot-blink {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
+  }
+  50% {
+    opacity: 0.35;
+    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0);
   }
 }
 
