@@ -7,6 +7,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import ShareButton from "@/components/writing/ShareButton";
 import TradeCard from "@/components/trading/TradeCard";
 import ImageLightbox from "@/components/ui/ImageLightbox";
+import EmailChip from "@/components/ui/EmailChip";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -97,7 +98,21 @@ export default async function PublicProfilePage({ params }: Props) {
     { label: "Website", href: p.website_url },
   ].filter((s) => s.href);
 
-  const hasContacts = socials.length > 0 || !!p.wallet_address || !!p.ens_name;
+  const publicEmails: string[] = [];
+  if (p.show_primary_email && p.primary_email) publicEmails.push(p.primary_email);
+  if (p.show_secondary_email && p.secondary_email) publicEmails.push(p.secondary_email);
+
+  const locationLabel =
+    p.location_country && p.location_region
+      ? `${p.location_region}, ${p.location_country}`
+      : p.location_country || p.location_region || null;
+
+  const hasContacts =
+    socials.length > 0 ||
+    !!p.wallet_address ||
+    !!p.ens_name ||
+    publicEmails.length > 0 ||
+    !!locationLabel;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -166,6 +181,12 @@ export default async function PublicProfilePage({ params }: Props) {
           {p.bio && (
             <p className="max-w-2xl text-sm text-foreground-muted break-words">{p.bio}</p>
           )}
+          {locationLabel && (
+            <p className="flex items-center gap-1.5 text-xs text-foreground-subtle">
+              <span className="location-dot" aria-hidden />
+              {locationLabel}
+            </p>
+          )}
         </div>
 
         {hasContacts && (
@@ -180,6 +201,9 @@ export default async function PublicProfilePage({ params }: Props) {
               >
                 {s.label}
               </a>
+            ))}
+            {publicEmails.map((em) => (
+              <EmailChip key={em} email={em} />
             ))}
             {p.ens_name && (
               <span className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground-muted">
