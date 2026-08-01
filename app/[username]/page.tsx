@@ -1,11 +1,18 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
-import type { Profile, Writing, Trade, TradeUpdate } from "@/types/database";
+import type {
+  Profile,
+  Writing,
+  Trade,
+  TradeUpdate,
+  CommunityItem,
+} from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
 import ShareButton from "@/components/writing/ShareButton";
 import TradeCard from "@/components/trading/TradeCard";
+import CommunityCard from "@/components/community/CommunityCard";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import EmailChip from "@/components/ui/EmailChip";
 
@@ -50,25 +57,34 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const p = profile as Profile;
 
-  const [{ data: writings }, { data: trades }] = await Promise.all([
-    supabase
-      .from("writings")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("trades")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-  ]);
+  const [{ data: writings }, { data: trades }, { data: community }] =
+    await Promise.all([
+      supabase
+        .from("writings")
+        .select("*")
+        .eq("user_id", p.id)
+        .eq("is_visible", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("trades")
+        .select("*")
+        .eq("user_id", p.id)
+        .eq("is_visible", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+      supabase
+        .from("community_items")
+        .select("*")
+        .eq("user_id", p.id)
+        .eq("is_visible", true)
+        .order("sort_order", { ascending: true })
+        .order("created_at", { ascending: false }),
+    ]);
 
   const writingItems = (writings as Writing[]) ?? [];
   const tradeItems = (trades as Trade[]) ?? [];
+  const communityItems = (community as CommunityItem[]) ?? [];
 
   const tradeIds = tradeItems.map((t) => t.id);
   const updatesByTrade: Record<string, TradeUpdate[]> = {};
@@ -111,8 +127,7 @@ export default async function PublicProfilePage({ params }: Props) {
     socials.length > 0 ||
     !!p.wallet_address ||
     !!p.ens_name ||
-    publicEmails.length > 0 ||
-    !!locationLabel;
+    publicEmails.length > 0;
 
   return (
     <div className="min-h-screen bg-background text-foreground">
@@ -305,11 +320,17 @@ export default async function PublicProfilePage({ params }: Props) {
             )}
           </section>
 
-          <section>
-            <h2 className="mb-2 text-lg font-semibold">Community</h2>
-            <div className="card text-sm text-foreground-subtle">
-              No items yet — coming soon from the dashboard.
-            </div>
+          <section className="animate-fade-in">
+            <h2 className="mb-3 text-lg font-semibold">Community</h2>
+            {communityItems.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No community contributions yet.</div>
+            ) : (
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {communityItems.map((c) => (
+                  <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />
+                ))}
+              </div>
+            )}
           </section>
         </div>
       </main>
