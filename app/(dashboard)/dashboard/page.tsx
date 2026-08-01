@@ -83,8 +83,15 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
 
+          <Link
+            href="/dashboard/community"
+            className="card transition-colors hover:border-primary/40"
+          >
+            <h3 className="font-medium">Community</h3>
+            <p className="mt-1 text-xs text-primary">Manage →</p>
+          </Link>
+
           {[
-            { title: "Community", status: "Coming next" },
             { title: "Airdrops", status: "Phase 2" },
             { title: "Docs & NFTs", status: "Phase 2" },
           ].map((item) => (

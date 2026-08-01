@@ -81,3 +81,22 @@ export type TradeUpdate = {
   occurred_at: string | null;
   created_at: string;
 };
+
+export type CommunityItem = {
+  id: string;
+  user_id: string;
+  title: string;
+  role: string | null;
+  platform: string | null;
+  description: string | null;
+  url: string | null;
+  thumbnail_url: string | null;
+  metrics: string | null;
+  started_at: string | null;
+  ended_at: string | null;
+  tags: string[] | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
