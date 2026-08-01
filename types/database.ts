@@ -15,6 +15,11 @@ export type Profile = {
   github_url: string | null;
   website_url: string | null;
   secondary_email: string | null;
+  primary_email: string | null;
+  show_primary_email: boolean;
+  show_secondary_email: boolean;
+  location_country: string | null;
+  location_region: string | null;
   is_public: boolean;
   created_at: string;
   updated_at: string;
