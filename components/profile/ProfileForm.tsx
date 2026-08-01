@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { connectEthereumWallet } from "@/lib/wallet";
 import { startXAuth } from "@/lib/x-oauth";
+import LocationControl from "@/components/profile/LocationControl";
 import type { Profile } from "@/types/database";
 import type { Provider } from "@supabase/supabase-js";
 
@@ -16,7 +17,6 @@ type Props = {
 
 const URL_IN_BIO =
   /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|eth)\b/i;
-
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
@@ -29,6 +29,32 @@ function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
     <div className={`mt-2 rounded-md border px-2.5 py-1.5 text-xs animate-fade-in ${cls}`}>
       {text}
     </div>
+  );
+}
+
+function PublicToggle({
+  on,
+  onChange,
+  disabled,
+}: {
+  on: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      disabled={disabled}
+      onClick={() => onChange(!on)}
+      className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-medium transition-colors ${
+        on
+          ? "bg-primary/15 text-primary border border-primary/30"
+          : "bg-surface-elevated text-foreground-subtle border border-border"
+      }`}
+      title={on ? "Visible on public profile" : "Hidden on public profile"}
+    >
+      {on ? "Public ON" : "Public OFF"}
+    </button>
   );
 }
 
@@ -47,6 +73,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     github_url: profile.github_url ?? "",
     website_url: profile.website_url ?? "",
     secondary_email: profile.secondary_email ?? "",
+    show_primary_email: profile.show_primary_email ?? false,
+    show_secondary_email: profile.show_secondary_email ?? false,
+    location_country: profile.location_country ?? "",
+    location_region: profile.location_region ?? "",
     is_public: profile.is_public ?? true,
   });
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
@@ -55,7 +85,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   const [uploading, setUploading] = useState(false);
   const [uploadingBanner, setUploadingBanner] = useState(false);
   const [linking, setLinking] = useState<string | null>(null);
-
   const [saveMsg, setSaveMsg] = useState<string | null>(null);
   const [saveErr, setSaveErr] = useState<string | null>(null);
   const [xMsg, setXMsg] = useState<string | null>(null);
@@ -87,18 +116,15 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   function explainLinkError(raw: string): string {
     const lower = raw.toLowerCase();
     if (lower.includes("manual linking is disabled")) {
-      return "Manual linking is disabled in Supabase. Open Authentication → Sign In / Providers and enable Manual Linking, then try again.";
+      return "Manual linking is disabled in Supabase. Enable it under Authentication → Sign In / Providers.";
     }
     if (lower.includes("already") || lower.includes("identity")) {
-      return raw + " If this X account is already used on another Pow3Folio profile, unlink it there first.";
+      return raw + " Unlink it from the other account first if needed.";
     }
     return raw;
   }
 
-  async function uploadImage(
-    file: File,
-    kind: "avatar" | "banner"
-  ): Promise<string | null> {
+  async function uploadImage(file: File, kind: "avatar" | "banner"): Promise<string | null> {
     if (!file.type.startsWith("image/")) {
       if (kind === "avatar") setAvatarErr("Please upload an image file");
       else setBannerErr("Please upload an image file");
@@ -111,25 +137,18 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       else setBannerErr(msg);
       return null;
     }
-
     const supabase = createClient();
     const ext = file.name.split(".").pop() || "jpg";
     const path = `${profile.id}/${kind}-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
-
+    const { error: uploadError } = await supabase.storage.from("avatars").upload(path, file, { upsert: true });
     if (uploadError) {
       if (kind === "avatar") setAvatarErr(uploadError.message);
       else setBannerErr(uploadError.message);
       return null;
     }
-
     const {
       data: { publicUrl },
     } = supabase.storage.from("avatars").getPublicUrl(path);
-
     return publicUrl;
   }
 
@@ -161,10 +180,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     setUploadingBanner(false);
   }
 
-  async function linkProvider(
-    provider: Provider,
-    id: "twitter" | "github" | "google"
-  ) {
+  async function linkProvider(provider: Provider, id: "twitter" | "github" | "google") {
     setLinking(id);
     if (id === "twitter") {
       setXErr(null);
@@ -176,11 +192,8 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       setGoogleErr(null);
       setGoogleMsg(null);
     }
-
     const supabase = createClient();
     const redirectTo = `${window.location.origin}/auth/callback?next=/dashboard/profile`;
-
-    // X needs special handling (OAuth 2.0 provider id "x" + forced redirect)
     if (id === "twitter") {
       const { error } = await startXAuth(supabase, "link", redirectTo);
       if (error) {
@@ -191,15 +204,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       setXMsg("Redirecting to X…");
       return;
     }
-
     const { data, error } = await supabase.auth.linkIdentity({
       provider,
-      options: {
-        redirectTo,
-        skipBrowserRedirect: true,
-      },
+      options: { redirectTo, skipBrowserRedirect: true },
     });
-
     if (error) {
       const msg = explainLinkError(error.message);
       if (id === "github") setGhErr(msg);
@@ -207,14 +215,12 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       setLinking(null);
       return;
     }
-
     if (data?.url) {
       if (id === "github") setGhMsg("Redirecting to GitHub…");
       else setGoogleMsg("Redirecting to Google…");
       window.location.assign(data.url);
       return;
     }
-
     const fail = "No OAuth URL returned. Check provider is enabled in Supabase.";
     if (id === "github") setGhErr(fail);
     else setGoogleErr(fail);
@@ -233,19 +239,13 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       setGoogleErr(null);
       setGoogleMsg(null);
     }
-
     const supabase = createClient();
     const {
       data: { user },
     } = await supabase.auth.getUser();
-
-    // Match both legacy twitter and new x identities
     const identity = user?.identities?.find((i) =>
-      provider === "twitter"
-        ? i.provider === "twitter" || i.provider === "x"
-        : i.provider === provider
+      provider === "twitter" ? i.provider === "twitter" || i.provider === "x" : i.provider === provider
     );
-
     if (identity) {
       const { error } = await supabase.auth.unlinkIdentity(identity);
       if (error) {
@@ -257,7 +257,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         return;
       }
     }
-
     if (provider === "twitter") {
       await supabase.from("profiles").update({ x_url: null }).eq("id", profile.id);
       update("x_url", "");
@@ -269,7 +268,6 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     } else {
       setGoogleMsg("Google disconnected");
     }
-
     setLinking(null);
     router.refresh();
   }
@@ -294,10 +292,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       const address = await connectEthereumWallet();
       update("wallet_address", address);
       const supabase = createClient();
-      await supabase
-        .from("profiles")
-        .update({ wallet_address: address })
-        .eq("id", profile.id);
+      await supabase.from("profiles").update({ wallet_address: address }).eq("id", profile.id);
       setWalletMsg("Wallet connected");
       router.refresh();
     } catch (err) {
@@ -339,6 +334,9 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       }
     }
 
+    const showPrimary = form.show_primary_email && !!email;
+    const showSecondary = form.show_secondary_email && !!secondary;
+
     const supabase = createClient();
     const { error: updateError } = await supabase
       .from("profiles")
@@ -355,6 +353,11 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         github_url: form.github_url.trim() || null,
         website_url: form.website_url.trim() || null,
         secondary_email: secondary || null,
+        primary_email: email ? email.toLowerCase() : null,
+        show_primary_email: showPrimary,
+        show_secondary_email: showSecondary,
+        location_country: form.location_country.trim() || null,
+        location_region: form.location_region.trim() || null,
         is_public: form.is_public,
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
@@ -364,13 +367,10 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     setSaving(false);
 
     if (updateError) {
-      if (updateError.code === "23505") {
-        setSaveErr("That username is already taken");
-      } else if (updateError.message?.includes("secondary_email")) {
-        setSaveErr("Run the secondary_email SQL in Supabase first.");
-      } else {
-        setSaveErr(updateError.message);
-      }
+      if (updateError.code === "23505") setSaveErr("That username is already taken");
+      else if (updateError.message?.toLowerCase().includes("column")) {
+        setSaveErr("Run the new profile columns SQL in Supabase (see chat), then try again.");
+      } else setSaveErr(updateError.message);
       return;
     }
 
@@ -468,9 +468,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
           maxLength={160}
           placeholder="One-line intro — no links"
         />
-        <div className="mt-1 flex items-start justify-between gap-2">
-          <p className="text-xs text-foreground-subtle">{form.bio.length}/160</p>
-        </div>
+        <p className="mt-1 text-xs text-foreground-subtle">{form.bio.length}/160</p>
         {bioHasLink && (
           <p className="mt-1.5 text-xs text-danger animate-fade-in">
             Links are not accepted in the bio. Best place for a custom link is <strong>My website</strong>.
@@ -482,6 +480,15 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         <label className="label" htmlFor="long_bio">About</label>
         <textarea id="long_bio" className="input min-h-[90px]" value={form.long_bio} onChange={(e) => update("long_bio", e.target.value)} placeholder="Tell people what you do in Web3…" />
       </div>
+
+      <LocationControl
+        country={form.location_country}
+        region={form.location_region}
+        onChange={(c, r) => {
+          update("location_country", c);
+          update("location_region", r);
+        }}
+      />
 
       <div className="flex flex-wrap gap-6">
         <label className="flex items-center gap-2 text-sm">
@@ -497,13 +504,20 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       <div className="border-t border-border pt-5 space-y-3">
         <h3 className="font-medium text-sm">Contact & connected accounts</h3>
         <p className="text-xs text-foreground-subtle">
-          Max 2 emails: login email + one optional second email. Socials use Connect for login on the same account.
+          Use <strong>Public ON/OFF</strong> to show an email on your public profile. Visitors can copy or open mail.
         </p>
 
-        <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 space-y-2">
-          <div className="text-sm">
-            <span className="text-foreground-subtle">Email 1 (login): </span>
-            <span className="font-medium">{email || "—"}</span>
+        <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="text-sm min-w-0">
+              <span className="text-foreground-subtle">Email 1 (login): </span>
+              <span className="font-medium break-all">{email || "—"}</span>
+            </div>
+            <PublicToggle
+              on={form.show_primary_email}
+              disabled={!email}
+              onChange={(v) => update("show_primary_email", v)}
+            />
           </div>
 
           {!showSecondEmail ? (
@@ -511,10 +525,17 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
               + Add second email
             </button>
           ) : (
-            <div className="space-y-2">
-              <label className="label mb-0" htmlFor="secondary_email">
-                Email 2 (optional)
-              </label>
+            <div className="space-y-2 border-t border-border pt-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="label mb-0" htmlFor="secondary_email">
+                  Email 2
+                </label>
+                <PublicToggle
+                  on={form.show_secondary_email}
+                  disabled={!form.secondary_email.trim()}
+                  onChange={(v) => update("show_secondary_email", v)}
+                />
+              </div>
               <div className="flex flex-wrap gap-2">
                 <input
                   id="secondary_email"
@@ -529,13 +550,13 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   className="btn-ghost text-xs text-danger"
                   onClick={() => {
                     update("secondary_email", "");
+                    update("show_secondary_email", false);
                     setShowSecondEmail(false);
                   }}
                 >
                   Remove
                 </button>
               </div>
-              <p className="text-[11px] text-foreground-subtle">Contact email only (does not change login). Save profile to keep it.</p>
             </div>
           )}
         </div>
