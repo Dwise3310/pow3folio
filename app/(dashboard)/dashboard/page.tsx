@@ -91,15 +91,18 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
 
-          {[
-            { title: "Airdrops", status: "Phase 2" },
-            { title: "Docs & NFTs", status: "Phase 2" },
-          ].map((item) => (
-            <div key={item.title} className="card opacity-80">
-              <h3 className="font-medium">{item.title}</h3>
-              <p className="mt-1 text-xs text-foreground-subtle">{item.status}</p>
-            </div>
-          ))}
+          <Link
+            href="/dashboard/airdrops"
+            className="card transition-colors hover:border-primary/40"
+          >
+            <h3 className="font-medium">Airdrops</h3>
+            <p className="mt-1 text-xs text-primary">Manage →</p>
+          </Link>
+
+          <div className="card opacity-80">
+            <h3 className="font-medium">Docs & NFTs</h3>
+            <p className="mt-1 text-xs text-foreground-subtle">Next skeleton</p>
+          </div>
         </div>
 
         {profile?.username && (

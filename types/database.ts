@@ -100,3 +100,30 @@ export type CommunityItem = {
   created_at: string;
   updated_at: string;
 };
+
+export type AirdropStatus =
+  | "farming"
+  | "qualified"
+  | "claimed"
+  | "missed"
+  | "pending";
+
+export type Airdrop = {
+  id: string;
+  user_id: string;
+  title: string;
+  chain: string | null;
+  status: AirdropStatus;
+  role: string | null;
+  description: string | null;
+  reward: string | null;
+  url: string | null;
+  thumbnail_url: string | null;
+  started_at: string | null;
+  claimed_at: string | null;
+  tags: string[] | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
