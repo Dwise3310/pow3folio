@@ -8,6 +8,7 @@ import type {
   TradeUpdate,
   CommunityItem,
   Airdrop,
+  Collectible,
 } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
@@ -15,6 +16,7 @@ import ShareButton from "@/components/writing/ShareButton";
 import TradeCard from "@/components/trading/TradeCard";
 import CommunityCard from "@/components/community/CommunityCard";
 import AirdropCard from "@/components/airdrops/AirdropCard";
+import CollectibleCard from "@/components/collectibles/CollectibleCard";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import EmailChip from "@/components/ui/EmailChip";
 
@@ -59,42 +61,55 @@ export default async function PublicProfilePage({ params }: Props) {
 
   const p = profile as Profile;
 
-  const [{ data: writings }, { data: trades }, { data: community }, { data: airdrops }] =
-    await Promise.all([
-      supabase
-        .from("writings")
-        .select("*")
-        .eq("user_id", p.id)
-        .eq("is_visible", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("trades")
-        .select("*")
-        .eq("user_id", p.id)
-        .eq("is_visible", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("community_items")
-        .select("*")
-        .eq("user_id", p.id)
-        .eq("is_visible", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false }),
-      supabase
-        .from("airdrops")
-        .select("*")
-        .eq("user_id", p.id)
-        .eq("is_visible", true)
-        .order("sort_order", { ascending: true })
-        .order("created_at", { ascending: false }),
-    ]);
+  const [
+    { data: writings },
+    { data: trades },
+    { data: community },
+    { data: airdrops },
+    { data: collectibles },
+  ] = await Promise.all([
+    supabase
+      .from("writings")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("trades")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("community_items")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("airdrops")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("collectibles")
+      .select("*")
+      .eq("user_id", p.id)
+      .eq("is_visible", true)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+  ]);
 
   const writingItems = (writings as Writing[]) ?? [];
   const tradeItems = (trades as Trade[]) ?? [];
   const communityItems = (community as CommunityItem[]) ?? [];
   const airdropItems = (airdrops as Airdrop[]) ?? [];
+  const collectibleItems = (collectibles as Collectible[]) ?? [];
 
   const tradeIds = tradeItems.map((t) => t.id);
   const updatesByTrade: Record<string, TradeUpdate[]> = {};
@@ -351,6 +366,19 @@ export default async function PublicProfilePage({ params }: Props) {
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {airdropItems.map((a) => (
                   <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />
+                ))}
+              </div>
+            )}
+          </section>
+
+          <section className="animate-fade-in">
+            <h2 className="mb-3 text-lg font-semibold">Docs & NFTs</h2>
+            {collectibleItems.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No docs or NFTs yet.</div>
+            ) : (
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                {collectibleItems.map((c) => (
+                  <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
                 ))}
               </div>
             )}
