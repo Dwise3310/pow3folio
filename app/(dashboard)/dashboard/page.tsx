@@ -59,50 +59,30 @@ export default async function DashboardPage() {
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Link
-            href="/dashboard/profile"
-            className="card transition-colors hover:border-primary/40"
-          >
+          <Link href="/dashboard/profile" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Profile</h3>
             <p className="mt-1 text-xs text-primary">Edit now →</p>
           </Link>
-
-          <Link
-            href="/dashboard/writing"
-            className="card transition-colors hover:border-primary/40"
-          >
+          <Link href="/dashboard/writing" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Writing</h3>
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
-
-          <Link
-            href="/dashboard/trading"
-            className="card transition-colors hover:border-primary/40"
-          >
+          <Link href="/dashboard/trading" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Trading Record</h3>
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
-
-          <Link
-            href="/dashboard/community"
-            className="card transition-colors hover:border-primary/40"
-          >
+          <Link href="/dashboard/community" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Community</h3>
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
-
-          <Link
-            href="/dashboard/airdrops"
-            className="card transition-colors hover:border-primary/40"
-          >
+          <Link href="/dashboard/airdrops" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Airdrops</h3>
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
-
-          <div className="card opacity-80">
+          <Link href="/dashboard/collectibles" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Docs & NFTs</h3>
-            <p className="mt-1 text-xs text-foreground-subtle">Next skeleton</p>
-          </div>
+            <p className="mt-1 text-xs text-primary">Manage →</p>
+          </Link>
         </div>
 
         {profile?.username && (

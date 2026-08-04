@@ -127,3 +127,25 @@ export type Airdrop = {
   created_at: string;
   updated_at: string;
 };
+
+export type CollectibleKind = "doc" | "nft";
+
+export type Collectible = {
+  id: string;
+  user_id: string;
+  kind: CollectibleKind;
+  title: string;
+  description: string | null;
+  url: string | null;
+  image_url: string | null;
+  chain: string | null;
+  collection_name: string | null;
+  token_id: string | null;
+  issuer: string | null;
+  acquired_at: string | null;
+  tags: string[] | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
