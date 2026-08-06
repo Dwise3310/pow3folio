@@ -160,7 +160,7 @@ export default function PublicProfileTabs({
             {credentials.length > 0 && (
               <div>
                 <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
-                  Docs \u0026 credentials
+                  Docs & credentials
                 </h3>
                 <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
                   {credentials.map((doc) => (
