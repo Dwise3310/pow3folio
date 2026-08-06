@@ -14,7 +14,6 @@ const emptyForm = {
   title: "",
   description: "",
   issuer: "",
-  issued_at: "",
   is_visible: true,
   file_url: "" as string | null,
   file_name: "" as string | null,
@@ -48,7 +47,6 @@ export default function CredentialsManager({ userId, initialItems }: Props) {
       title: item.title,
       description: item.description ?? "",
       issuer: item.issuer ?? "",
-      issued_at: item.issued_at ?? "",
       is_visible: item.is_visible,
       file_url: item.file_url,
       file_name: item.file_name,
@@ -116,7 +114,7 @@ export default function CredentialsManager({ userId, initialItems }: Props) {
       title: form.title.trim(),
       description: form.description.trim() || null,
       issuer: form.issuer.trim() || null,
-      issued_at: form.issued_at || null,
+      issued_at: null,
       is_visible: form.is_visible,
       file_url: form.file_url,
       file_name: form.file_name,
@@ -256,25 +254,14 @@ export default function CredentialsManager({ userId, initialItems }: Props) {
           />
         </div>
 
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div>
-            <label className="label">Issuer</label>
-            <input
-              className="input"
-              value={form.issuer}
-              onChange={(e) => setForm({ ...form, issuer: e.target.value })}
-              placeholder="University / org"
-            />
-          </div>
-          <div>
-            <label className="label">Date</label>
-            <input
-              className="input"
-              type="date"
-              value={form.issued_at}
-              onChange={(e) => setForm({ ...form, issued_at: e.target.value })}
-            />
-          </div>
+        <div>
+          <label className="label">Issuer</label>
+          <input
+            className="input"
+            value={form.issuer}
+            onChange={(e) => setForm({ ...form, issuer: e.target.value })}
+            placeholder="University / org"
+          />
         </div>
 
         <div>
@@ -294,7 +281,7 @@ export default function CredentialsManager({ userId, initialItems }: Props) {
             onChange={(e) => setForm({ ...form, is_visible: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          Visible when Credentials section is ON
+          Visible on public profile (About tab)
         </label>
 
         <div className="flex flex-wrap gap-2">
