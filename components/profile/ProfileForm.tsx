@@ -53,10 +53,19 @@ function PublicToggle({
       }`}
       title={on ? "Visible on public profile" : "Hidden on public profile"}
     >
-      {on ? "Public ON" : "Public OFF"}
+      {on ? "ON" : "OFF"}
     </button>
   );
 }
+
+const SECTION_KEYS = [
+  { key: "show_writing" as const, label: "Writing" },
+  { key: "show_trading" as const, label: "Trading Record" },
+  { key: "show_community" as const, label: "Community" },
+  { key: "show_airdrops" as const, label: "Airdrops" },
+  { key: "show_nfts" as const, label: "NFTs" },
+  { key: "show_credentials" as const, label: "Docs & credentials" },
+];
 
 export default function ProfileForm({ profile, email, linkedProviders }: Props) {
   const router = useRouter();
@@ -78,7 +87,15 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     location_country: profile.location_country ?? "",
     location_region: profile.location_region ?? "",
     is_public: profile.is_public ?? true,
+    show_writing: profile.show_writing ?? true,
+    show_trading: profile.show_trading ?? true,
+    show_community: profile.show_community ?? true,
+    show_airdrops: profile.show_airdrops ?? true,
+    show_nfts: profile.show_nfts ?? true,
+    show_credentials: profile.show_credentials ?? true,
   });
+  const [skills, setSkills] = useState<string[]>(profile.skills ?? []);
+  const [skillInput, setSkillInput] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [bannerUrl, setBannerUrl] = useState(profile.banner_url);
   const [saving, setSaving] = useState(false);
@@ -111,6 +128,22 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
   function update<K extends keyof typeof form>(key: K, value: (typeof form)[K]) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function addSkill() {
+    const s = skillInput.trim().slice(0, 40);
+    if (!s) return;
+    if (skills.some((x) => x.toLowerCase() === s.toLowerCase())) {
+      setSkillInput("");
+      return;
+    }
+    if (skills.length >= 20) return;
+    setSkills((prev) => [...prev, s]);
+    setSkillInput("");
+  }
+
+  function removeSkill(name: string) {
+    setSkills((prev) => prev.filter((s) => s !== name));
   }
 
   function explainLinkError(raw: string): string {
@@ -359,6 +392,13 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         location_country: form.location_country.trim() || null,
         location_region: form.location_region.trim() || null,
         is_public: form.is_public,
+        skills,
+        show_writing: form.show_writing,
+        show_trading: form.show_trading,
+        show_community: form.show_community,
+        show_airdrops: form.show_airdrops,
+        show_nfts: form.show_nfts,
+        show_credentials: form.show_credentials,
         avatar_url: avatarUrl,
         banner_url: bannerUrl,
       })
@@ -481,6 +521,49 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         <textarea id="long_bio" className="input min-h-[90px]" value={form.long_bio} onChange={(e) => update("long_bio", e.target.value)} placeholder="Tell people what you do in Web3…" />
       </div>
 
+      <div>
+        <label className="label">Skills</label>
+        <p className="mb-2 text-xs text-foreground-subtle">
+          Appear as chips on your public profile (max 20).
+        </p>
+        <div className="flex flex-wrap gap-1.5 mb-2">
+          {skills.map((s) => (
+            <span
+              key={s}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs"
+            >
+              {s}
+              <button
+                type="button"
+                onClick={() => removeSkill(s)}
+                className="text-foreground-subtle hover:text-danger"
+                aria-label={`Remove ${s}`}
+              >
+                ×
+              </button>
+            </span>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <input
+            className="input text-sm flex-1"
+            value={skillInput}
+            onChange={(e) => setSkillInput(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter") {
+                e.preventDefault();
+                addSkill();
+              }
+            }}
+            placeholder="e.g. SMC, Solidity, Community"
+            maxLength={40}
+          />
+          <button type="button" onClick={addSkill} className="btn-secondary text-sm shrink-0">
+            Add
+          </button>
+        </div>
+      </div>
+
       <LocationControl
         country={form.location_country}
         region={form.location_region}
@@ -502,9 +585,27 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       </div>
 
       <div className="border-t border-border pt-5 space-y-3">
+        <h3 className="font-medium text-sm">Section visibility</h3>
+        <p className="text-xs text-foreground-subtle">
+          Turn off any section you do not want on your public page.
+        </p>
+        <div className="space-y-2">
+          {SECTION_KEYS.map(({ key, label }) => (
+            <div
+              key={key}
+              className="flex items-center justify-between rounded-lg border border-border px-3 py-2"
+            >
+              <span className="text-sm">{label}</span>
+              <PublicToggle on={form[key]} onChange={(v) => update(key, v)} />
+            </div>
+          ))}
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-5 space-y-3">
         <h3 className="font-medium text-sm">Contact & connected accounts</h3>
         <p className="text-xs text-foreground-subtle">
-          Use <strong>Public ON/OFF</strong> to show an email on your public profile. Visitors can copy or open mail.
+          Use <strong>ON/OFF</strong> to show an email on your public profile.
         </p>
 
         <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 space-y-3">
