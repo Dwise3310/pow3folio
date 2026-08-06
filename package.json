@@ -13,6 +13,7 @@
     "@supabase/supabase-js": "^2.47.10",
     "@walletconnect/ethereum-provider": "^2.21.1",
     "clsx": "^2.1.1",
+    "framer-motion": "^13.0.0",
     "lucide-react": "^0.468.0",
     "next": "15.3.8",
     "react": "^19.0.0",
