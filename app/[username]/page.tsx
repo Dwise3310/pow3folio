@@ -13,13 +13,9 @@ import type {
 } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
-import ShareButton from "@/components/writing/ShareButton";
-import TradeCard from "@/components/trading/TradeCard";
-import CommunityCard from "@/components/community/CommunityCard";
-import AirdropCard from "@/components/airdrops/AirdropCard";
-import CollectibleCard from "@/components/collectibles/CollectibleCard";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import EmailChip from "@/components/ui/EmailChip";
+import PublicProfileTabs from "@/components/profile/PublicProfileTabs";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -65,7 +61,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const showTrading = p.show_trading !== false;
   const showCommunity = p.show_community !== false;
   const showAirdrops = p.show_airdrops !== false;
-  const showNfts = p.show_nfts !== false;
+  const showOnchain = p.show_nfts !== false;
   const showCredentials = p.show_credentials !== false;
 
   const [
@@ -112,7 +108,7 @@ export default async function PublicProfilePage({ params }: Props) {
           .order("sort_order", { ascending: true })
           .order("created_at", { ascending: false })
       : Promise.resolve({ data: [] }),
-    showNfts
+    showOnchain
       ? supabase
           .from("collectibles")
           .select("*")
@@ -185,7 +181,7 @@ export default async function PublicProfilePage({ params }: Props) {
     publicEmails.length > 0;
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
+    <div className="min-h-screen bg-background text-foreground overflow-x-hidden">
       <header className="border-b border-border/60">
         <div className="container-app flex h-14 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 min-w-0">
@@ -200,9 +196,9 @@ export default async function PublicProfilePage({ params }: Props) {
         </div>
       </header>
 
-      <main className="container-app max-w-5xl py-5 sm:py-8">
+      <main className="container-app max-w-5xl py-4 sm:py-6 px-3 sm:px-4">
         <div className="relative animate-fade-in">
-          <div className="h-32 sm:h-44 md:h-52 overflow-hidden rounded-xl border border-border bg-surface-elevated">
+          <div className="h-28 sm:h-40 md:h-48 overflow-hidden rounded-xl border border-border bg-surface-elevated">
             {p.banner_url ? (
               <ImageLightbox
                 src={p.banner_url}
@@ -216,8 +212,8 @@ export default async function PublicProfilePage({ params }: Props) {
             )}
           </div>
 
-          <div className="absolute -bottom-10 left-4 sm:-bottom-12 sm:left-6">
-            <div className="h-20 w-20 sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
+          <div className="absolute -bottom-10 left-3 sm:-bottom-12 sm:left-5">
+            <div className="h-18 w-18 h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
               {p.avatar_url ? (
                 <ImageLightbox
                   src={p.avatar_url}
@@ -235,7 +231,7 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        <div className="mt-12 sm:mt-14 space-y-1.5 pl-1 animate-slide-up">
+        <div className="mt-12 sm:mt-14 space-y-1.5 pl-0.5 animate-slide-up">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
               {p.display_name || p.username}
@@ -260,14 +256,14 @@ export default async function PublicProfilePage({ params }: Props) {
         </div>
 
         {hasContacts && (
-          <div className="mt-3 flex flex-wrap items-center gap-1.5 pl-1 animate-slide-up">
+          <div className="mt-3 flex flex-wrap items-center gap-1.5 animate-slide-up">
             {socials.map((s) => (
               <a
                 key={s.label}
                 href={s.href!}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary hover:scale-105"
+                className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary"
               >
                 {s.label}
               </a>
@@ -294,182 +290,26 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         )}
 
-        {skillList.length > 0 && (
-          <div className="mt-3 flex flex-wrap gap-1.5 pl-1 animate-slide-up">
-            {skillList.map((skill) => (
-              <span
-                key={skill}
-                className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
-              >
-                {skill}
-              </span>
-            ))}
-          </div>
-        )}
-
-        {p.long_bio && (
-          <div className="mt-4 card p-3 sm:p-4 animate-fade-in">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">About</h2>
-            <p className="mt-1.5 whitespace-pre-wrap text-sm leading-relaxed break-words">
-              {p.long_bio}
-            </p>
-          </div>
-        )}
-
-        <div className="mt-6 sm:mt-8 space-y-6">
-          {showWriting && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">Writing</h2>
-              {writingItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No writings yet.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                  {writingItems.map((w) => (
-                    <article
-                      key={w.id}
-                      className="card flex flex-col overflow-hidden p-0 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
-                    >
-                      <a href={w.url} target="_blank" rel="noopener noreferrer" className="block">
-                        <div className="aspect-[16/10] w-full bg-surface-elevated">
-                          {w.thumbnail_url ? (
-                            // eslint-disable-next-line @next/next/no-img-element
-                            <img src={w.thumbnail_url} alt="" className="h-full w-full object-cover" />
-                          ) : (
-                            <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
-                              No thumbnail
-                            </div>
-                          )}
-                        </div>
-                      </a>
-                      <div className="flex flex-1 flex-col p-3">
-                        <a
-                          href={w.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="font-medium text-primary hover:underline line-clamp-2 text-sm"
-                        >
-                          {w.title}
-                        </a>
-                        {w.description && (
-                          <p className="mt-1 text-xs text-foreground-muted line-clamp-2">{w.description}</p>
-                        )}
-                        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                          <div className="flex min-w-0 flex-wrap gap-1 text-[11px] text-foreground-subtle">
-                            {w.published_at && <span>{w.published_at}</span>}
-                            {(w.tags ?? []).slice(0, 2).map((tag) => (
-                              <span key={tag} className="rounded-full bg-surface-elevated px-1.5 py-0.5">
-                                {tag}
-                              </span>
-                            ))}
-                          </div>
-                          <ShareButton title={w.title} url={w.url} />
-                        </div>
-                      </div>
-                    </article>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {showTrading && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">Trading Record</h2>
-              {tradeItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No trades yet.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {tradeItems.map((t) => (
-                    <TradeCard
-                      key={t.id}
-                      trade={t}
-                      updates={updatesByTrade[t.id] ?? []}
-                      profileUrl={profileUrl}
-                    />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {showCommunity && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">Community</h2>
-              {communityItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No community contributions yet.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {communityItems.map((c) => (
-                    <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {showAirdrops && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">Airdrops</h2>
-              {airdropItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No airdrops yet.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                  {airdropItems.map((a) => (
-                    <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {showCredentials && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">Docs & credentials</h2>
-              {credentialItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No documents yet.</div>
-              ) : (
-                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-                  {credentialItems.map((doc) => (
-                    <a
-                      key={doc.id}
-                      href={doc.file_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="card flex items-center gap-3 p-3 transition-all hover:border-primary/40"
-                    >
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] font-medium uppercase text-foreground-subtle">
-                        {(doc.file_type || "FILE").includes("pdf")
-                          ? "PDF"
-                          : (doc.file_name || "DOC").split(".").pop()?.slice(0, 4) || "DOC"}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium break-words">{doc.title}</p>
-                        <p className="text-xs text-foreground-muted">
-                          {[doc.issuer, doc.file_name].filter(Boolean).join(" · ")}
-                        </p>
-                      </div>
-                    </a>
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-
-          {showNfts && (
-            <section className="animate-fade-in">
-              <h2 className="mb-3 text-lg font-semibold">NFTs</h2>
-              {collectibleItems.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No NFTs yet.</div>
-              ) : (
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                  {collectibleItems.map((c) => (
-                    <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
-                  ))}
-                </div>
-              )}
-            </section>
-          )}
-        </div>
+        <PublicProfileTabs
+          profileUrl={profileUrl}
+          longBio={p.long_bio}
+          skills={skillList}
+          credentials={credentialItems}
+          writings={writingItems}
+          trades={tradeItems}
+          updatesByTrade={updatesByTrade}
+          community={communityItems}
+          airdrops={airdropItems}
+          nfts={collectibleItems}
+          walletAddress={p.wallet_address}
+          ensName={p.ens_name}
+          arkhamUrl={arkhamUrl}
+          showWriting={showWriting}
+          showTrading={showTrading}
+          showCommunity={showCommunity}
+          showAirdrops={showAirdrops}
+          showOnchain={showOnchain}
+        />
       </main>
     </div>
   );
