@@ -9,6 +9,7 @@ import type {
   CommunityItem,
   Airdrop,
   Collectible,
+  Credential,
 } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
@@ -60,6 +61,12 @@ export default async function PublicProfilePage({ params }: Props) {
   }
 
   const p = profile as Profile;
+  const showWriting = p.show_writing !== false;
+  const showTrading = p.show_trading !== false;
+  const showCommunity = p.show_community !== false;
+  const showAirdrops = p.show_airdrops !== false;
+  const showNfts = p.show_nfts !== false;
+  const showCredentials = p.show_credentials !== false;
 
   const [
     { data: writings },
@@ -67,42 +74,62 @@ export default async function PublicProfilePage({ params }: Props) {
     { data: community },
     { data: airdrops },
     { data: collectibles },
+    { data: credentials },
   ] = await Promise.all([
-    supabase
-      .from("writings")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("trades")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("community_items")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("airdrops")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
-    supabase
-      .from("collectibles")
-      .select("*")
-      .eq("user_id", p.id)
-      .eq("is_visible", true)
-      .order("sort_order", { ascending: true })
-      .order("created_at", { ascending: false }),
+    showWriting
+      ? supabase
+          .from("writings")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showTrading
+      ? supabase
+          .from("trades")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showCommunity
+      ? supabase
+          .from("community_items")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showAirdrops
+      ? supabase
+          .from("airdrops")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showNfts
+      ? supabase
+          .from("collectibles")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
+    showCredentials
+      ? supabase
+          .from("credentials")
+          .select("*")
+          .eq("user_id", p.id)
+          .eq("is_visible", true)
+          .order("sort_order", { ascending: true })
+          .order("created_at", { ascending: false })
+      : Promise.resolve({ data: [] }),
   ]);
 
   const writingItems = (writings as Writing[]) ?? [];
@@ -110,6 +137,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const communityItems = (community as CommunityItem[]) ?? [];
   const airdropItems = (airdrops as Airdrop[]) ?? [];
   const collectibleItems = (collectibles as Collectible[]) ?? [];
+  const credentialItems = (credentials as Credential[]) ?? [];
 
   const tradeIds = tradeItems.map((t) => t.id);
   const updatesByTrade: Record<string, TradeUpdate[]> = {};
@@ -147,6 +175,8 @@ export default async function PublicProfilePage({ params }: Props) {
     p.location_country && p.location_region
       ? `${p.location_region}, ${p.location_country}`
       : p.location_country || p.location_region || null;
+
+  const skillList = (p.skills ?? []).filter(Boolean);
 
   const hasContacts =
     socials.length > 0 ||
@@ -264,6 +294,19 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         )}
 
+        {skillList.length > 0 && (
+          <div className="mt-3 flex flex-wrap gap-1.5 pl-1 animate-slide-up">
+            {skillList.map((skill) => (
+              <span
+                key={skill}
+                className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+              >
+                {skill}
+              </span>
+            ))}
+          </div>
+        )}
+
         {p.long_bio && (
           <div className="mt-4 card p-3 sm:p-4 animate-fade-in">
             <h2 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">About</h2>
@@ -274,115 +317,158 @@ export default async function PublicProfilePage({ params }: Props) {
         )}
 
         <div className="mt-6 sm:mt-8 space-y-6">
-          <section className="animate-fade-in">
-            <h2 className="mb-3 text-lg font-semibold">Writing</h2>
-            {writingItems.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No writings yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                {writingItems.map((w) => (
-                  <article
-                    key={w.id}
-                    className="card flex flex-col overflow-hidden p-0 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
-                  >
-                    <a href={w.url} target="_blank" rel="noopener noreferrer" className="block">
-                      <div className="aspect-[16/10] w-full bg-surface-elevated">
-                        {w.thumbnail_url ? (
-                          // eslint-disable-next-line @next/next/no-img-element
-                          <img src={w.thumbnail_url} alt="" className="h-full w-full object-cover" />
-                        ) : (
-                          <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
-                            No thumbnail
-                          </div>
+          {showWriting && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">Writing</h2>
+              {writingItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No writings yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                  {writingItems.map((w) => (
+                    <article
+                      key={w.id}
+                      className="card flex flex-col overflow-hidden p-0 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+                    >
+                      <a href={w.url} target="_blank" rel="noopener noreferrer" className="block">
+                        <div className="aspect-[16/10] w-full bg-surface-elevated">
+                          {w.thumbnail_url ? (
+                            // eslint-disable-next-line @next/next/no-img-element
+                            <img src={w.thumbnail_url} alt="" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex h-full items-center justify-center text-xs text-foreground-subtle">
+                              No thumbnail
+                            </div>
+                          )}
+                        </div>
+                      </a>
+                      <div className="flex flex-1 flex-col p-3">
+                        <a
+                          href={w.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-primary hover:underline line-clamp-2 text-sm"
+                        >
+                          {w.title}
+                        </a>
+                        {w.description && (
+                          <p className="mt-1 text-xs text-foreground-muted line-clamp-2">{w.description}</p>
                         )}
+                        <div className="mt-auto flex items-center justify-between gap-2 pt-2">
+                          <div className="flex min-w-0 flex-wrap gap-1 text-[11px] text-foreground-subtle">
+                            {w.published_at && <span>{w.published_at}</span>}
+                            {(w.tags ?? []).slice(0, 2).map((tag) => (
+                              <span key={tag} className="rounded-full bg-surface-elevated px-1.5 py-0.5">
+                                {tag}
+                              </span>
+                            ))}
+                          </div>
+                          <ShareButton title={w.title} url={w.url} />
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {showTrading && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">Trading Record</h2>
+              {tradeItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No trades yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {tradeItems.map((t) => (
+                    <TradeCard
+                      key={t.id}
+                      trade={t}
+                      updates={updatesByTrade[t.id] ?? []}
+                      profileUrl={profileUrl}
+                    />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {showCommunity && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">Community</h2>
+              {communityItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No community contributions yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {communityItems.map((c) => (
+                    <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {showAirdrops && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">Airdrops</h2>
+              {airdropItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No airdrops yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {airdropItems.map((a) => (
+                    <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
+
+          {showCredentials && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">Docs & credentials</h2>
+              {credentialItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No documents yet.</div>
+              ) : (
+                <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                  {credentialItems.map((doc) => (
+                    <a
+                      key={doc.id}
+                      href={doc.file_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="card flex items-center gap-3 p-3 transition-all hover:border-primary/40"
+                    >
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] font-medium uppercase text-foreground-subtle">
+                        {(doc.file_type || "FILE").includes("pdf")
+                          ? "PDF"
+                          : (doc.file_name || "DOC").split(".").pop()?.slice(0, 4) || "DOC"}
+                      </div>
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium break-words">{doc.title}</p>
+                        <p className="text-xs text-foreground-muted">
+                          {[doc.issuer, doc.file_name].filter(Boolean).join(" · ")}
+                        </p>
                       </div>
                     </a>
-                    <div className="flex flex-1 flex-col p-3">
-                      <a
-                        href={w.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="font-medium text-primary hover:underline line-clamp-2 text-sm"
-                      >
-                        {w.title}
-                      </a>
-                      {w.description && (
-                        <p className="mt-1 text-xs text-foreground-muted line-clamp-2">{w.description}</p>
-                      )}
-                      <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                        <div className="flex min-w-0 flex-wrap gap-1 text-[11px] text-foreground-subtle">
-                          {w.published_at && <span>{w.published_at}</span>}
-                          {(w.tags ?? []).slice(0, 2).map((tag) => (
-                            <span key={tag} className="rounded-full bg-surface-elevated px-1.5 py-0.5">
-                              {tag}
-                            </span>
-                          ))}
-                        </div>
-                        <ShareButton title={w.title} url={w.url} />
-                      </div>
-                    </div>
-                  </article>
-                ))}
-              </div>
-            )}
-          </section>
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
 
-          <section className="animate-fade-in">
-            <h2 className="mb-3 text-lg font-semibold">Trading Record</h2>
-            {tradeItems.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No trades yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {tradeItems.map((t) => (
-                  <TradeCard
-                    key={t.id}
-                    trade={t}
-                    updates={updatesByTrade[t.id] ?? []}
-                    profileUrl={profileUrl}
-                  />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="animate-fade-in">
-            <h2 className="mb-3 text-lg font-semibold">Community</h2>
-            {communityItems.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No community contributions yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {communityItems.map((c) => (
-                  <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="animate-fade-in">
-            <h2 className="mb-3 text-lg font-semibold">Airdrops</h2>
-            {airdropItems.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No airdrops yet.</div>
-            ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {airdropItems.map((a) => (
-                  <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />
-                ))}
-              </div>
-            )}
-          </section>
-
-          <section className="animate-fade-in">
-            <h2 className="mb-3 text-lg font-semibold">Docs & NFTs</h2>
-            {collectibleItems.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No docs or NFTs yet.</div>
-            ) : (
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
-                {collectibleItems.map((c) => (
-                  <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
-                ))}
-              </div>
-            )}
-          </section>
+          {showNfts && (
+            <section className="animate-fade-in">
+              <h2 className="mb-3 text-lg font-semibold">NFTs</h2>
+              {collectibleItems.length === 0 ? (
+                <div className="card text-sm text-foreground-subtle">No NFTs yet.</div>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-4">
+                  {collectibleItems.map((c) => (
+                    <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
+                  ))}
+                </div>
+              )}
+            </section>
+          )}
         </div>
       </main>
     </div>
