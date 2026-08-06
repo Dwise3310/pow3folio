@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
+import DashboardHome from "@/components/dashboard/DashboardHome";
 
 export default async function DashboardPage() {
   const supabase = await createClient();
@@ -14,23 +15,34 @@ export default async function DashboardPage() {
 
   const { data: profile } = await supabase
     .from("profiles")
-    .select("username")
+    .select(
+      "username, show_writing, show_trading, show_community, show_airdrops, show_nfts, show_credentials"
+    )
     .eq("id", user.id)
     .maybeSingle();
+
+  const flags = {
+    show_writing: profile?.show_writing !== false,
+    show_trading: profile?.show_trading !== false,
+    show_community: profile?.show_community !== false,
+    show_airdrops: profile?.show_airdrops !== false,
+    show_nfts: profile?.show_nfts !== false,
+    show_credentials: profile?.show_credentials !== false,
+  };
 
   return (
     <div className="min-h-screen">
       <header className="border-b border-border">
-        <div className="container-app flex h-14 items-center justify-between">
-          <Link href="/" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+        <div className="container-app flex h-14 items-center justify-between gap-2">
+          <Link href="/" className="flex items-center gap-2 min-w-0">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
               <span className="text-xs font-bold">P3</span>
             </div>
-            <span className="font-semibold">
+            <span className="font-semibold truncate">
               Pow<span className="text-primary">3</span>Folio
             </span>
           </Link>
-          <div className="flex items-center gap-3 text-sm text-foreground-muted">
+          <div className="flex items-center gap-2 text-sm text-foreground-muted">
             {profile?.username && (
               <Link
                 href={`/${profile.username}`}
@@ -40,7 +52,7 @@ export default async function DashboardPage() {
                 View profile
               </Link>
             )}
-            <span className="hidden sm:inline">{user.email}</span>
+            <span className="hidden md:inline truncate max-w-[10rem]">{user.email}</span>
             <form action="/auth/signout" method="post">
               <button type="submit" className="btn-ghost text-xs">
                 Sign out
@@ -50,57 +62,12 @@ export default async function DashboardPage() {
         </div>
       </header>
 
-      <main className="container-app py-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
-          <p className="mt-1 text-sm text-foreground-muted">
-            Manage your proof of work and public profile.
-          </p>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <Link href="/dashboard/profile" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Profile</h3>
-            <p className="mt-1 text-xs text-foreground-muted">Skills, docs, section visibility</p>
-            <p className="mt-1 text-xs text-primary">Edit now →</p>
-          </Link>
-          <Link href="/dashboard/writing" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Writing</h3>
-            <p className="mt-1 text-xs text-primary">Manage →</p>
-          </Link>
-          <Link href="/dashboard/trading" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Trading Record</h3>
-            <p className="mt-1 text-xs text-primary">Manage →</p>
-          </Link>
-          <Link href="/dashboard/community" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Community</h3>
-            <p className="mt-1 text-xs text-primary">Manage →</p>
-          </Link>
-          <Link href="/dashboard/airdrops" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Airdrops</h3>
-            <p className="mt-1 text-xs text-primary">Manage →</p>
-          </Link>
-          <Link href="/dashboard/collectibles" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">NFTs</h3>
-            <p className="mt-1 text-xs text-primary">Manage →</p>
-          </Link>
-        </div>
-
-        {profile?.username && (
-          <div className="mt-10 rounded-xl border border-primary/20 bg-primary/5 p-6">
-            <h2 className="font-semibold text-primary">Your public link</h2>
-            <p className="mt-2 text-sm text-foreground-muted">
-              <Link
-                href={`/${profile.username}`}
-                className="text-primary hover:underline"
-                target="_blank"
-              >
-                pow3folio.vercel.app/{profile.username}
-              </Link>
-            </p>
-          </div>
-        )}
-      </main>
+      <DashboardHome
+        userId={user.id}
+        username={profile?.username ?? null}
+        email={user.email ?? null}
+        flags={flags}
+      />
     </div>
   );
 }
