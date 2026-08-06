@@ -42,33 +42,33 @@ export default async function ProfileEditPage() {
   const identities = (user.identities ?? []).map((i) => i.provider);
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen overflow-x-hidden">
       <header className="border-b border-border">
-        <div className="container-app flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+        <div className="container-app flex h-14 items-center justify-between gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
               <span className="text-xs font-bold">P3</span>
             </div>
-            <span className="font-semibold">
+            <span className="font-semibold truncate">
               Pow<span className="text-primary">3</span>Folio
             </span>
           </Link>
-          <Link href="/dashboard" className="btn-ghost text-sm">
+          <Link href="/dashboard" className="btn-ghost text-xs sm:text-sm shrink-0">
             ← Dashboard
           </Link>
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10 space-y-8">
+      <main className="container-app max-w-2xl py-6 sm:py-10 space-y-6 sm:space-y-8 px-3 sm:px-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Edit profile</h1>
-          <p className="mt-1 text-sm text-foreground-muted">
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Edit profile</h1>
+          <p className="mt-1 text-sm text-foreground-muted break-words">
             This powers your public page at{" "}
             <span className="text-primary">/{profile.username}</span>
           </p>
         </div>
 
-        <div className="card">
+        <div className="card overflow-hidden">
           <ProfileForm
             profile={profile as Profile}
             email={user.email ?? null}
@@ -76,7 +76,7 @@ export default async function ProfileEditPage() {
           />
         </div>
 
-        <div className="card">
+        <div className="card overflow-hidden">
           <CredentialsManager
             userId={user.id}
             initialItems={(credentials as Credential[]) ?? []}
