@@ -2,7 +2,8 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ProfileForm from "@/components/profile/ProfileForm";
-import type { Profile } from "@/types/database";
+import CredentialsManager from "@/components/profile/CredentialsManager";
+import type { Profile, Credential } from "@/types/database";
 
 export default async function ProfileEditPage() {
   const supabase = await createClient();
@@ -31,6 +32,13 @@ export default async function ProfileEditPage() {
     );
   }
 
+  const { data: credentials } = await supabase
+    .from("credentials")
+    .select("*")
+    .eq("user_id", user.id)
+    .order("sort_order", { ascending: true })
+    .order("created_at", { ascending: false });
+
   const identities = (user.identities ?? []).map((i) => i.provider);
 
   return (
@@ -51,8 +59,8 @@ export default async function ProfileEditPage() {
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10">
-        <div className="mb-8">
+      <main className="container-app max-w-2xl py-10 space-y-8">
+        <div>
           <h1 className="text-2xl font-bold tracking-tight">Edit profile</h1>
           <p className="mt-1 text-sm text-foreground-muted">
             This powers your public page at{" "}
@@ -68,7 +76,14 @@ export default async function ProfileEditPage() {
           />
         </div>
 
-        <p className="mt-6 text-center text-sm text-foreground-muted">
+        <div className="card">
+          <CredentialsManager
+            userId={user.id}
+            initialItems={(credentials as Credential[]) ?? []}
+          />
+        </div>
+
+        <p className="text-center text-sm text-foreground-muted">
           <Link
             href={`/${profile.username}`}
             className="text-primary hover:underline"
