@@ -61,6 +61,7 @@ export default async function DashboardPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <Link href="/dashboard/profile" className="card transition-colors hover:border-primary/40">
             <h3 className="font-medium">Profile</h3>
+            <p className="mt-1 text-xs text-foreground-muted">Skills, docs, section visibility</p>
             <p className="mt-1 text-xs text-primary">Edit now →</p>
           </Link>
           <Link href="/dashboard/writing" className="card transition-colors hover:border-primary/40">
@@ -80,7 +81,7 @@ export default async function DashboardPage() {
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
           <Link href="/dashboard/collectibles" className="card transition-colors hover:border-primary/40">
-            <h3 className="font-medium">Docs & NFTs</h3>
+            <h3 className="font-medium">NFTs</h3>
             <p className="mt-1 text-xs text-primary">Manage →</p>
           </Link>
         </div>

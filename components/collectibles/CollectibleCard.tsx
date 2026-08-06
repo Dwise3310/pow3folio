@@ -10,9 +10,7 @@ type Props = {
 
 export default function CollectibleCard({ item, profileUrl }: Props) {
   const shareUrl = item.url || profileUrl;
-  const meta = [item.chain, item.collection_name || item.issuer, item.token_id]
-    .filter(Boolean)
-    .join(" · ");
+  const meta = [item.chain, item.collection_name, item.token_id].filter(Boolean).join(" · ");
 
   const CardInner = (
     <>
@@ -22,16 +20,13 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
           <img src={item.image_url} alt="" className="h-full w-full object-cover" />
         ) : (
           <div className="flex h-full items-center justify-center text-xs uppercase text-foreground-subtle">
-            {item.kind}
+            NFT
           </div>
         )}
       </div>
       <div className="mt-2 flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <span className="rounded-full bg-surface-elevated px-1.5 py-0.5 text-[10px] uppercase text-foreground-subtle">
-            {item.kind}
-          </span>
-          <h3 className="mt-1 text-sm font-medium leading-snug break-words">{item.title}</h3>
+          <h3 className="text-sm font-medium leading-snug break-words">{item.title}</h3>
           {meta && <p className="mt-0.5 text-[11px] text-foreground-muted">{meta}</p>}
           {item.description && (
             <p className="mt-1 text-xs text-foreground-muted line-clamp-2">{item.description}</p>

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
-import type { Collectible, CollectibleKind } from "@/types/database";
+import type { Collectible } from "@/types/database";
 
 type Props = {
   userId: string;
@@ -11,14 +11,12 @@ type Props = {
 };
 
 const emptyForm = {
-  kind: "nft" as CollectibleKind,
   title: "",
   description: "",
   url: "",
   chain: "",
   collection_name: "",
   token_id: "",
-  issuer: "",
   acquired_at: "",
   tags: "",
   is_visible: true,
@@ -47,14 +45,12 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
   function startEdit(item: Collectible) {
     setEditingId(item.id);
     setForm({
-      kind: item.kind,
       title: item.title,
       description: item.description ?? "",
       url: item.url ?? "",
       chain: item.chain ?? "",
       collection_name: item.collection_name ?? "",
       token_id: item.token_id ?? "",
-      issuer: item.issuer ?? "",
       acquired_at: item.acquired_at ?? "",
       tags: (item.tags ?? []).join(", "),
       is_visible: item.is_visible,
@@ -84,7 +80,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
     setError(null);
     const supabase = createClient();
     const ext = file.name.split(".").pop() || "jpg";
-    const path = `${userId}/collectible-${Date.now()}.${ext}`;
+    const path = `${userId}/nft-${Date.now()}.${ext}`;
 
     const { error: uploadError } = await supabase.storage
       .from("avatars")
@@ -110,14 +106,14 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
 
     const supabase = createClient();
     const payload: Record<string, unknown> = {
-      kind: form.kind,
+      kind: "nft",
       title: form.title.trim(),
       description: form.description.trim() || null,
       url: form.url.trim() || null,
       chain: form.chain.trim() || null,
       collection_name: form.collection_name.trim() || null,
       token_id: form.token_id.trim() || null,
-      issuer: form.issuer.trim() || null,
+      issuer: null,
       acquired_at: form.acquired_at || null,
       tags: form.tags
         .split(",")
@@ -176,7 +172,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this item?")) return;
+    if (!confirm("Delete this NFT?")) return;
     const supabase = createClient();
     const { error: err } = await supabase
       .from("collectibles")
@@ -250,9 +246,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
   return (
     <div className="space-y-8">
       <form onSubmit={handleSubmit} className="card space-y-4">
-        <h2 className="font-semibold">
-          {editingId ? "Edit item" : "Add doc or NFT"}
-        </h2>
+        <h2 className="font-semibold">{editingId ? "Edit NFT" : "Add NFT"}</h2>
 
         {error && (
           <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
@@ -260,29 +254,8 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
           </div>
         )}
 
-        <div className="flex gap-4">
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="kind"
-              checked={form.kind === "nft"}
-              onChange={() => setForm({ ...form, kind: "nft" })}
-            />
-            NFT
-          </label>
-          <label className="flex items-center gap-2 text-sm">
-            <input
-              type="radio"
-              name="kind"
-              checked={form.kind === "doc"}
-              onChange={() => setForm({ ...form, kind: "doc" })}
-            />
-            Doc / credential
-          </label>
-        </div>
-
         <div>
-          <label className="label">Image / preview</label>
+          <label className="label">Image</label>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
             <div className="h-20 w-20 overflow-hidden rounded-xl border border-border bg-surface-elevated">
               {form.image_url ? (
@@ -325,7 +298,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
             required
             value={form.title}
             onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder={form.kind === "nft" ? "Pudgy #1234" : "Certificate / badge name"}
+            placeholder="Pudgy #1234"
           />
         </div>
 
@@ -341,7 +314,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">Link (OpenSea / PDF / page)</label>
+            <label className="label">OpenSea / marketplace link</label>
             <input
               className="input"
               type="url"
@@ -363,51 +336,34 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div>
-            <label className="label">
-              {form.kind === "nft" ? "Collection" : "Issuer"}
-            </label>
+            <label className="label">Collection</label>
             <input
               className="input"
-              value={form.kind === "nft" ? form.collection_name : form.issuer}
-              onChange={(e) =>
-                form.kind === "nft"
-                  ? setForm({ ...form, collection_name: e.target.value })
-                  : setForm({ ...form, issuer: e.target.value })
-              }
-              placeholder={form.kind === "nft" ? "Collection name" : "Who issued it"}
+              value={form.collection_name}
+              onChange={(e) => setForm({ ...form, collection_name: e.target.value })}
+              placeholder="Collection name"
             />
           </div>
           <div>
-            <label className="label">{form.kind === "nft" ? "Token ID" : "Acquired"}</label>
-            {form.kind === "nft" ? (
-              <input
-                className="input"
-                value={form.token_id}
-                onChange={(e) => setForm({ ...form, token_id: e.target.value })}
-                placeholder="#1234"
-              />
-            ) : (
-              <input
-                className="input"
-                type="date"
-                value={form.acquired_at}
-                onChange={(e) => setForm({ ...form, acquired_at: e.target.value })}
-              />
-            )}
+            <label className="label">Token ID</label>
+            <input
+              className="input"
+              value={form.token_id}
+              onChange={(e) => setForm({ ...form, token_id: e.target.value })}
+              placeholder="#1234"
+            />
           </div>
         </div>
 
-        {form.kind === "nft" && (
-          <div>
-            <label className="label">Acquired</label>
-            <input
-              className="input"
-              type="date"
-              value={form.acquired_at}
-              onChange={(e) => setForm({ ...form, acquired_at: e.target.value })}
-            />
-          </div>
-        )}
+        <div>
+          <label className="label">Acquired</label>
+          <input
+            className="input"
+            type="date"
+            value={form.acquired_at}
+            onChange={(e) => setForm({ ...form, acquired_at: e.target.value })}
+          />
+        </div>
 
         <div>
           <label className="label">Tags (comma separated)</label>
@@ -415,7 +371,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
             className="input"
             value={form.tags}
             onChange={(e) => setForm({ ...form, tags: e.target.value })}
-            placeholder="pfp, credential, badge"
+            placeholder="pfp, art"
           />
         </div>
 
@@ -426,12 +382,12 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
             onChange={(e) => setForm({ ...form, is_visible: e.target.checked })}
             className="h-4 w-4 rounded border-border"
           />
-          Visible on public profile
+          Visible when NFTs section is ON
         </label>
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" disabled={loading || uploading} className="btn-primary">
-            {loading ? "Saving…" : editingId ? "Update" : "Add item"}
+            {loading ? "Saving…" : editingId ? "Update" : "Add NFT"}
           </button>
           {editingId && (
             <button type="button" onClick={resetForm} className="btn-secondary">
@@ -442,10 +398,10 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
       </form>
 
       <div className="space-y-3">
-        <h2 className="font-semibold">Your items ({items.length})</h2>
+        <h2 className="font-semibold">Your NFTs ({items.length})</h2>
         <p className="text-xs text-foreground-subtle">Use ↑ ↓ to reorder.</p>
         {items.length === 0 && (
-          <p className="text-sm text-foreground-subtle">No docs or NFTs yet.</p>
+          <p className="text-sm text-foreground-subtle">No NFTs yet.</p>
         )}
         {items.map((item, index) => (
           <div
@@ -480,15 +436,13 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
                 />
               ) : (
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] uppercase text-foreground-subtle">
-                  {item.kind}
+                  NFT
                 </div>
               )}
               <div className="min-w-0">
                 <p className="font-medium break-words">{item.title}</p>
                 <p className="mt-0.5 text-xs text-foreground-muted">
-                  {[item.kind.toUpperCase(), item.chain, item.collection_name || item.issuer]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  {[item.chain, item.collection_name].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-0.5 text-xs text-foreground-subtle">
                   {item.is_visible ? "Public" : "Hidden"}

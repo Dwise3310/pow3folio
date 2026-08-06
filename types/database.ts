@@ -20,6 +20,13 @@ export type Profile = {
   show_secondary_email: boolean;
   location_country: string | null;
   location_region: string | null;
+  skills: string[] | null;
+  show_writing: boolean;
+  show_trading: boolean;
+  show_community: boolean;
+  show_airdrops: boolean;
+  show_nfts: boolean;
+  show_credentials: boolean;
   is_public: boolean;
   created_at: string;
   updated_at: string;
@@ -128,12 +135,9 @@ export type Airdrop = {
   updated_at: string;
 };
 
-export type CollectibleKind = "doc" | "nft";
-
 export type Collectible = {
   id: string;
   user_id: string;
-  kind: CollectibleKind;
   title: string;
   description: string | null;
   url: string | null;
@@ -141,9 +145,24 @@ export type Collectible = {
   chain: string | null;
   collection_name: string | null;
   token_id: string | null;
-  issuer: string | null;
   acquired_at: string | null;
   tags: string[] | null;
+  is_visible: boolean;
+  sort_order: number;
+  created_at: string;
+  updated_at: string;
+};
+
+export type Credential = {
+  id: string;
+  user_id: string;
+  title: string;
+  description: string | null;
+  file_url: string;
+  file_name: string | null;
+  file_type: string | null;
+  issuer: string | null;
+  issued_at: string | null;
   is_visible: boolean;
   sort_order: number;
   created_at: string;
