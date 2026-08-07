@@ -65,16 +65,15 @@ export default function PublicProfileTabs({
   showAirdrops,
   showOnchain,
 }: Props) {
-  const tabs = (
-    [
-      { id: "about" as const, label: "About", show: true },
-      { id: "writing" as const, label: "Writing", show: showWriting },
-      { id: "trading" as const, label: "Trading Record", show: showTrading },
-      { id: "community" as const, label: "Community", show: showCommunity },
-      { id: "airdrops" as const, label: "Airdrops", show: showAirdrops },
-      { id: "onchain" as const, label: "Onchain Stats", show: showOnchain },
-    ] as { id: TabId; label: string; show: boolean }[]
-  ).filter((t) => t.show);
+  const allTabs: { id: TabId; label: string; show: boolean }[] = [
+    { id: "about", label: "About", show: true },
+    { id: "writing", label: "Writing", show: showWriting },
+    { id: "trading", label: "Trading Record", show: showTrading },
+    { id: "community", label: "Community", show: showCommunity },
+    { id: "airdrops", label: "Airdrops", show: showAirdrops },
+    { id: "onchain", label: "Onchain Stats", show: showOnchain },
+  ];
+  const tabs = allTabs.filter((t) => t.show);
 
   const [active, setActive] = useState<TabId>("about");
   const [animKey, setAnimKey] = useState(0);
