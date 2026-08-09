@@ -5,7 +5,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 const PROOF_SECTIONS = [
   {
     title: "Trading Record",
-    desc: "Trades, ROI, charts and timelines — a real track record, not screenshots in a chat.",
+    desc: "Trades, ROI, charts and timelines. A real track record, not screenshots in a chat.",
     icon: "📈",
   },
   {
@@ -25,11 +25,11 @@ const PROOF_SECTIONS = [
   },
   {
     title: "Docs & Credentials",
-    desc: "CV, certificates and proof files under your About — owned by you.",
+    desc: "CV, certificates and proof files under your About, owned by you.",
     icon: "📄",
   },
   {
-    title: "On-chain",
+    title: "On chain",
     desc: "Wallet, ENS and NFTs on your public profile when you choose to show them.",
     icon: "🔗",
   },
@@ -44,7 +44,7 @@ const STEPS = [
   {
     step: "02",
     title: "Add your proof",
-    desc: "Trading, writing, community, airdrops and docs — toggle what the world sees.",
+    desc: "Trading, writing, community, airdrops and docs. Toggle what the world sees.",
   },
   {
     step: "03",
@@ -61,7 +61,6 @@ export default async function HomePage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
-      {/* Background */}
       <div
         className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.12] dark:opacity-[0.18]"
         style={{ backgroundSize: "48px 48px" }}
@@ -76,7 +75,6 @@ export default async function HomePage() {
         aria-hidden
       />
 
-      {/* Header */}
       <header className="sticky top-0 z-30 border-b border-border/60 bg-background/80 backdrop-blur-md">
         <div className="container-app flex h-14 sm:h-16 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 min-w-0">
@@ -124,11 +122,10 @@ export default async function HomePage() {
       </header>
 
       <main className="relative z-10">
-        {/* Hero */}
         <section className="container-app flex flex-col items-center pt-16 pb-12 sm:pt-24 sm:pb-20 md:pt-28 text-center">
           <div className="landing-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Built for Web3 builders &amp; talents
+            Built for Web3 builders & talents
           </div>
 
           <h1 className="landing-reveal landing-delay-1 max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl leading-[1.1]">
@@ -141,7 +138,7 @@ export default async function HomePage() {
           <p className="landing-reveal landing-delay-2 mt-5 sm:mt-6 max-w-2xl text-sm text-foreground-muted sm:text-lg px-1 leading-relaxed">
             Showcase trading records, writing, community work, airdrops and
             credentials. The professional identity layer crypto talents actually
-            need — and teams can trust.
+            need, and teams can trust.
           </p>
 
           <div className="landing-reveal landing-delay-3 mt-8 sm:mt-10 flex w-full max-w-md flex-col gap-3 sm:max-w-none sm:flex-row sm:justify-center">
@@ -167,10 +164,9 @@ export default async function HomePage() {
           </div>
 
           <p className="landing-reveal landing-delay-4 mt-4 text-xs text-foreground-subtle">
-            Free to start · Public link in minutes · You control what’s visible
+            Free to start · Public link in minutes · You control what is visible
           </p>
 
-          {/* Audience strip */}
           <div className="landing-reveal landing-delay-5 mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-2 sm:gap-3 max-w-2xl">
             {["Traders", "Researchers", "Community leads", "Airdrop hunters", "Builders"].map(
               (label) => (
@@ -185,14 +181,13 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Proof sections */}
         <section id="proof" className="container-app py-12 sm:py-16 md:py-20">
           <div className="mx-auto max-w-2xl text-center mb-8 sm:mb-12">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
               Proof that hiring managers actually open
             </h2>
             <p className="mt-3 text-sm sm:text-base text-foreground-muted">
-              Claims are cheap. Sections below are structured proof — toggle any
+              Claims are cheap. Sections below are structured proof. Toggle any
               tab on or off on your public profile.
             </p>
           </div>
@@ -216,7 +211,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* How it works */}
         <section id="how" className="border-y border-border/60 bg-surface/40 py-12 sm:py-16 md:py-20">
           <div className="container-app">
             <div className="mx-auto max-w-2xl text-center mb-10 sm:mb-14">
@@ -224,7 +218,7 @@ export default async function HomePage() {
                 How it works
               </h2>
               <p className="mt-3 text-sm sm:text-base text-foreground-muted">
-                Three steps from zero to a shareable proof-of-work profile.
+                Three steps from zero to a shareable proof of work profile.
               </p>
             </div>
 
@@ -244,7 +238,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* For teams */}
         <section className="container-app py-12 sm:py-16 md:py-20">
           <div className="relative overflow-hidden rounded-2xl border border-border bg-surface p-6 sm:p-10 md:p-12">
             <div
@@ -254,10 +247,10 @@ export default async function HomePage() {
             <div className="relative grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-primary">
-                  For teams &amp; protocols
+                  For teams & protocols
                 </p>
                 <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">
-                  Find talents with real proof — not just bios
+                  Find talents with real proof, not just bios
                 </h2>
                 <p className="mt-3 text-sm sm:text-base text-foreground-muted leading-relaxed max-w-lg">
                   Browse featured builders by role and skills. Open public
@@ -277,7 +270,7 @@ export default async function HomePage() {
               </div>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 {[
-                  { k: "Roles", v: "Trader, research, community…" },
+                  { k: "Roles", v: "Trader, research, community" },
                   { k: "Proof tabs", v: "Visible on every profile" },
                   { k: "Open to work", v: "Filter ready builders" },
                   { k: "One link", v: "Share or bookmark profiles" },
@@ -297,7 +290,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Final CTA */}
         <section className="container-app pb-16 sm:pb-24">
           <div className="mx-auto max-w-2xl rounded-2xl border border-primary/20 bg-primary/5 px-6 py-10 sm:px-10 sm:py-12 text-center">
             <h2 className="text-2xl sm:text-3xl font-bold tracking-tight">
