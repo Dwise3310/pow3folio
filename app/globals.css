@@ -135,6 +135,27 @@
   .scrollbar-none::-webkit-scrollbar {
     display: none;
   }
+
+  /* Landing page entrance */
+  .landing-reveal {
+    animation: landing-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  .landing-delay-1 {
+    animation-delay: 0.08s;
+  }
+  .landing-delay-2 {
+    animation-delay: 0.16s;
+  }
+  .landing-delay-3 {
+    animation-delay: 0.26s;
+  }
+  .landing-delay-4 {
+    animation-delay: 0.34s;
+  }
+  .landing-delay-5 {
+    animation-delay: 0.42s;
+  }
 }
 
 @keyframes open-dot-blink {
@@ -200,5 +221,24 @@
   to {
     opacity: 1;
     transform: translateX(0);
+  }
+}
+
+@keyframes landing-rise {
+  from {
+    opacity: 0;
+    transform: translateY(18px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .landing-reveal {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
   }
 }
