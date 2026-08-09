@@ -14,11 +14,11 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: {
-    default: "Pow3Folio — Web3 Proof of Work Portfolio",
+    default: "Pow3Folio | Web3 Proof of Work Portfolio",
     template: "%s | Pow3Folio",
   },
   description:
-    "The professional identity layer for crypto. Showcase your trading record, community work, writing and on-chain proof in one clean link.",
+    "The professional identity layer for crypto. Showcase your trading record, community work, writing and on chain proof in one clean link.",
   keywords: ["web3", "portfolio", "proof of work", "crypto", "trader portfolio"],
 };
 
