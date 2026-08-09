@@ -39,18 +39,16 @@ export default async function CommunityPage() {
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10">
+      <main className="container-app max-w-3xl py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Community</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Mods, ambassadors, campaigns, DAO work — proof of community impact.
+            Mods, ambassadors, campaigns, DAO work. Proof of community impact.
           </p>
         </div>
-
-        <CommunityManager
-          userId={user.id}
-          initialItems={(items as CommunityItem[]) ?? []}
-        />
+        <div className="card">
+          <CommunityManager userId={user.id} initialItems={(items as CommunityItem[]) ?? []} />
+        </div>
       </main>
     </div>
   );

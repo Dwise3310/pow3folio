@@ -39,18 +39,16 @@ export default async function AirdropsPage() {
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10">
+      <main className="container-app max-w-3xl py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Airdrops</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Campaigns you farmed, qualified for, or claimed — proof of hunt.
+            Campaigns you farmed, qualified for, or claimed. Proof of the hunt.
           </p>
         </div>
-
-        <AirdropManager
-          userId={user.id}
-          initialItems={(items as Airdrop[]) ?? []}
-        />
+        <div className="card">
+          <AirdropManager userId={user.id} initialItems={(items as Airdrop[]) ?? []} />
+        </div>
       </main>
     </div>
   );

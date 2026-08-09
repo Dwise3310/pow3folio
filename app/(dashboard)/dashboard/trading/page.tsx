@@ -39,15 +39,16 @@ export default async function TradingPage() {
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10">
+      <main className="container-app max-w-3xl py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Trading Record</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Wins, losses, charts and analysis — your verifiable trading PoW.
+            Wins, losses, charts and analysis. Your verifiable trading PoW.
           </p>
         </div>
-
-        <TradeManager userId={user.id} initialItems={(items as Trade[]) ?? []} />
+        <div className="card">
+          <TradeManager userId={user.id} initialItems={(items as Trade[]) ?? []} />
+        </div>
       </main>
     </div>
   );

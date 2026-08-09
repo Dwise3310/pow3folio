@@ -39,18 +39,16 @@ export default async function WritingPage() {
         </div>
       </header>
 
-      <main className="container-app max-w-2xl py-10">
+      <main className="container-app max-w-3xl py-10">
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Writing</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Articles, threads, Mirror posts, research — anything you write.
+            Articles, threads, Mirror posts, research. Anything you write.
           </p>
         </div>
-
-        <WritingManager
-          userId={user.id}
-          initialItems={(items as Writing[]) ?? []}
-        />
+        <div className="card">
+          <WritingManager userId={user.id} initialItems={(items as Writing[]) ?? []} />
+        </div>
       </main>
     </div>
   );
