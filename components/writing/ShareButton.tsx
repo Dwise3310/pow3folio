@@ -10,19 +10,15 @@ type Props = {
 export default function ShareButton({ title, url }: Props) {
   const [copied, setCopied] = useState(false);
 
-  async function handleShare(e: React.MouseEvent) {
-    e.preventDefault();
-    e.stopPropagation();
-
-    if (typeof navigator !== "undefined" && navigator.share) {
+  async function share() {
+    if (navigator.share) {
       try {
-        await navigator.share({ title, url, text: title });
+        await navigator.share({ title, url });
         return;
       } catch {
-        // user cancelled or share failed — fall through to copy
+        // user cancelled or share failed; fall through to copy
       }
     }
-
     try {
       await navigator.clipboard.writeText(url);
       setCopied(true);
@@ -33,12 +29,7 @@ export default function ShareButton({ title, url }: Props) {
   }
 
   return (
-    <button
-      type="button"
-      onClick={handleShare}
-      className="btn-ghost text-xs shrink-0"
-      aria-label="Share"
-    >
+    <button type="button" onClick={share} className="btn-ghost text-xs shrink-0">
       {copied ? "Copied" : "Share"}
     </button>
   );

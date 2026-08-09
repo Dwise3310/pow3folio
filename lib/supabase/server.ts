@@ -1,8 +1,6 @@
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-const FIFTEEN_DAYS = 60 * 60 * 24 * 15;
-
 export async function createClient() {
   const cookieStore = await cookies();
 
@@ -14,23 +12,13 @@ export async function createClient() {
         getAll() {
           return cookieStore.getAll();
         },
-        setAll(
-          cookiesToSet: {
-            name: string;
-            value: string;
-            options?: Record<string, unknown>;
-          }[]
-        ) {
+        setAll(cookiesToSet) {
           try {
             cookiesToSet.forEach(({ name, value, options }) =>
-              cookieStore.set(name, value, {
-                ...options,
-                maxAge: FIFTEEN_DAYS,
-                path: "/",
-              })
+              cookieStore.set(name, value, options)
             );
           } catch {
-            // Called from a Server Component — middleware refreshes sessions
+            // Called from a Server Component; middleware refreshes sessions
           }
         },
       },
