@@ -125,7 +125,7 @@ export default async function HomePage() {
         <section className="container-app flex flex-col items-center pt-16 pb-12 sm:pt-24 sm:pb-20 md:pt-28 text-center">
           <div className="landing-reveal mb-5 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-3.5 py-1.5 text-xs font-medium text-primary">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
-            Built for Web3 builders & talents
+            Built for Web3 builders &amp; talents
           </div>
 
           <h1 className="landing-reveal landing-delay-1 max-w-3xl text-3xl font-bold tracking-tight sm:text-5xl md:text-6xl leading-[1.1]">
@@ -164,7 +164,7 @@ export default async function HomePage() {
           </div>
 
           <p className="landing-reveal landing-delay-4 mt-4 text-xs text-foreground-subtle">
-            Free to start · Public link in minutes · You control what is visible
+            Free to start. Public link in minutes. You control what is visible
           </p>
 
           <div className="landing-reveal landing-delay-5 mt-12 sm:mt-16 flex flex-wrap items-center justify-center gap-2 sm:gap-3 max-w-2xl">
@@ -247,7 +247,7 @@ export default async function HomePage() {
             <div className="relative grid gap-8 md:grid-cols-[1.2fr_1fr] md:items-center">
               <div>
                 <p className="text-xs font-medium uppercase tracking-wide text-primary">
-                  For teams & protocols
+                  For teams &amp; protocols
                 </p>
                 <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">
                   Find talents with real proof, not just bios
@@ -324,7 +324,7 @@ export default async function HomePage() {
               <span className="text-[10px] font-bold">P3</span>
             </div>
             <span>
-              © {new Date().getFullYear()} Pow3Folio · Built for Web3 talents
+              © {new Date().getFullYear()} Pow3Folio. Built for Web3 talents
             </span>
           </div>
           <div className="flex flex-wrap items-center justify-center gap-4">

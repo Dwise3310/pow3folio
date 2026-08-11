@@ -5,7 +5,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 export const metadata = {
   title: "View talents",
   description:
-    "Discover Web3 builders and talents with real proof of work — trading, writing, community and more.",
+    "Discover Web3 builders and talents with real proof of work: trading, writing, community and more.",
 };
 
 type TalentRow = {
@@ -23,7 +23,7 @@ export default async function TalentsPage() {
     data: { user },
   } = await supabase.auth.getUser();
 
-  // Public profiles only — featured column may not exist yet; fall back to recent public
+  // Public profiles only. Featured column may not exist yet; fall back to recent public
   const { data: profiles } = await supabase
     .from("profiles")
     .select("username, display_name, bio, avatar_url, open_to_work, skills")
@@ -70,8 +70,8 @@ export default async function TalentsPage() {
             View talents
           </h1>
           <p className="mt-2 max-w-xl text-sm text-foreground-muted">
-            Public builders with proof-of-work profiles. Search and filters land
-            next — for now, browse recent public talents.
+            Public builders with proof of work profiles. Search and filters land
+            next. For now, browse recent public talents.
           </p>
         </div>
 
