@@ -67,7 +67,7 @@ export default function PublicProfileTabs({
 }: Props) {
   const allTabs: { id: TabId; label: string; show: boolean }[] = [
     { id: "about", label: "About", show: true },
-    { id: "writing", label: "Writing", show: showWriting },
+    { id: "writing", label: "Technical Writing / Research", show: showWriting },
     { id: "trading", label: "Trading Record", show: showTrading },
     { id: "community", label: "Community", show: showCommunity },
     { id: "airdrops", label: "Airdrops", show: showAirdrops },
@@ -193,7 +193,7 @@ export default function PublicProfileTabs({
         {active === "writing" && (
           <div>
             {writings.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No writings yet.</div>
+              <div className="card text-sm text-foreground-subtle">No technical writing or research yet.</div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {writings.map((w) => (
