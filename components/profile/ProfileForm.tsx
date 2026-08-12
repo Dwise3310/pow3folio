@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import LocationControl from "@/components/profile/LocationControl";
 import ConnectAccounts from "@/components/profile/ConnectAccounts";
-import type { Profile } from "@/types/database";
+import type { Profile, Skill } from "@/types/database";
 
 type Props = {
   profile: Profile;
@@ -16,6 +16,14 @@ type Props = {
 const URL_IN_BIO =
   /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|ng||eth)\b/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
+function normalizeSkills(raw: Profile["skills"]): Skill[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw.map((s) => {
+    if (typeof s === "string") return { name: s, description: "" };
+    return { name: s.name || "", description: (s.description || "").slice(0, 85) };
+  }).filter((s) => s.name);
+}
 
 function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
   if (!text) return null;
@@ -51,8 +59,9 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     location_region: profile.location_region ?? "",
     is_public: profile.is_public ?? true,
   });
-  const [skills, setSkills] = useState<string[]>(profile.skills ?? []);
-  const [skillInput, setSkillInput] = useState("");
+  const [skills, setSkills] = useState<Skill[]>(normalizeSkills(profile.skills));
+  const [skillName, setSkillName] = useState("");
+  const [skillDesc, setSkillDesc] = useState("");
   const [avatarUrl, setAvatarUrl] = useState(profile.avatar_url);
   const [bannerUrl, setBannerUrl] = useState(profile.banner_url);
   const [saving, setSaving] = useState(false);
@@ -72,19 +81,22 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
   }
 
   function addSkill() {
-    const s = skillInput.trim().slice(0, 40);
-    if (!s) return;
-    if (skills.some((x) => x.toLowerCase() === s.toLowerCase())) {
-      setSkillInput("");
+    const name = skillName.trim().slice(0, 40);
+    const description = skillDesc.trim().slice(0, 85);
+    if (!name) return;
+    if (skills.some((x) => x.name.toLowerCase() === name.toLowerCase())) {
+      setSkillName("");
+      setSkillDesc("");
       return;
     }
-    if (skills.length >= 20) return;
-    setSkills((prev) => [...prev, s]);
-    setSkillInput("");
+    if (skills.length >= 12) return;
+    setSkills((prev) => [...prev, { name, description }]);
+    setSkillName("");
+    setSkillDesc("");
   }
 
   function removeSkill(name: string) {
-    setSkills((prev) => prev.filter((s) => s !== name));
+    setSkills((prev) => prev.filter((s) => s.name !== name));
   }
 
   async function uploadImage(file: File, kind: "avatar" | "banner"): Promise<string | null> {
@@ -363,45 +375,56 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       </div>
 
       <div>
-        <label className="label">Skills</label>
+        <label className="label">Skills / Service pillars</label>
         <p className="mb-2 text-xs text-foreground-subtle">
-          Shown as chips on the About tab (max 20).
+          Name + short description (max 85 chars). Max 12 pillars.
         </p>
-        <div className="mb-2 flex flex-wrap gap-1.5">
+        <div className="mb-3 space-y-2">
           {skills.map((s) => (
-            <span
-              key={s}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs"
+            <div
+              key={s.name}
+              className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2"
             >
-              {s}
-              <button
-                type="button"
-                onClick={() => removeSkill(s)}
-                className="text-foreground-subtle hover:text-danger"
-                aria-label={`Remove ${s}`}
-              >
-                ×
-              </button>
-            </span>
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-primary">{s.name}</p>
+                  {s.description && (
+                    <p className="mt-0.5 text-xs text-foreground-muted leading-snug">{s.description}</p>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => removeSkill(s.name)}
+                  className="text-foreground-subtle hover:text-danger shrink-0"
+                  aria-label={`Remove ${s.name}`}
+                >
+                  ×
+                </button>
+              </div>
+            </div>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="space-y-2 rounded-xl border border-border p-3">
           <input
-            className="input flex-1 text-sm"
-            value={skillInput}
-            onChange={(e) => setSkillInput(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") {
-                e.preventDefault();
-                addSkill();
-              }
-            }}
-            placeholder="e.g. SMC, Solidity, Community"
+            className="input text-sm"
+            value={skillName}
+            onChange={(e) => setSkillName(e.target.value)}
+            placeholder="Pillar name (e.g. Market Intelligence)"
             maxLength={40}
           />
-          <button type="button" onClick={addSkill} className="btn-secondary shrink-0 text-sm">
-            Add
-          </button>
+          <textarea
+            className="input text-sm min-h-[60px]"
+            value={skillDesc}
+            onChange={(e) => setSkillDesc(e.target.value.slice(0, 85))}
+            placeholder="Brief explanation (max 85 characters)"
+            maxLength={85}
+          />
+          <div className="flex items-center justify-between">
+            <span className="text-[11px] text-foreground-subtle">{skillDesc.length}/85</span>
+            <button type="button" onClick={addSkill} className="btn-secondary text-sm">
+              Add pillar
+            </button>
+          </div>
         </div>
       </div>
 
