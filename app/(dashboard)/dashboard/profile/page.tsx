@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import ProfileForm from "@/components/profile/ProfileForm";
 import CredentialsManager from "@/components/profile/CredentialsManager";
-import type { Profile, Credential } from "@/types/database";
+import ProfileExtrasManager from "@/components/profile/ProfileExtrasManager";
+import type { Profile, Credential, WorkExperience, Education } from "@/types/database";
 
 export default async function ProfileEditPage() {
   const supabase = await createClient();
@@ -41,6 +42,9 @@ export default async function ProfileEditPage() {
 
   const identities = (user.identities ?? []).map((i) => i.provider);
 
+  const work = (profile.work_experience as WorkExperience[]) ?? [];
+  const education = (profile.education as Education[]) ?? [];
+
   return (
     <div className="min-h-screen overflow-x-hidden">
       <header className="border-b border-border">
@@ -73,6 +77,14 @@ export default async function ProfileEditPage() {
             profile={profile as Profile}
             email={user.email ?? null}
             linkedProviders={identities}
+          />
+        </div>
+
+        <div className="card overflow-hidden">
+          <ProfileExtrasManager
+            userId={user.id}
+            initialWork={work}
+            initialEducation={education}
           />
         </div>
 
