@@ -196,7 +196,7 @@ export default function LoginForm() {
         setError(
           `Wallet ${address.slice(0, 6)}…${address.slice(
             -4
-          )} saved. Sign in with Email, Google, X or GitHub — wallet will be linked automatically.`
+          )} saved. Sign in with Email, Google, X or GitHub. The wallet will be linked automatically.`
         );
       }
     } catch (err) {
