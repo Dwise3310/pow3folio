@@ -1,3 +1,38 @@
+export type Skill = {
+  name: string;
+  description: string;
+};
+
+export type WorkExperience = {
+  id: string;
+  company: string;
+  description: string | null;
+  url: string | null;
+  role: string;
+  employment_type: "full-time" | "part-time";
+  start_date: string;
+  end_date: string | null;
+};
+
+export type Education = {
+  id: string;
+  institution: string;
+  degree: string | null;
+  field_of_study: string | null;
+  country: string | null;
+  start_year: string | null;
+  end_year: string | null;
+  description: string | null;
+  url: string | null;
+};
+
+export type TradingPlatform = {
+  id: string;
+  name: string;
+  link: string;
+  logo?: string | null;
+};
+
 export type Profile = {
   id: string;
   username: string;
@@ -20,7 +55,10 @@ export type Profile = {
   show_secondary_email: boolean;
   location_country: string | null;
   location_region: string | null;
-  skills: string[] | null;
+  skills: Skill[] | string[] | null;
+  work_experience: WorkExperience[] | null;
+  education: Education[] | null;
+  trading_platforms: TradingPlatform[] | null;
   show_writing: boolean;
   show_trading: boolean;
   show_community: boolean;
