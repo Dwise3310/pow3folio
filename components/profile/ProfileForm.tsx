@@ -126,7 +126,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     const url = await uploadImage(file, "avatar");
     if (url) {
       setAvatarUrl(url);
-      setAvatarMsg("Avatar uploaded — click Save profile to keep it");
+      setAvatarMsg("Avatar uploaded. Click Save profile to keep it");
     }
     setUploading(false);
   }
@@ -140,7 +140,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     const url = await uploadImage(file, "banner");
     if (url) {
       setBannerUrl(url);
-      setBannerMsg("Banner uploaded — click Save profile to keep it");
+      setBannerMsg("Banner uploaded. Click Save profile to keep it");
     }
     setUploadingBanner(false);
   }
@@ -159,7 +159,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
     const username = form.username.trim().toLowerCase();
     if (!/^[a-z0-9_]{3,30}$/.test(username)) {
-      setSaveErr("Username must be 3–30 chars: lowercase letters, numbers, underscore only");
+      setSaveErr("Username must be 3 to 30 chars: lowercase letters, numbers, underscore only");
       setSaving(false);
       return;
     }
@@ -256,7 +256,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
               className="btn-ghost text-xs text-danger"
               onClick={() => {
                 setBannerUrl(null);
-                setBannerMsg("Banner removed — click Save profile");
+                setBannerMsg("Banner removed. Click Save profile");
               }}
             >
               Remove
@@ -338,7 +338,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
           value={form.bio}
           onChange={(e) => update("bio", e.target.value)}
           maxLength={160}
-          placeholder="One-line intro — no links"
+          placeholder="One-line intro, no links"
         />
         <p className="mt-1 text-xs text-foreground-subtle">{form.bio.length}/160</p>
         {bioHasLink && (
