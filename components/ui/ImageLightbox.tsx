@@ -57,7 +57,7 @@ export default function ImageLightbox({
             aria-modal="true"
             aria-label="Image preview"
           >
-            {/* Backdrop — blocks all clicks + blurs page */}
+            {/* Backdrop: blocks all clicks + blurs page */}
             <div
               className="absolute inset-0 bg-black/75 backdrop-blur-md animate-fade-in"
               onClick={() => setOpen(false)}
