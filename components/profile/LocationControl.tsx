@@ -25,7 +25,7 @@ export default function LocationControl({ country, region, onChange }: Props) {
       async (pos) => {
         try {
           const { latitude, longitude } = pos.coords;
-          // Coarse reverse geocode — country + region only (no street)
+          // Coarse reverse geocode: country + region only (no street)
           const res = await fetch(
             `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
           );
@@ -67,7 +67,7 @@ export default function LocationControl({ country, region, onChange }: Props) {
             Location
           </p>
           <p className="text-xs text-foreground-muted truncate">
-            {label || "Country & state only — not exact pin"}
+            {label || "Country & state only, not exact pin"}
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
