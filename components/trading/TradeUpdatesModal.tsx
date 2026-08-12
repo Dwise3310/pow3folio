@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 import type { Trade, TradeUpdate } from "@/types/database";
 
 type Props = {
@@ -31,20 +32,27 @@ function directionBadge(direction: string | null) {
 }
 
 export default function TradeUpdatesModal({ trade, updates, open, onClose }: Props) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
   useEffect(() => {
     if (!open) return;
     function onKey(e: KeyboardEvent) {
       if (e.key === "Escape") onClose();
     }
     document.addEventListener("keydown", onKey);
+    const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     return () => {
       document.removeEventListener("keydown", onKey);
-      document.body.style.overflow = "";
+      document.body.style.overflow = prev;
     };
   }, [open, onClose]);
 
-  if (!open) return null;
+  if (!open || !mounted) return null;
 
   const sorted = [...updates].sort((a, b) => {
     const da = a.occurred_at || a.created_at;
@@ -52,9 +60,9 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
     return new Date(da).getTime() - new Date(db).getTime();
   });
 
-  return (
+  return createPortal(
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
+      className="fixed inset-0 z-[99999] flex items-end justify-center bg-black/70 backdrop-blur-sm sm:items-center sm:p-4"
       onClick={onClose}
       role="dialog"
       aria-modal="true"
@@ -136,7 +144,8 @@ export default function TradeUpdatesModal({ trade, updates, open, onClose }: Pro
           ))}
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 }
 
