@@ -60,7 +60,7 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
         />
 
         <div className="flex flex-1 flex-col gap-1.5 p-3">
-          {/* Title — hyperlinked to original post like writings */}
+          {/* Title hyperlinked to original post like writings */}
           {post ? (
             <a
               href={post}
@@ -74,7 +74,7 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
             <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">{titleBlock}</div>
           )}
 
-          {/* Colored badges — direction / status / ROI */}
+          {/* Colored badges: direction / status / ROI */}
           <div className="flex flex-wrap items-center gap-1">
             {trade.direction && (
               <span
