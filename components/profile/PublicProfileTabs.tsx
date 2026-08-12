@@ -14,6 +14,10 @@ import type {
   Airdrop,
   Collectible,
   Credential,
+  Skill,
+  WorkExperience,
+  Education,
+  TradingPlatform,
 } from "@/types/database";
 
 type TabId =
@@ -27,7 +31,10 @@ type TabId =
 type Props = {
   profileUrl: string;
   longBio: string | null;
-  skills: string[];
+  skills: Skill[];
+  workExperience: WorkExperience[];
+  education: Education[];
+  tradingPlatforms: TradingPlatform[];
   credentials: Credential[];
   writings: Writing[];
   trades: Trade[];
@@ -49,6 +56,9 @@ export default function PublicProfileTabs({
   profileUrl,
   longBio,
   skills,
+  workExperience,
+  education,
+  tradingPlatforms,
   credentials,
   writings,
   trades,
@@ -119,26 +129,31 @@ export default function PublicProfileTabs({
 
       <div key={animKey} className="tab-panel-enter pt-4 pb-8">
         {active === "about" && (
-          <div className="space-y-4">
+          <div className="space-y-5">
             {skills.length > 0 && (
               <div>
                 <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
-                  Skills
+                  Skills / Service pillars
                 </h3>
-                <div className="flex flex-wrap gap-1.5">
+                <div className="space-y-2">
                   {skills.map((skill) => (
-                    <span
-                      key={skill}
-                      className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary"
+                    <div
+                      key={skill.name}
+                      className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
                     >
-                      {skill}
-                    </span>
+                      <p className="text-sm font-semibold text-primary">{skill.name}</p>
+                      {skill.description && (
+                        <p className="mt-0.5 text-xs text-foreground-muted leading-snug">
+                          {skill.description}
+                        </p>
+                      )}
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {longBio ? (
+            {longBio && (
               <div className="card p-3 sm:p-4">
                 <h3 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">
                   About
@@ -147,13 +162,84 @@ export default function PublicProfileTabs({
                   {longBio}
                 </p>
               </div>
-            ) : (
-              !skills.length &&
-              credentials.length === 0 && (
-                <div className="card text-sm text-foreground-subtle">
-                  No about details yet.
+            )}
+
+            {workExperience.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
+                  Work experience
+                </h3>
+                <div className="space-y-2">
+                  {workExperience.map((w) => (
+                    <div key={w.id} className="card p-3">
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0">
+                          {w.url ? (
+                            <a
+                              href={w.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="font-medium text-sm text-primary hover:underline"
+                            >
+                              {w.company}
+                            </a>
+                          ) : (
+                            <p className="font-medium text-sm">{w.company}</p>
+                          )}
+                          <p className="text-xs text-foreground-muted">
+                            {w.role} · {" "}
+                            {w.employment_type === "full-time" ? "Full-time" : "Part-time"}
+                          </p>
+                          <p className="text-xs text-foreground-subtle mt-0.5">
+                            {w.start_date}
+                            {w.end_date ? ` → ${w.end_date}` : " → Present"}
+                          </p>
+                          {w.description && (
+                            <p className="mt-1 text-xs text-foreground-muted">{w.description}</p>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              )
+              </div>
+            )}
+
+            {education.length > 0 && (
+              <div>
+                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
+                  Education
+                </h3>
+                <div className="space-y-2">
+                  {education.map((e) => (
+                    <div key={e.id} className="card p-3">
+                      {e.url ? (
+                        <a
+                          href={e.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="font-medium text-sm text-primary hover:underline"
+                        >
+                          {e.institution}
+                        </a>
+                      ) : (
+                        <p className="font-medium text-sm">{e.institution}</p>
+                      )}
+                      <p className="text-xs text-foreground-muted">
+                        {[e.degree, e.field_of_study].filter(Boolean).join(" · ")}
+                      </p>
+                      <p className="text-xs text-foreground-subtle mt-0.5">
+                        {[e.country, e.start_year && e.end_year ? `${e.start_year} – ${e.end_year}` : e.start_year || e.end_year]
+                          .filter(Boolean)
+                          .join(" · ")}
+                      </p>
+                      {e.description && (
+                        <p className="mt-1 text-xs text-foreground-muted">{e.description}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
             )}
 
             {credentials.length > 0 && (
@@ -187,13 +273,23 @@ export default function PublicProfileTabs({
                 </div>
               </div>
             )}
+
+            {skills.length === 0 &&
+              !longBio &&
+              workExperience.length === 0 &&
+              education.length === 0 &&
+              credentials.length === 0 && (
+                <div className="card text-sm text-foreground-subtle">No about details yet.</div>
+              )}
           </div>
         )}
 
         {active === "writing" && (
           <div>
             {writings.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No technical writing or research yet.</div>
+              <div className="card text-sm text-foreground-subtle">
+                No technical writing or research yet.
+              </div>
             ) : (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {writings.map((w) => (
@@ -254,7 +350,26 @@ export default function PublicProfileTabs({
         )}
 
         {active === "trading" && (
-          <div>
+          <div className="space-y-4">
+            {tradingPlatforms.length > 0 && (
+              <div className="flex flex-wrap gap-2">
+                {tradingPlatforms.map((p) => (
+                  <a
+                    key={p.id}
+                    href={p.link}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated pl-1.5 pr-3 py-1.5 text-sm font-medium transition-all hover:border-primary/40 hover:text-primary"
+                  >
+                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
+                      {p.name.slice(0, 2).toUpperCase()}
+                    </span>
+                    {p.name}
+                  </a>
+                ))}
+              </div>
+            )}
+
             {trades.length === 0 ? (
               <div className="card text-sm text-foreground-subtle">No trades yet.</div>
             ) : (
