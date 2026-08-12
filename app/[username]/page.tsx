@@ -10,6 +10,10 @@ import type {
   Airdrop,
   Collectible,
   Credential,
+  Skill,
+  WorkExperience,
+  Education,
+  TradingPlatform,
 } from "@/types/database";
 import type { Metadata } from "next";
 import ThemeToggle from "@/components/theme/ThemeToggle";
@@ -20,6 +24,16 @@ import PublicProfileTabs from "@/components/profile/PublicProfileTabs";
 type Props = {
   params: Promise<{ username: string }>;
 };
+
+function normalizeSkills(raw: Profile["skills"]): Skill[] {
+  if (!raw || !Array.isArray(raw)) return [];
+  return raw
+    .map((s) => {
+      if (typeof s === "string") return { name: s, description: "" };
+      return { name: s.name || "", description: s.description || "" };
+    })
+    .filter((s) => s.name);
+}
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { username } = await params;
@@ -172,7 +186,10 @@ export default async function PublicProfilePage({ params }: Props) {
       ? `${p.location_region}, ${p.location_country}`
       : p.location_country || p.location_region || null;
 
-  const skillList = (p.skills ?? []).filter(Boolean);
+  const skillList = normalizeSkills(p.skills);
+  const workExp = (p.work_experience as WorkExperience[]) ?? [];
+  const education = (p.education as Education[]) ?? [];
+  const platforms = (p.trading_platforms as TradingPlatform[]) ?? [];
 
   const hasContacts =
     socials.length > 0 ||
@@ -294,6 +311,9 @@ export default async function PublicProfilePage({ params }: Props) {
           profileUrl={profileUrl}
           longBio={p.long_bio}
           skills={skillList}
+          workExperience={workExp}
+          education={education}
+          tradingPlatforms={platforms}
           credentials={credentialItems}
           writings={writingItems}
           trades={tradeItems}
