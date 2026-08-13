@@ -6,6 +6,7 @@ import TradeCard from "@/components/trading/TradeCard";
 import CommunityCard from "@/components/community/CommunityCard";
 import AirdropCard from "@/components/airdrops/AirdropCard";
 import CollectibleCard from "@/components/collectibles/CollectibleCard";
+import { getPlatformLogo } from "@/lib/cex-dex-list";
 import type {
   Writing,
   Trade,
@@ -132,21 +133,20 @@ export default function PublicProfileTabs({
           <div className="space-y-5">
             {skills.length > 0 && (
               <div>
-                <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
+                <h3 className="mb-2.5 text-xs font-medium uppercase tracking-wide text-foreground-subtle">
                   Skills / Service pillars
                 </h3>
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {skills.map((skill) => (
-                    <div
-                      key={skill.name}
-                      className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2.5"
-                    >
-                      <p className="text-sm font-semibold text-primary">{skill.name}</p>
-                      {skill.description && (
-                        <p className="mt-0.5 text-xs text-foreground-muted leading-snug">
+                    <div key={skill.name} className="space-y-1">
+                      <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-1 text-xs font-semibold text-primary">
+                        {skill.name}
+                      </span>
+                      {skill.description ? (
+                        <p className="text-xs leading-relaxed text-foreground-muted pl-0.5">
                           {skill.description}
                         </p>
-                      )}
+                      ) : null}
                     </div>
                   ))}
                 </div>
@@ -172,32 +172,30 @@ export default function PublicProfileTabs({
                 <div className="space-y-2">
                   {workExperience.map((w) => (
                     <div key={w.id} className="card p-3">
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="min-w-0">
-                          {w.url ? (
-                            <a
-                              href={w.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="font-medium text-sm text-primary hover:underline"
-                            >
-                              {w.company}
-                            </a>
-                          ) : (
-                            <p className="font-medium text-sm">{w.company}</p>
-                          )}
-                          <p className="text-xs text-foreground-muted">
-                            {w.role} · {" "}
-                            {w.employment_type === "full-time" ? "Full-time" : "Part-time"}
-                          </p>
-                          <p className="text-xs text-foreground-subtle mt-0.5">
-                            {w.start_date}
-                            {w.end_date ? ` → ${w.end_date}` : " → Present"}
-                          </p>
-                          {w.description && (
-                            <p className="mt-1 text-xs text-foreground-muted">{w.description}</p>
-                          )}
-                        </div>
+                      <div className="min-w-0">
+                        {w.url ? (
+                          <a
+                            href={w.url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="font-medium text-sm text-primary hover:underline"
+                          >
+                            {w.company}
+                          </a>
+                        ) : (
+                          <p className="font-medium text-sm">{w.company}</p>
+                        )}
+                        <p className="text-xs text-foreground-muted">
+                          {w.role} ·{" "}
+                          {w.employment_type === "full-time" ? "Full-time" : "Part-time"}
+                        </p>
+                        <p className="text-xs text-foreground-subtle mt-0.5">
+                          {w.start_date}
+                          {w.end_date ? ` → ${w.end_date}` : " → Present"}
+                        </p>
+                        {w.description && (
+                          <p className="mt-1 text-xs text-foreground-muted">{w.description}</p>
+                        )}
                       </div>
                     </div>
                   ))}
@@ -229,7 +227,12 @@ export default function PublicProfileTabs({
                         {[e.degree, e.field_of_study].filter(Boolean).join(" · ")}
                       </p>
                       <p className="text-xs text-foreground-subtle mt-0.5">
-                        {[e.country, e.start_year && e.end_year ? `${e.start_year} – ${e.end_year}` : e.start_year || e.end_year]
+                        {[
+                          e.country,
+                          e.start_year && e.end_year
+                            ? `${e.start_year} – ${e.end_year}`
+                            : e.start_year || e.end_year,
+                        ]
                           .filter(Boolean)
                           .join(" · ")}
                       </p>
@@ -291,7 +294,7 @@ export default function PublicProfileTabs({
                 No technical writing or research yet.
               </div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
                 {writings.map((w) => (
                   <article
                     key={w.id}
@@ -313,31 +316,23 @@ export default function PublicProfileTabs({
                         )}
                       </div>
                     </a>
-                    <div className="flex flex-1 flex-col p-3">
+                    <div className="flex flex-1 flex-col p-2.5 sm:p-3">
                       <a
                         href={w.url}
                         target="_blank"
                         rel="noopener noreferrer"
-                        className="font-medium text-primary hover:underline line-clamp-2 text-sm"
+                        className="font-medium text-primary hover:underline line-clamp-2 text-xs sm:text-sm"
                       >
                         {w.title}
                       </a>
                       {w.description && (
-                        <p className="mt-1 text-xs text-foreground-muted line-clamp-2">
+                        <p className="mt-1 text-[11px] sm:text-xs text-foreground-muted line-clamp-2">
                           {w.description}
                         </p>
                       )}
                       <div className="mt-auto flex items-center justify-between gap-2 pt-2">
-                        <div className="flex min-w-0 flex-wrap gap-1 text-[11px] text-foreground-subtle">
+                        <div className="flex min-w-0 flex-wrap gap-1 text-[10px] text-foreground-subtle">
                           {w.published_at && <span>{w.published_at}</span>}
-                          {(w.tags ?? []).slice(0, 2).map((tag) => (
-                            <span
-                              key={tag}
-                              className="rounded-full bg-surface-elevated px-1.5 py-0.5"
-                            >
-                              {tag}
-                            </span>
-                          ))}
                         </div>
                         <ShareButton title={w.title} url={w.url} />
                       </div>
@@ -352,18 +347,23 @@ export default function PublicProfileTabs({
         {active === "trading" && (
           <div className="space-y-4">
             {tradingPlatforms.length > 0 && (
-              <div className="flex flex-wrap gap-2">
+              <div className="flex flex-wrap gap-1.5">
                 {tradingPlatforms.map((p) => (
                   <a
                     key={p.id}
                     href={p.link}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated pl-1.5 pr-3 py-1.5 text-sm font-medium transition-all hover:border-primary/40 hover:text-primary"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated pl-1 pr-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary"
                   >
-                    <span className="flex h-7 w-7 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-                      {p.name.slice(0, 2).toUpperCase()}
-                    </span>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img
+                      src={getPlatformLogo(p.name)}
+                      alt=""
+                      width={18}
+                      height={18}
+                      className="h-[18px] w-[18px] rounded-full object-contain bg-white"
+                    />
                     {p.name}
                   </a>
                 ))}
@@ -373,7 +373,7 @@ export default function PublicProfileTabs({
             {trades.length === 0 ? (
               <div className="card text-sm text-foreground-subtle">No trades yet.</div>
             ) : (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-2 gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {trades.map((t) => (
                   <TradeCard
                     key={t.id}
