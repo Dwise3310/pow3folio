@@ -19,10 +19,34 @@ const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeSkills(raw: Profile["skills"]): Skill[] {
   if (!raw || !Array.isArray(raw)) return [];
-  return raw.map((s) => {
-    if (typeof s === "string") return { name: s, description: "" };
-    return { name: s.name || "", description: (s.description || "").slice(0, 85) };
-  }).filter((s) => s.name);
+  return raw
+    .map((s) => {
+      if (typeof s === "string") {
+        const trimmed = s.trim();
+        if (trimmed.startsWith("{") && trimmed.includes("name")) {
+          try {
+            const parsed = JSON.parse(trimmed) as { name?: string; description?: string };
+            if (parsed?.name) {
+              return {
+                name: String(parsed.name).slice(0, 60),
+                description: String(parsed.description || "").slice(0, 85),
+              };
+            }
+          } catch {
+            /* ignore */
+          }
+        }
+        return { name: trimmed.slice(0, 60), description: "" };
+      }
+      if (s && typeof s === "object" && "name" in s) {
+        return {
+          name: String((s as Skill).name || "").slice(0, 60),
+          description: String((s as Skill).description || "").slice(0, 85),
+        };
+      }
+      return { name: "", description: "" };
+    })
+    .filter((s) => s.name);
 }
 
 function Feedback({ text, tone }: { text: string | null; tone: "ok" | "err" }) {
@@ -381,17 +405,11 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
         </p>
         <div className="mb-3 space-y-2">
           {skills.map((s) => (
-            <div
-              key={s.name}
-              className="rounded-xl border border-primary/20 bg-primary/5 px-3 py-2"
-            >
+            <div key={s.name} className="space-y-1 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
               <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="text-sm font-semibold text-primary">{s.name}</p>
-                  {s.description && (
-                    <p className="mt-0.5 text-xs text-foreground-muted leading-snug">{s.description}</p>
-                  )}
-                </div>
+                <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
+                  {s.name}
+                </span>
                 <button
                   type="button"
                   onClick={() => removeSkill(s.name)}
@@ -401,6 +419,9 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
                   ×
                 </button>
               </div>
+              {s.description && (
+                <p className="text-xs text-foreground-muted leading-snug">{s.description}</p>
+              )}
             </div>
           ))}
         </div>
