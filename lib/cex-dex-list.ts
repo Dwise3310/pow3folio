@@ -61,7 +61,6 @@ export const CEX_DEX_PLATFORMS: PlatformDef[] = [
   { name: "Phoenix", domain: "https://phoenix.trade" },
   { name: "Mango Markets", domain: "https://trade.mango.markets" },
   { name: "BitMEX", domain: "https://www.bitmex.com" },
-  { name: "FTX", domain: "https://ftx.com" },
   { name: "Upbit", domain: "https://upbit.com" },
   { name: "Bithumb", domain: "https://www.bithumb.com" },
   { name: "Coinone", domain: "https://coinone.co.kr" },
@@ -90,4 +89,18 @@ export function getPlatformDomain(name: string): string {
     (p) => p.name.toLowerCase() === name.toLowerCase()
   );
   return found?.domain || `https://${name.toLowerCase().replace(/\s+/g, "")}.com`;
+}
+
+/** Resolve a display logo for a platform name (favicon CDN, works for most CEX/DEX). */
+export function getPlatformLogo(name: string): string {
+  const found = CEX_DEX_PLATFORMS.find(
+    (p) => p.name.toLowerCase() === name.toLowerCase()
+  );
+  const domain = found?.domain || getPlatformDomain(name);
+  try {
+    const host = new URL(domain).hostname.replace(/^www\./, "");
+    return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
+  } catch {
+    return `https://www.google.com/s2/favicons?domain=${name.toLowerCase().replace(/\s+/g, "")}&sz=64`;
+  }
 }
