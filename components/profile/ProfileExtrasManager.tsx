@@ -15,6 +15,13 @@ function uid() {
   return Math.random().toString(36).slice(2, 10);
 }
 
+function absoluteUrl(url: string): string | null {
+  const t = url.trim();
+  if (!t) return null;
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t.replace(/^\/+/, "")}`;
+}
+
 export default function ProfileExtrasManager({
   userId,
   initialWork,
@@ -27,7 +34,6 @@ export default function ProfileExtrasManager({
   const [msg, setMsg] = useState<string | null>(null);
   const [err, setErr] = useState<string | null>(null);
 
-  // Work form state
   const [wForm, setWForm] = useState({
     company: "",
     description: "",
@@ -39,7 +45,6 @@ export default function ProfileExtrasManager({
   });
   const [showWorkForm, setShowWorkForm] = useState(false);
 
-  // Education form state
   const [eForm, setEForm] = useState({
     institution: "",
     degree: "",
@@ -93,7 +98,7 @@ export default function ProfileExtrasManager({
       id: uid(),
       company: wForm.company.trim(),
       description: wForm.description.trim() || null,
-      url: wForm.url.trim() || null,
+      url: absoluteUrl(wForm.url),
       role: wForm.role.trim(),
       employment_type: wForm.employment_type,
       start_date: wForm.start_date,
@@ -135,7 +140,7 @@ export default function ProfileExtrasManager({
       start_year: eForm.start_year.trim() || null,
       end_year: eForm.end_year.trim() || null,
       description: eForm.description.trim() || null,
-      url: eForm.url.trim() || null,
+      url: absoluteUrl(eForm.url),
     };
     const ok = await persist(work, [...edu, item]);
     if (ok) {
@@ -162,7 +167,6 @@ export default function ProfileExtrasManager({
 
   return (
     <div className="space-y-8">
-      {/* Work Experience */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
@@ -248,7 +252,7 @@ export default function ProfileExtrasManager({
                 className="input text-sm"
                 value={wForm.url}
                 onChange={(e) => setWForm({ ...wForm, url: e.target.value })}
-                placeholder="https://…"
+                placeholder="https://kiichain.io"
               />
             </div>
             <div className="flex flex-wrap gap-4 items-center">
@@ -305,7 +309,6 @@ export default function ProfileExtrasManager({
         )}
       </section>
 
-      {/* Education */}
       <section className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <div>
