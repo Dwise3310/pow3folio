@@ -29,10 +29,56 @@ function normalizeSkills(raw: Profile["skills"]): Skill[] {
   if (!raw || !Array.isArray(raw)) return [];
   return raw
     .map((s) => {
-      if (typeof s === "string") return { name: s, description: "" };
-      return { name: s.name || "", description: s.description || "" };
+      if (typeof s === "string") {
+        const trimmed = s.trim();
+        if (trimmed.startsWith("{") && trimmed.includes("name")) {
+          try {
+            const parsed = JSON.parse(trimmed) as { name?: string; description?: string };
+            if (parsed?.name) {
+              return {
+                name: String(parsed.name).slice(0, 60),
+                description: String(parsed.description || "").slice(0, 85),
+              };
+            }
+          } catch {
+            /* fall through */
+          }
+        }
+        return { name: trimmed.slice(0, 60), description: "" };
+      }
+      if (s && typeof s === "object" && "name" in s) {
+        return {
+          name: String((s as Skill).name || "").slice(0, 60),
+          description: String((s as Skill).description || "").slice(0, 85),
+        };
+      }
+      return { name: "", description: "" };
     })
     .filter((s) => s.name);
+}
+
+function absoluteUrl(url: string | null | undefined): string | null {
+  if (!url) return null;
+  const t = url.trim();
+  if (!t) return null;
+  if (/^https?:\/\//i.test(t)) return t;
+  return `https://${t.replace(/^\/+/, "")}`;
+}
+
+function normalizeWork(list: WorkExperience[] | null | undefined): WorkExperience[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((w) => ({
+    ...w,
+    url: absoluteUrl(w.url),
+  }));
+}
+
+function normalizeEducation(list: Education[] | null | undefined): Education[] {
+  if (!Array.isArray(list)) return [];
+  return list.map((e) => ({
+    ...e,
+    url: absoluteUrl(e.url),
+  }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
@@ -187,8 +233,8 @@ export default async function PublicProfilePage({ params }: Props) {
       : p.location_country || p.location_region || null;
 
   const skillList = normalizeSkills(p.skills);
-  const workExp = (p.work_experience as WorkExperience[]) ?? [];
-  const education = (p.education as Education[]) ?? [];
+  const workExp = normalizeWork(p.work_experience as WorkExperience[]);
+  const education = normalizeEducation(p.education as Education[]);
   const platforms = (p.trading_platforms as TradingPlatform[]) ?? [];
 
   const hasContacts =
@@ -230,7 +276,7 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
 
           <div className="absolute -bottom-10 left-3 sm:-bottom-12 sm:left-5">
-            <div className="h-18 w-18 h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
+            <div className="h-[4.5rem] w-[4.5rem] sm:h-24 sm:w-24 overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
               {p.avatar_url ? (
                 <ImageLightbox
                   src={p.avatar_url}
