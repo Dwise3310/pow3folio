@@ -107,7 +107,6 @@ export default async function HomePage() {
       </header>
 
       <main className="relative z-10">
-        {/* Hero */}
         <section className="container-app pt-12 pb-10 sm:pt-20 sm:pb-14">
           <div className="mx-auto max-w-3xl text-center">
             <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-3 py-1 text-[11px] text-foreground-muted backdrop-blur-sm">
@@ -119,14 +118,13 @@ export default async function HomePage() {
             </div>
 
             <h1 className="mt-5 text-3xl sm:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.1]">
-              GM Builders.{" "}
-              <span className="text-primary">Show the work</span>
-              {" "}teams can trust.
+              The public portfolio for{" "}
+              <span className="text-primary">verifiable Web3 work</span>
             </h1>
 
             <p className="mt-4 text-sm sm:text-base text-foreground-muted max-w-2xl mx-auto leading-relaxed">
-              Pow3Folio is the public portfolio for traders, researchers, community leads and airdrop hunters.
-              Real trades, writing, roles and onchain proof. One link. Strict Profile and Builder scores.
+              Pow3Folio is built for traders, researchers, community leads and airdrop hunters.
+              Put real trades, writing, roles and onchain proof on one link. Strict Profile and Builder scores teams can trust.
             </p>
 
             <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5">
@@ -158,14 +156,12 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Horizontal feature scroller */}
         <section id="features" className="pb-12 sm:pb-16">
           <div className="container-app">
             <FeatureScroller />
           </div>
         </section>
 
-        {/* Problem strip */}
         <section className="container-app pb-12 sm:pb-16">
           <div className="rounded-2xl border border-border bg-surface/50 p-5 sm:p-8">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
@@ -201,7 +197,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* How it works */}
         <section id="how" className="container-app pb-12 sm:pb-16">
           <div className="mx-auto max-w-xl text-center mb-8">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
@@ -230,7 +225,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* Teams */}
         <section className="container-app pb-12 sm:pb-16">
           <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface via-surface to-primary/5 p-5 sm:p-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
@@ -268,7 +262,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        {/* CTA */}
         <section className="container-app pb-14 sm:pb-20">
           <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/25 bg-surface px-5 py-10 sm:px-10 text-center">
             <div
