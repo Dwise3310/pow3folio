@@ -73,7 +73,7 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
 
   return (
     <div className="relative">
-      <div className="mb-3 flex items-end justify-between gap-3 px-1">
+      <div className="mb-4 flex items-end justify-between gap-3 px-1">
         <div>
           <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
             What Pow3Folio does
@@ -86,7 +86,7 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
           <button
             type="button"
             onClick={() => scrollBy(-1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted hover:border-primary/40 hover:text-primary transition"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted hover:border-primary/40 hover:text-primary hover:shadow-glow-sm transition"
             aria-label="Scroll left"
           >
             ‹
@@ -94,7 +94,7 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
           <button
             type="button"
             onClick={() => scrollBy(1)}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted hover:border-primary/40 hover:text-primary transition"
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-border bg-surface text-foreground-muted hover:border-primary/40 hover:text-primary hover:shadow-glow-sm transition"
             aria-label="Scroll right"
           >
             ›
@@ -104,27 +104,25 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
 
       <div
         ref={ref}
-        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
+        className="flex gap-3.5 overflow-x-auto pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((card) => (
           <article
             key={card.title}
-            className="group relative h-60 w-[min(85vw,18.5rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/80 bg-zinc-900 shadow-sm transition duration-300 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/5"
+            className="group relative h-64 w-[min(85vw,19rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/70 bg-zinc-900 shadow-sm transition duration-500 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1"
           >
-            {/* Background photo from Unsplash */}
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={card.image}
               alt={card.imageAlt}
-              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110"
               loading="lazy"
               decoding="async"
             />
-            {/* Dark gradient so text stays readable */}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20" />
             <div className="relative flex h-full flex-col justify-end p-4">
-              <span className="mb-2 w-fit rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm">
+              <span className="mb-2 w-fit rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm">
                 {card.tag}
               </span>
               <h3 className="text-lg font-bold text-white drop-shadow-md">{card.title}</h3>
@@ -133,7 +131,7 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
           </article>
         ))}
       </div>
-      <p className="mt-2 text-center text-[10px] text-foreground-subtle sm:hidden">
+      <p className="mt-2.5 text-center text-[10px] text-foreground-subtle sm:hidden">
         Swipe sideways to explore
       </p>
     </div>

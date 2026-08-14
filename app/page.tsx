@@ -41,29 +41,29 @@ export default async function HomePage() {
 
   return (
     <div className="relative min-h-screen overflow-x-hidden">
+      {/* Ambient grid + orbs */}
       <div
-        className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.07] dark:opacity-[0.11]"
+        className="pointer-events-none absolute inset-0 bg-grid-pattern opacity-[0.07] dark:opacity-[0.12]"
         style={{ backgroundSize: "40px 40px" }}
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -top-32 left-1/2 h-[28rem] w-[42rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl animate-pulse"
-        style={{ animationDuration: "6s" }}
+        className="pointer-events-none absolute -top-40 left-1/2 h-[32rem] w-[48rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl glow-orb"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute top-[38%] -right-20 h-64 w-64 rounded-full bg-sky-500/10 blur-3xl"
+        className="pointer-events-none absolute top-[32%] -right-24 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl float-y"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute bottom-[10%] -left-16 h-52 w-52 rounded-full bg-violet-500/10 blur-3xl"
+        className="pointer-events-none absolute bottom-[8%] -left-20 h-64 w-64 rounded-full bg-violet-500/12 blur-3xl float-y-slow"
         aria-hidden
       />
 
-      <header className="sticky top-0 z-30 border-b border-border/50 bg-background/80 backdrop-blur-md">
+      <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="container-app flex h-14 items-center justify-between gap-2">
-          <Link href="/" className="flex items-center gap-2 min-w-0">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
+          <Link href="/" className="flex items-center gap-2 min-w-0 group">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary transition group-hover:bg-primary/25 group-hover:shadow-glow-sm">
               <span className="text-xs font-bold">P3</span>
             </div>
             <span className="text-sm sm:text-base font-semibold tracking-tight truncate">
@@ -97,7 +97,7 @@ export default async function HomePage() {
                 <Link href="/login" className="btn-ghost text-xs hidden sm:inline-flex">
                   Log in
                 </Link>
-                <Link href="/signup" className="btn-primary text-xs px-3 py-1.5">
+                <Link href="/signup" className="btn-primary text-xs px-3 py-1.5 cta-pulse">
                   Get started
                 </Link>
               </>
@@ -107,9 +107,10 @@ export default async function HomePage() {
       </header>
 
       <main className="relative z-10">
-        <section className="container-app pt-12 pb-10 sm:pt-20 sm:pb-14">
+        {/* HERO */}
+        <section className="container-app pt-14 pb-12 sm:pt-24 sm:pb-16">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="inline-flex items-center gap-2 rounded-full border border-border bg-surface/80 px-3 py-1 text-[11px] text-foreground-muted backdrop-blur-sm">
+            <div className="landing-reveal landing-delay-1 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-3.5 py-1.5 text-[11px] text-foreground-muted backdrop-blur-sm">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
@@ -117,36 +118,44 @@ export default async function HomePage() {
               Web3 proof of work · live scores · talent discovery
             </div>
 
-            <h1 className="mt-5 text-3xl sm:text-5xl lg:text-[3.25rem] font-bold tracking-tight leading-[1.1]">
+            <h1 className="landing-reveal landing-delay-2 mt-6 text-3xl sm:text-5xl lg:text-[3.4rem] font-bold tracking-tight leading-[1.08]">
               The public portfolio for{" "}
-              <span className="text-primary">verifiable Web3 work</span>
+              <span className="hero-gradient-text">verifiable Web3 work</span>
             </h1>
 
-            <p className="mt-4 text-sm sm:text-base text-foreground-muted max-w-2xl mx-auto leading-relaxed">
-              Pow3Folio is built for traders, researchers, community leads and airdrop hunters.
-              Put real trades, writing, roles and onchain proof on one link. Strict Profile and Builder scores teams can trust.
+            <p className="landing-reveal landing-delay-3 mt-5 text-sm sm:text-base text-foreground-muted max-w-2xl mx-auto leading-relaxed">
+              Built for traders, researchers, community leads and airdrop hunters.
+              Put real trades, writing, roles and onchain proof on one link.
+              Strict Profile + Builder scores teams actually trust.
             </p>
 
-            <div className="mt-7 flex flex-col sm:flex-row items-center justify-center gap-2.5">
+            <div className="landing-reveal landing-delay-4 mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
               {user ? (
-                <Link href="/dashboard" className="btn-primary px-6 py-2.5 text-sm shadow-lg shadow-primary/20">
+                <Link
+                  href="/dashboard"
+                  className="btn-primary px-7 py-3 text-sm shadow-lg shadow-primary/25 cta-pulse"
+                >
                   Open dashboard
                 </Link>
               ) : (
-                <Link href="/signup" className="btn-primary px-6 py-2.5 text-sm shadow-lg shadow-primary/20">
-                  Create your profile
+                <Link
+                  href="/signup"
+                  className="btn-primary px-7 py-3 text-sm shadow-lg shadow-primary/25 cta-pulse"
+                >
+                  Create your profile — free
                 </Link>
               )}
-              <Link href="/talents" className="btn-secondary px-6 py-2.5 text-sm">
-                View talents
+              <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
+                Browse talents →
               </Link>
             </div>
 
-            <div className="mt-10 grid grid-cols-2 sm:grid-cols-4 gap-2 max-w-lg mx-auto">
-              {STATS.map((s) => (
+            <div className="landing-reveal landing-delay-5 mt-12 grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-w-xl mx-auto">
+              {STATS.map((s, i) => (
                 <div
                   key={s.label}
-                  className="rounded-xl border border-border/80 bg-surface/60 px-3 py-3 backdrop-blur-sm transition hover:border-primary/30"
+                  className="stat-pop glass-panel rounded-xl px-3 py-3.5 transition duration-300 hover:border-primary/40 hover:shadow-glow-sm"
+                  style={{ animationDelay: `${0.35 + i * 0.08}s` }}
                 >
                   <p className="text-lg sm:text-xl font-bold tracking-tight text-primary">{s.value}</p>
                   <p className="text-[10px] text-foreground-subtle mt-0.5">{s.label}</p>
@@ -156,14 +165,16 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section id="features" className="pb-12 sm:pb-16">
+        {/* FEATURES */}
+        <section id="features" className="pb-14 sm:pb-18">
           <div className="container-app">
             <FeatureScroller />
           </div>
         </section>
 
-        <section className="container-app pb-12 sm:pb-16">
-          <div className="rounded-2xl border border-border bg-surface/50 p-5 sm:p-8">
+        {/* WHY */}
+        <section className="container-app pb-14 sm:pb-16">
+          <div className="shine-border rounded-2xl glass-panel p-5 sm:p-8">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
               Why this exists
             </p>
@@ -187,7 +198,7 @@ export default async function HomePage() {
               ].map((x) => (
                 <div
                   key={x.t}
-                  className="rounded-xl border border-border bg-background/70 p-4 transition hover:border-primary/25"
+                  className="rounded-xl border border-border/80 bg-background/60 p-4 transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
                 >
                   <h3 className="text-sm font-semibold">{x.t}</h3>
                   <p className="mt-1.5 text-xs text-foreground-muted leading-relaxed">{x.d}</p>
@@ -197,18 +208,21 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section id="how" className="container-app pb-12 sm:pb-16">
+        {/* HOW */}
+        <section id="how" className="container-app pb-14 sm:pb-16">
           <div className="mx-auto max-w-xl text-center mb-8">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
               How it works
             </p>
-            <h2 className="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight">Four steps. Built for people who ship.</h2>
+            <h2 className="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight">
+              Four steps. Built for people who ship.
+            </h2>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 max-w-5xl mx-auto">
             {STEPS.map((s, i) => (
               <div
                 key={s.step}
-                className="relative rounded-2xl border border-border bg-surface/70 p-4 transition hover:-translate-y-0.5 hover:border-primary/30 hover:shadow-md"
+                className="relative rounded-2xl border border-border/80 bg-surface/60 p-4 transition duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/5"
               >
                 <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold">
                   {s.step}
@@ -216,7 +230,10 @@ export default async function HomePage() {
                 <h3 className="mt-3 font-semibold text-sm">{s.title}</h3>
                 <p className="mt-1.5 text-xs text-foreground-muted leading-relaxed">{s.desc}</p>
                 {i < STEPS.length - 1 && (
-                  <span className="hidden lg:block absolute top-8 -right-2 text-foreground-subtle text-lg" aria-hidden>
+                  <span
+                    className="hidden lg:block absolute top-8 -right-2 text-foreground-subtle text-lg"
+                    aria-hidden
+                  >
                     →
                   </span>
                 )}
@@ -225,8 +242,9 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="container-app pb-12 sm:pb-16">
-          <div className="overflow-hidden rounded-2xl border border-border bg-gradient-to-br from-surface via-surface to-primary/5 p-5 sm:p-8">
+        {/* TEAMS */}
+        <section className="container-app pb-14 sm:pb-16">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-surface via-surface to-primary/8 p-5 sm:p-8">
             <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wider text-foreground-subtle">
@@ -236,7 +254,8 @@ export default async function HomePage() {
                   Hire builders with real proof
                 </h2>
                 <p className="mt-2 text-sm text-foreground-muted leading-relaxed">
-                  Browse trading records, research, community roles and onchain activity. Filter open to work talent. Skip the noise.
+                  Browse trading records, research, community roles and onchain activity.
+                  Filter open-to-work talent. Skip the noise.
                 </p>
                 <Link href="/talents" className="btn-primary mt-5 inline-flex text-sm">
                   Browse talents
@@ -251,7 +270,7 @@ export default async function HomePage() {
                 ].map((row) => (
                   <div
                     key={row.k}
-                    className="rounded-xl border border-border bg-background/80 p-3 transition hover:border-primary/30"
+                    className="rounded-xl border border-border/80 bg-background/80 p-3 transition duration-300 hover:border-primary/30 hover:-translate-y-0.5"
                   >
                     <p className="text-[11px] text-foreground-subtle">{row.k}</p>
                     <p className="mt-0.5 text-sm font-medium">{row.v}</p>
@@ -262,27 +281,30 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="container-app pb-14 sm:pb-20">
-          <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/25 bg-surface px-5 py-10 sm:px-10 text-center">
+        {/* FINAL CTA */}
+        <section className="container-app pb-16 sm:pb-24">
+          <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/30 bg-surface/80 px-5 py-12 sm:px-10 text-center shine-border">
             <div
-              className="pointer-events-none absolute -top-10 left-1/2 h-32 w-64 -translate-x-1/2 rounded-full bg-primary/15 blur-3xl"
+              className="pointer-events-none absolute -top-12 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl glow-orb"
               aria-hidden
             />
-            <h2 className="relative text-xl sm:text-2xl font-bold tracking-tight">Ready to show your work?</h2>
+            <h2 className="relative text-xl sm:text-2xl font-bold tracking-tight">
+              Ready to show your work?
+            </h2>
             <p className="relative mt-2 text-sm text-foreground-muted">
               Create your Pow3Folio in minutes. Share one link. Get found by the right teams.
             </p>
-            <div className="relative mt-6 flex flex-col sm:flex-row gap-2.5 justify-center">
+            <div className="relative mt-7 flex flex-col sm:flex-row gap-3 justify-center">
               {user ? (
-                <Link href="/dashboard" className="btn-primary px-6 py-2.5 text-sm">
+                <Link href="/dashboard" className="btn-primary px-7 py-3 text-sm cta-pulse">
                   Open dashboard
                 </Link>
               ) : (
-                <Link href="/signup" className="btn-primary px-6 py-2.5 text-sm">
+                <Link href="/signup" className="btn-primary px-7 py-3 text-sm cta-pulse">
                   Get started free
                 </Link>
               )}
-              <Link href="/talents" className="btn-secondary px-6 py-2.5 text-sm">
+              <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
                 Browse talents
               </Link>
             </div>
@@ -290,7 +312,7 @@ export default async function HomePage() {
         </section>
       </main>
 
-      <footer className="relative z-10 border-t border-border/50 py-8">
+      <footer className="relative z-10 border-t border-border/40 py-8">
         <div className="container-app flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-foreground-subtle">
           <div className="flex items-center gap-2">
             <div className="flex h-5 w-5 items-center justify-center rounded bg-primary/15 text-primary">
