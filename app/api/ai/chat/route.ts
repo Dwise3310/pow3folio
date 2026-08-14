@@ -1,13 +1,22 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 import { SYSTEM_PROMPT } from "@/lib/ai/knowledge";
+import { buildProfileContext, computeScores } from "@/lib/ai/scores";
+import type {
+  Profile,
+  Writing,
+  Trade,
+  CommunityItem,
+  Airdrop,
+  Collectible,
+  Credential,
+} from "@/types/database";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-/** Current free-tier friendly IDs (2.0 flash was shut down June 2026). */
 const DEFAULT_MODELS = [
   "gemini-2.5-flash-lite",
   "gemini-2.5-flash",
@@ -40,8 +49,7 @@ function rateLimit(key: string, limit: number): boolean {
 async function listGenerateModels(apiKey: string): Promise<string[]> {
   try {
     const res = await fetch(
-      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=100`,
-      { next: { revalidate: 0 } }
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=100`
     );
     if (!res.ok) return [];
     const data = (await res.json()) as {
@@ -61,6 +69,49 @@ async function listGenerateModels(apiKey: string): Promise<string[]> {
   }
 }
 
+async function loadBuilderContext(userId: string): Promise<string> {
+  try {
+    const supabase = await createClient();
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("*")
+      .eq("id", userId)
+      .maybeSingle();
+    if (!profile) return "";
+
+    const p = profile as Profile;
+    const [
+      { data: writings },
+      { data: trades },
+      { data: community },
+      { data: airdrops },
+      { data: collectibles },
+      { data: credentials },
+    ] = await Promise.all([
+      supabase.from("writings").select("*").eq("user_id", p.id),
+      supabase.from("trades").select("*").eq("user_id", p.id),
+      supabase.from("community_items").select("*").eq("user_id", p.id),
+      supabase.from("airdrops").select("*").eq("user_id", p.id),
+      supabase.from("collectibles").select("*").eq("user_id", p.id),
+      supabase.from("credentials").select("*").eq("user_id", p.id),
+    ]);
+
+    const input = {
+      profile: p,
+      writings: (writings as Writing[]) ?? [],
+      trades: (trades as Trade[]) ?? [],
+      community: (community as CommunityItem[]) ?? [],
+      airdrops: (airdrops as Airdrop[]) ?? [],
+      nfts: (collectibles as Collectible[]) ?? [],
+      credentials: (credentials as Credential[]) ?? [],
+    };
+    const scores = computeScores(input);
+    return buildProfileContext({ ...input, scores });
+  } catch {
+    return "";
+  }
+}
+
 async function callGemini(
   apiKey: string,
   model: string,
@@ -75,8 +126,8 @@ async function callGemini(
       systemInstruction: { parts: [{ text: systemText }] },
       contents: history,
       generationConfig: {
-        temperature: 0.55,
-        maxOutputTokens: 1024,
+        temperature: 0.7,
+        maxOutputTokens: 1400,
       },
     }),
   });
@@ -105,7 +156,8 @@ export async function POST(req: NextRequest) {
 
     const body = await req.json().catch(() => null);
     const messages = (body?.messages as ChatMessage[] | undefined) ?? [];
-    const context = typeof body?.context === "string" ? body.context.slice(0, 6000) : "";
+    const clientContext =
+      typeof body?.context === "string" ? body.context.slice(0, 4000) : "";
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return NextResponse.json({ error: "messages required" }, { status: 400 });
@@ -147,6 +199,8 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    const profileContext = userId ? await loadBuilderContext(userId) : "";
+
     const trimmed = messages
       .filter((m, i) => !(i === 0 && m.role === "assistant"))
       .slice(-MAX_HISTORY);
@@ -161,10 +215,18 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Empty conversation" }, { status: 400 });
     }
 
-    const systemText =
-      SYSTEM_PROMPT +
-      (context ? `\n\n## Current builder context (may be partial)\n${context}` : "") +
-      (userId ? "\nSigned-in builder session." : "\nGuest session.");
+    let systemText = SYSTEM_PROMPT;
+    if (profileContext) {
+      systemText +=
+        "\n\n## Live profile of the signed-in builder (use this for analysis, shortfalls, and rewrites)\n" +
+        profileContext +
+        "\nYou CAN see this profile. Never say you cannot access it. Quote concrete gaps and give paste-ready replacements.";
+    } else if (clientContext) {
+      systemText += "\n\n## Context\n" + clientContext;
+    } else {
+      systemText +=
+        "\n\nNo signed-in profile loaded. If they ask to analyse their profile, ask them to log in on Pow3Folio first.";
+    }
 
     const preferred = (process.env.GEMINI_MODEL || "").trim();
     const discovered = await listGenerateModels(apiKey);
@@ -187,12 +249,18 @@ export async function POST(req: NextRequest) {
             candidates?: { content?: { parts?: { text?: string }[] } }[];
           }
         )?.candidates?.[0]?.content?.parts;
-        const text =
+        let text =
           parts
             ?.map((p) => p.text || "")
             .join("")
             .trim() || "I could not form a reply. Try rephrasing.";
-        return NextResponse.json({ reply: text, model });
+        // Strip markdown bold/italic markers the UI does not render
+        text = text
+          .replace(/\*\*([^*]+)\*\*/g, "$1")
+          .replace(/\*([^*]+)\*/g, "$1")
+          .replace(/__([^_]+)__/g, "$1")
+          .replace(/`([^`]+)`/g, "$1");
+        return NextResponse.json({ reply: text, model, hasProfile: !!profileContext });
       }
 
       if (result.status === 429) {
@@ -202,7 +270,6 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Invalid API key: stop immediately
       if (
         result.status === 400 &&
         (lastErr.includes("API_KEY_INVALID") || lastErr.includes("API key not valid"))
@@ -216,26 +283,14 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      // Try next model on not found / bad request
       if (result.status !== 404 && result.status !== 400) break;
     }
 
     console.error("Gemini failed", lastStatus, lastErr);
-
-    if (lastStatus === 403) {
-      return NextResponse.json(
-        {
-          error:
-            "Gemini returned 403. Enable Generative Language API for this Google project, or create a new API key in AI Studio.",
-        },
-        { status: 502 }
-      );
-    }
-
     return NextResponse.json(
       {
         error:
-          "Pow3Bot could not reach Gemini. Set GEMINI_MODEL=gemini-2.5-flash in Vercel, confirm the key is for AI Studio (not Vertex), and redeploy.",
+          "Pow3Bot could not reach Gemini. Set GEMINI_MODEL=gemini-2.5-flash in Vercel and redeploy.",
       },
       { status: 502 }
     );
