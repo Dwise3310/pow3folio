@@ -6,23 +6,11 @@ export type PlatformDef = {
 
 /** Popular CEX + DEX + related platforms. Used for typeahead search. */
 export const CEX_DEX_PLATFORMS: PlatformDef[] = [
-  {
-    name: "Binance",
-    domain: "https://www.binance.com",
-    logo: "https://assets.coingecko.com/markets/images/52/small/binance.jpg",
-  },
-  {
-    name: "Bybit",
-    domain: "https://www.bybit.com",
-    logo: "https://assets.coingecko.com/markets/images/698/small/bybit_spot.png",
-  },
-  {
-    name: "Hyperliquid",
-    domain: "https://app.hyperliquid.xyz",
-    logo: "https://assets.coingecko.com/markets/images/1409/small/hyperliquid.jpg",
-  },
-  { name: "MEXC", domain: "https://www.mexc.com", logo: "https://assets.coingecko.com/markets/images/409/small/MEXC_logo_square_%281%29.png" },
-  { name: "OKX", domain: "https://www.okx.com", logo: "https://assets.coingecko.com/markets/images/96/small/WeChat_Image_20220117220452.png" },
+  { name: "Binance", domain: "https://www.binance.com" },
+  { name: "Bybit", domain: "https://www.bybit.com" },
+  { name: "Hyperliquid", domain: "https://app.hyperliquid.xyz" },
+  { name: "MEXC", domain: "https://www.mexc.com" },
+  { name: "OKX", domain: "https://www.okx.com" },
   { name: "Bitget", domain: "https://www.bitget.com" },
   { name: "Gate.io", domain: "https://www.gate.io" },
   { name: "KuCoin", domain: "https://www.kucoin.com" },
@@ -88,6 +76,26 @@ export const CEX_DEX_PLATFORMS: PlatformDef[] = [
   { name: "Roqqu", domain: "https://roqqu.com" },
 ];
 
+/** Known solid logo URLs when favicon CDNs fail for a brand. */
+const LOGO_OVERRIDES: Record<string, string> = {
+  bybit: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/521.png",
+  binance: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/270.png",
+  hyperliquid: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1928.png",
+  okx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/294.png",
+  mexc: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/544.png",
+  bitget: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/513.png",
+  kucoin: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/311.png",
+  gate: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/302.png",
+  "gate.io": "https://s2.coinmarketcap.com/static/img/exchanges/64x64/302.png",
+  coinbase: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/89.png",
+  kraken: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/24.png",
+  dydx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/511.png",
+  gmx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1028.png",
+  uniswap: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1061.png",
+  jupiter: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1662.png",
+  tradingview: "https://www.google.com/s2/favicons?domain=tradingview.com&sz=64",
+};
+
 export function searchPlatforms(query: string, limit = 8): PlatformDef[] {
   const q = query.trim().toLowerCase();
   if (!q) return CEX_DEX_PLATFORMS.slice(0, limit);
@@ -103,17 +111,24 @@ export function getPlatformDomain(name: string): string {
   return found?.domain || `https://${name.toLowerCase().replace(/\s+/g, "")}.com`;
 }
 
+function hostFromDomain(domain: string): string {
+  try {
+    return new URL(domain).hostname.replace(/^www\./, "");
+  } catch {
+    return domain.replace(/^https?:\/\//, "").replace(/^www\./, "").split("/")[0];
+  }
+}
+
 /** Resolve a display logo for a platform name. */
 export function getPlatformLogo(name: string): string {
-  const found = CEX_DEX_PLATFORMS.find(
-    (p) => p.name.toLowerCase() === name.toLowerCase()
-  );
+  const key = name.trim().toLowerCase();
+  if (LOGO_OVERRIDES[key]) return LOGO_OVERRIDES[key];
+
+  const found = CEX_DEX_PLATFORMS.find((p) => p.name.toLowerCase() === key);
   if (found?.logo) return found.logo;
+
   const domain = found?.domain || getPlatformDomain(name);
-  try {
-    const host = new URL(domain).hostname.replace(/^www\./, "");
-    return `https://www.google.com/s2/favicons?domain=${host}&sz=64`;
-  } catch {
-    return `https://www.google.com/s2/favicons?domain=${name.toLowerCase().replace(/\s+/g, "")}&sz=64`;
-  }
+  const host = hostFromDomain(domain);
+  // Google favicons are reliable for most exchange domains
+  return `https://www.google.com/s2/favicons?domain=${host}&sz=128`;
 }
