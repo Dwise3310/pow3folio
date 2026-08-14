@@ -15,14 +15,25 @@ export const runtime = "nodejs";
 
 type Params = { params: Promise<{ username: string }> };
 
+function sanitizeUsername(raw: string): string | null {
+  const u = raw.trim().toLowerCase();
+  if (!/^[a-z0-9_]{1,32}$/.test(u)) return null;
+  return u;
+}
+
 export async function GET(_req: NextRequest, { params }: Params) {
-  const { username } = await params;
+  const { username: raw } = await params;
+  const username = sanitizeUsername(raw || "");
+  if (!username) {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
+
   const supabase = await createClient();
 
   const { data: profile } = await supabase
     .from("profiles")
     .select("*")
-    .eq("username", username.toLowerCase())
+    .eq("username", username)
     .eq("is_public", true)
     .maybeSingle();
 
