@@ -236,7 +236,7 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
 
           <div className="absolute -bottom-10 left-3 sm:-bottom-11 sm:left-5">
-            <div className="h-[4.5rem] w-[4.5rem] sm:h-22 sm:w-22 sm:h-[5.25rem] sm:w-[5.25rem] overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
+            <div className="h-[4.5rem] w-[4.5rem] sm:h-[5.25rem] sm:w-[5.25rem] overflow-hidden rounded-full border-4 border-background bg-surface-elevated shadow-md">
               {p.avatar_url ? (
                 <ImageLightbox
                   src={p.avatar_url}
@@ -254,9 +254,9 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Name row + score rings (right side, fills the empty space) */}
+        {/* Title row: name + open badge + rings only (bio is full width below) */}
         <div className="mt-12 sm:mt-13 flex items-start justify-between gap-3 pl-0.5 animate-slide-up">
-          <div className="min-w-0 flex-1 space-y-1">
+          <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
                 {p.display_name || p.username}
@@ -269,15 +269,6 @@ export default async function PublicProfilePage({ params }: Props) {
               )}
             </div>
             <p className="text-sm text-foreground-muted">@{p.username}</p>
-            {p.bio && (
-              <p className="max-w-xl text-sm text-foreground-muted break-words">{p.bio}</p>
-            )}
-            {locationLabel && (
-              <p className="flex items-center gap-1.5 text-xs text-foreground-subtle">
-                <span className="location-dot" aria-hidden />
-                {locationLabel}
-              </p>
-            )}
           </div>
 
           <ScoreRings
@@ -286,6 +277,23 @@ export default async function PublicProfilePage({ params }: Props) {
             initialBuilder={scores.builderScore}
           />
         </div>
+
+        {/* Bio + location: full width, not squeezed by rings */}
+        {(p.bio || locationLabel) && (
+          <div className="mt-2 space-y-1 pl-0.5 animate-slide-up">
+            {p.bio && (
+              <p className="w-full text-sm text-foreground-muted break-words leading-relaxed">
+                {p.bio}
+              </p>
+            )}
+            {locationLabel && (
+              <p className="flex items-center gap-1.5 text-xs text-foreground-subtle">
+                <span className="location-dot" aria-hidden />
+                {locationLabel}
+              </p>
+            )}
+          </div>
+        )}
 
         {hasContacts && (
           <div className="mt-2.5 flex flex-wrap items-center gap-1.5 animate-slide-up">
