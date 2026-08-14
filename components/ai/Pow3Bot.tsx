@@ -1,17 +1,28 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
 const QUICK = [
-  "How do I improve my profile?",
+  "Analyse my profile and list shortfalls",
+  "Help me rewrite my short bio",
   "What is Profile Score vs Builder Score?",
-  "Help me write a short bio",
-  "Diff mode: improve this community role (I will paste text next)",
+  "Diff mode: improve text I paste next",
   "Where is the FAQ?",
 ];
+
+const POS_KEY = "pow3bot-btn-pos";
+
+function stripMd(s: string) {
+  return s
+    .replace(/\*\*([^*]+)\*\*/g, "$1")
+    .replace(/\*([^*]+)\*/g, "$1")
+    .replace(/__([^_]+)__/g, "$1")
+    .replace(/`([^`]+)`/g, "$1")
+    .replace(/^#{1,6}\s+/gm, "");
+}
 
 type Props = {
   context?: string;
@@ -26,14 +37,88 @@ export default function Pow3Bot({ context }: Props) {
     {
       role: "assistant",
       content:
-        "I am Pow3Bot, the Pow3Folio product assistant only. I help with profiles, proof of work, scores, and how-tos on this site. For written FAQ see /faq. Paste rough text and ask for Diff mode to get Before / After rewrites.",
+        "Hey. I'm Pow3Bot, here for Pow3Folio only. Ask about your profile, scores, proof sections, or paste rough text and I'll clean it up. If you're logged in, I can see your profile and be honest about the gaps.",
     },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
+  // Draggable button position
+  const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
+  const drag = useRef<{
+    active: boolean;
+    moved: boolean;
+    ox: number;
+    oy: number;
+    sx: number;
+    sy: number;
+  } | null>(null);
+
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem(POS_KEY);
+      if (raw) {
+        const p = JSON.parse(raw) as { x: number; y: number };
+        if (typeof p.x === "number" && typeof p.y === "number") setPos(p);
+      }
+    } catch {
+      /* ignore */
+    }
+  }, []);
+
   useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open, loading]);
+
+  const onPointerDown = useCallback((e: React.PointerEvent) => {
+    const el = e.currentTarget as HTMLElement;
+    const rect = el.getBoundingClientRect();
+    drag.current = {
+      active: true,
+      moved: false,
+      ox: e.clientX - rect.left,
+      oy: e.clientY - rect.top,
+      sx: e.clientX,
+      sy: e.clientY,
+    };
+    el.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onPointerMove = useCallback((e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d?.active) return;
+    if (Math.abs(e.clientX - d.sx) + Math.abs(e.clientY - d.sy) > 6) d.moved = true;
+    if (!d.moved) return;
+    const size = 48;
+    const x = Math.max(8, Math.min(window.innerWidth - size - 8, e.clientX - d.ox));
+    const y = Math.max(8, Math.min(window.innerHeight - size - 8, e.clientY - d.oy));
+    setPos({ x, y });
+  }, []);
+
+  const onPointerUp = useCallback((e: React.PointerEvent) => {
+    const d = drag.current;
+    if (!d) return;
+    d.active = false;
+    if (d.moved) {
+      setPos((prev) => {
+        if (prev) {
+          try {
+            localStorage.setItem(POS_KEY, JSON.stringify(prev));
+          } catch {
+            /* ignore */
+          }
+        }
+        return prev;
+      });
+    } else {
+      setOpen((v) => !v);
+    }
+    drag.current = null;
+    try {
+      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+    } catch {
+      /* ignore */
+    }
+  }, []);
 
   async function send(text: string) {
     const content = text.trim();
@@ -61,7 +146,10 @@ export default function Pow3Bot({ context }: Props) {
           },
         ]);
       } else {
-        setMessages([...next, { role: "assistant", content: data.reply || "…" }]);
+        setMessages([
+          ...next,
+          { role: "assistant", content: stripMd(data.reply || "…") },
+        ]);
       }
     } catch {
       setError("Network error");
@@ -74,12 +162,30 @@ export default function Pow3Bot({ context }: Props) {
     }
   }
 
+  const btnStyle: React.CSSProperties = pos
+    ? { left: pos.x, top: pos.y, right: "auto", bottom: "auto" }
+    : {};
+
+  const panelStyle: React.CSSProperties = pos
+    ? {
+        left: Math.min(pos.x, typeof window !== "undefined" ? window.innerWidth - 360 : pos.x),
+        bottom: typeof window !== "undefined" ? window.innerHeight - pos.y + 8 : 80,
+        right: "auto",
+        top: "auto",
+      }
+    : {};
+
   return (
     <>
       <button
         type="button"
-        onClick={() => setOpen((v) => !v)}
-        className="fixed bottom-4 right-4 z-[80] flex h-12 w-12 items-center justify-center rounded-full border border-border bg-surface shadow-lg transition hover:border-primary/40 hover:shadow-glow-sm sm:bottom-6 sm:right-6"
+        onPointerDown={onPointerDown}
+        onPointerMove={onPointerMove}
+        onPointerUp={onPointerUp}
+        style={btnStyle}
+        className={`fixed z-[80] flex h-12 w-12 touch-none items-center justify-center rounded-full border-2 border-primary/50 bg-surface shadow-lg shadow-primary/25 ring-2 ring-primary/30 ring-offset-2 ring-offset-background transition hover:border-primary hover:shadow-primary/40 ${
+          pos ? "" : "bottom-4 right-4 sm:bottom-6 sm:right-6"
+        }`}
         aria-label={open ? "Close Pow3Bot" : "Open Pow3Bot"}
       >
         {open ? (
@@ -90,11 +196,16 @@ export default function Pow3Bot({ context }: Props) {
       </button>
 
       {open && (
-        <div className="fixed bottom-20 right-3 z-[80] flex w-[min(100vw-1.5rem,22rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl sm:bottom-24 sm:right-6">
+        <div
+          style={panelStyle}
+          className={`fixed z-[80] flex w-[min(100vw-1.5rem,22rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${
+            pos ? "" : "bottom-20 right-3 sm:bottom-24 sm:right-6"
+          }`}
+        >
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <div>
               <p className="text-sm font-semibold">Pow3Bot</p>
-              <p className="text-[10px] text-foreground-subtle">Pow3Folio only</p>
+              <p className="text-[10px] text-foreground-subtle">Drag the AI button to move it</p>
             </div>
             <div className="flex items-center gap-1">
               <Link href="/faq" className="btn-ghost text-[10px] px-2" onClick={() => setOpen(false)}>
@@ -147,7 +258,7 @@ export default function Pow3Bot({ context }: Props) {
           >
             <input
               className="input flex-1 text-xs py-2"
-              placeholder="Ask Pow3Folio… or paste text for Diff mode"
+              placeholder="Ask about your profile or paste text…"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
