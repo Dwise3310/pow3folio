@@ -76,24 +76,26 @@ export const CEX_DEX_PLATFORMS: PlatformDef[] = [
   { name: "Roqqu", domain: "https://roqqu.com" },
 ];
 
-/** Known solid logo URLs when favicon CDNs fail for a brand. */
-const LOGO_OVERRIDES: Record<string, string> = {
-  bybit: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/521.png",
-  binance: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/270.png",
-  hyperliquid: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1928.png",
-  okx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/294.png",
-  mexc: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/544.png",
-  bitget: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/513.png",
-  kucoin: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/311.png",
-  gate: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/302.png",
-  "gate.io": "https://s2.coinmarketcap.com/static/img/exchanges/64x64/302.png",
-  coinbase: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/89.png",
-  kraken: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/24.png",
-  dydx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/511.png",
-  gmx: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1028.png",
-  uniswap: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1061.png",
-  jupiter: "https://s2.coinmarketcap.com/static/img/exchanges/64x64/1662.png",
-  tradingview: "https://www.google.com/s2/favicons?domain=tradingview.com&sz=64",
+/** Host overrides when domain hostname is not ideal for icon lookup. */
+const HOST_OVERRIDES: Record<string, string> = {
+  hyperliquid: "app.hyperliquid.xyz",
+  bybit: "bybit.com",
+  binance: "binance.com",
+  okx: "okx.com",
+  mexc: "mexc.com",
+  bitget: "bitget.com",
+  kucoin: "kucoin.com",
+  "gate.io": "gate.io",
+  gate: "gate.io",
+  coinbase: "coinbase.com",
+  kraken: "kraken.com",
+  dydx: "dydx.trade",
+  gmx: "gmx.io",
+  uniswap: "uniswap.org",
+  jupiter: "jup.ag",
+  tradingview: "tradingview.com",
+  htx: "htx.com",
+  deribit: "deribit.com",
 };
 
 export function searchPlatforms(query: string, limit = 8): PlatformDef[] {
@@ -122,13 +124,23 @@ function hostFromDomain(domain: string): string {
 /** Resolve a display logo for a platform name. */
 export function getPlatformLogo(name: string): string {
   const key = name.trim().toLowerCase();
-  if (LOGO_OVERRIDES[key]) return LOGO_OVERRIDES[key];
-
   const found = CEX_DEX_PLATFORMS.find((p) => p.name.toLowerCase() === key);
   if (found?.logo) return found.logo;
 
-  const domain = found?.domain || getPlatformDomain(name);
-  const host = hostFromDomain(domain);
-  // Google favicons are reliable for most exchange domains
+  const host =
+    HOST_OVERRIDES[key] ||
+    hostFromDomain(found?.domain || getPlatformDomain(name));
+
+  // DuckDuckGo icon service is reliable for exchange domains (incl. Hyperliquid)
+  return `https://icons.duckduckgo.com/ip3/${host}.ico`;
+}
+
+/** Fallback logo if primary fails (use in img onError). */
+export function getPlatformLogoFallback(name: string): string {
+  const key = name.trim().toLowerCase();
+  const found = CEX_DEX_PLATFORMS.find((p) => p.name.toLowerCase() === key);
+  const host =
+    HOST_OVERRIDES[key] ||
+    hostFromDomain(found?.domain || getPlatformDomain(name));
   return `https://www.google.com/s2/favicons?domain=${host}&sz=128`;
 }
