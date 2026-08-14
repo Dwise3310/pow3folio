@@ -6,45 +6,59 @@ export type FeatureCard = {
   title: string;
   tag: string;
   desc: string;
-  gradient: string;
+  image: string;
+  imageAlt: string;
 };
 
+/** Real Unsplash photos (free license). Matched to each proof section. */
 const DEFAULT: FeatureCard[] = [
   {
     title: "Trading Record",
     tag: "PROOF",
     desc: "Live trades, ROI, charts and update threads. A track record teams can actually review.",
-    gradient: "from-emerald-600/40 via-teal-900/30 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1611974789855-9c2a0a7236a3?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Trading candlestick charts on a dark screen",
   },
   {
     title: "Technical Writing",
     tag: "RESEARCH",
     desc: "Threads, Mirror posts and deep research that show how you think before you ship.",
-    gradient: "from-sky-600/40 via-indigo-900/30 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1455390582262-044cdead277a?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Notebook and writing tools on a desk",
   },
   {
     title: "Community Roles",
     tag: "SIGNAL",
     desc: "Mods, campaign leads, DAO work. Contributions with context, not empty titles.",
-    gradient: "from-violet-600/40 via-purple-900/30 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1522071820081-009f0129c71c?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Team collaborating around a laptop",
   },
   {
     title: "Airdrops & Testnets",
     tag: "ONCHAIN",
     desc: "Campaigns farmed, chains touched, status in one place builders respect.",
-    gradient: "from-amber-600/35 via-orange-900/25 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Abstract blockchain network visualization",
   },
   {
     title: "Skills as pillars",
     tag: "CRAFT",
     desc: "Service pillars with short proof-backed descriptions. Not random single word tags.",
-    gradient: "from-rose-600/35 via-pink-900/25 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1516321318423-f06f85e504b3?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Learning and skill building at a workspace",
   },
   {
     title: "Profile & Builder scores",
     tag: "TRUST",
     desc: "Strict public scores for completeness and evidence density. Hard to game, easy to read.",
-    gradient: "from-cyan-600/35 via-slate-900/40 to-zinc-900",
+    image:
+      "https://images.unsplash.com/photo-1551288049-bebda4e38f71?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Analytics dashboard with charts and metrics",
   },
 ];
 
@@ -90,24 +104,31 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
 
       <div
         ref={ref}
-        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory scrollbar-thin"
+        className="flex gap-3 overflow-x-auto pb-2 snap-x snap-mandatory"
         style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
       >
         {items.map((card) => (
           <article
             key={card.title}
-            className="group relative h-56 w-[min(85vw,18rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/80 bg-surface shadow-sm transition duration-300 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/5"
+            className="group relative h-60 w-[min(85vw,18.5rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/80 bg-zinc-900 shadow-sm transition duration-300 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/5"
           >
-            <div
-              className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-90 transition duration-500 group-hover:scale-105`}
+            {/* Background photo from Unsplash */}
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={card.image}
+              alt={card.imageAlt}
+              className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105"
+              loading="lazy"
+              decoding="async"
             />
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.08),transparent_45%)]" />
+            {/* Dark gradient so text stays readable */}
+            <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/55 to-black/25" />
             <div className="relative flex h-full flex-col justify-end p-4">
-              <span className="mb-2 w-fit rounded-full border border-white/15 bg-black/25 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/90 backdrop-blur-sm">
+              <span className="mb-2 w-fit rounded-full border border-white/20 bg-black/40 px-2 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm">
                 {card.tag}
               </span>
-              <h3 className="text-lg font-bold text-white drop-shadow-sm">{card.title}</h3>
-              <p className="mt-1.5 text-xs leading-relaxed text-white/80">{card.desc}</p>
+              <h3 className="text-lg font-bold text-white drop-shadow-md">{card.title}</h3>
+              <p className="mt-1.5 text-xs leading-relaxed text-white/85">{card.desc}</p>
             </div>
           </article>
         ))}
