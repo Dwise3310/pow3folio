@@ -76,7 +76,6 @@ export default function TalentsDiscovery({ talents }: Props) {
 
   return (
     <div className="space-y-5">
-      {/* Search + filters */}
       <div className="space-y-3">
         <div className="relative">
           <input
@@ -152,68 +151,68 @@ export default function TalentsDiscovery({ talents }: Props) {
           </button>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-2 gap-2.5 sm:gap-3 md:grid-cols-3 xl:grid-cols-4">
           {filtered.map((t) => (
             <Link
               key={t.username}
               href={`/${t.username}`}
-              className="card group relative flex flex-col p-3.5 transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 hover:shadow-md"
+              className="card group relative flex flex-col p-2.5 sm:p-3.5 transition-all duration-200 hover:border-primary/35 hover:-translate-y-0.5 hover:shadow-md"
             >
               {t.is_featured && (
-                <span className="absolute right-3 top-3 rounded-full border border-amber-500/30 bg-amber-500/10 px-2 py-0.5 text-[10px] font-medium text-amber-600 dark:text-amber-400">
+                <span className="absolute right-2 top-2 rounded-full border border-amber-500/30 bg-amber-500/10 px-1.5 py-0.5 text-[9px] font-medium text-amber-600 dark:text-amber-400">
                   Featured
                 </span>
               )}
 
-              <div className="flex items-start gap-3">
-                <div className="h-11 w-11 shrink-0 overflow-hidden rounded-full border border-border bg-surface-elevated">
+              <div className="flex items-start gap-2 sm:gap-3">
+                <div className="h-9 w-9 sm:h-11 sm:w-11 shrink-0 overflow-hidden rounded-full border border-border bg-surface-elevated">
                   {t.avatar_url ? (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img src={t.avatar_url} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <div className="flex h-full w-full items-center justify-center text-sm font-semibold text-foreground-subtle">
+                    <div className="flex h-full w-full items-center justify-center text-xs sm:text-sm font-semibold text-foreground-subtle">
                       {(t.display_name || t.username).charAt(0).toUpperCase()}
                     </div>
                   )}
                 </div>
-                <div className="min-w-0 flex-1 pr-14">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                <div className="min-w-0 flex-1 pr-10 sm:pr-14">
+                  <div className="flex flex-wrap items-center gap-1">
+                    <p className="font-medium text-xs sm:text-sm truncate group-hover:text-primary transition-colors">
                       {t.display_name || t.username}
                     </p>
                     {t.open_to_work && (
-                      <span className="badge-open text-[10px]">
+                      <span className="badge-open text-[9px] sm:text-[10px]">
                         <span className="badge-open-dot" aria-hidden />
                         Open
                       </span>
                     )}
                   </div>
-                  <p className="text-xs text-foreground-subtle truncate">@{t.username}</p>
+                  <p className="text-[10px] sm:text-xs text-foreground-subtle truncate">@{t.username}</p>
                   {t.role_hint && (
-                    <p className="mt-0.5 text-[11px] text-foreground-muted truncate">{t.role_hint}</p>
+                    <p className="mt-0.5 text-[10px] sm:text-[11px] text-foreground-muted truncate">{t.role_hint}</p>
                   )}
                 </div>
               </div>
 
               {t.bio && (
-                <p className="mt-2.5 text-xs text-foreground-muted line-clamp-2 leading-relaxed">
+                <p className="mt-2 text-[10px] sm:text-xs text-foreground-muted line-clamp-2 leading-relaxed">
                   {t.bio}
                 </p>
               )}
 
               {t.location && (
-                <p className="mt-2 flex items-center gap-1 text-[11px] text-foreground-subtle">
+                <p className="mt-1.5 flex items-center gap-1 text-[10px] sm:text-[11px] text-foreground-subtle">
                   <span className="location-dot" aria-hidden />
-                  {t.location}
+                  <span className="truncate">{t.location}</span>
                 </p>
               )}
 
               {t.skills.length > 0 && (
-                <div className="mt-2.5 flex flex-wrap gap-1">
-                  {t.skills.slice(0, 4).map((s) => (
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {t.skills.slice(0, 3).map((s) => (
                     <span
                       key={s.name}
-                      className="rounded-full border border-border bg-surface-elevated px-2 py-0.5 text-[10px] text-foreground-muted"
+                      className="rounded-full border border-border bg-surface-elevated px-1.5 py-0.5 text-[9px] sm:text-[10px] text-foreground-muted"
                     >
                       {s.name}
                     </span>
@@ -221,7 +220,7 @@ export default function TalentsDiscovery({ talents }: Props) {
                 </div>
               )}
 
-              <p className="mt-auto pt-2.5 text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
+              <p className="mt-auto pt-2 text-[10px] sm:text-xs text-primary opacity-0 group-hover:opacity-100 transition-opacity">
                 View profile →
               </p>
             </Link>
