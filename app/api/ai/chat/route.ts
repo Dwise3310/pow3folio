@@ -46,6 +46,17 @@ function rateLimit(key: string, limit: number): boolean {
   return true;
 }
 
+/** Strip common prompt-injection markers from untrusted client strings. */
+function sanitizeClientText(raw: string, max: number): string {
+  return raw
+    .slice(0, max)
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/system\s*:/gi, "")
+    .replace(/ignore\s+(all\s+)?(previous|prior)\s+instructions/gi, "")
+    .replace(/you\s+are\s+now/gi, "")
+    .trim();
+}
+
 async function listGenerateModels(apiKey: string): Promise<string[]> {
   try {
     const res = await fetch(
@@ -155,21 +166,40 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json().catch(() => null);
-    const messages = (body?.messages as ChatMessage[] | undefined) ?? [];
-    const clientContext =
-      typeof body?.context === "string" ? body.context.slice(0, 4000) : "";
+    if (!body || typeof body !== "object") {
+      return NextResponse.json({ error: "Invalid body" }, { status: 400 });
+    }
 
-    if (!Array.isArray(messages) || messages.length === 0) {
+    const rawMessages = (body as { messages?: unknown }).messages;
+    if (!Array.isArray(rawMessages) || rawMessages.length === 0) {
+      return NextResponse.json({ error: "messages required" }, { status: 400 });
+    }
+
+    const messages: ChatMessage[] = [];
+    for (const m of rawMessages.slice(-MAX_HISTORY - 2)) {
+      if (!m || typeof m !== "object") continue;
+      const role = (m as { role?: string }).role;
+      const content = (m as { content?: unknown }).content;
+      if (role !== "user" && role !== "assistant") continue;
+      if (typeof content !== "string") continue;
+      const cleaned = sanitizeClientText(content, MAX_USER_CHARS);
+      if (!cleaned) continue;
+      messages.push({ role, content: cleaned });
+    }
+
+    if (!messages.length) {
       return NextResponse.json({ error: "messages required" }, { status: 400 });
     }
 
     const last = messages[messages.length - 1];
-    if (!last || last.role !== "user" || !last.content?.trim()) {
+    if (!last || last.role !== "user") {
       return NextResponse.json({ error: "Last message must be from user" }, { status: 400 });
     }
-    if (last.content.length > MAX_USER_CHARS) {
-      return NextResponse.json({ error: "Message too long" }, { status: 400 });
-    }
+
+    const clientContext =
+      typeof (body as { context?: unknown }).context === "string"
+        ? sanitizeClientText((body as { context: string }).context, 2000)
+        : "";
 
     let userId: string | null = null;
     try {
@@ -201,14 +231,13 @@ export async function POST(req: NextRequest) {
 
     const profileContext = userId ? await loadBuilderContext(userId) : "";
 
-    const trimmed = messages
+    const history = messages
       .filter((m, i) => !(i === 0 && m.role === "assistant"))
-      .slice(-MAX_HISTORY);
-
-    const history = trimmed.map((m) => ({
-      role: m.role === "assistant" ? "model" : "user",
-      parts: [{ text: m.content.slice(0, MAX_USER_CHARS) }],
-    }));
+      .slice(-MAX_HISTORY)
+      .map((m) => ({
+        role: m.role === "assistant" ? "model" : "user",
+        parts: [{ text: m.content }],
+      }));
 
     while (history.length && history[0].role !== "user") history.shift();
     if (!history.length) {
@@ -222,7 +251,7 @@ export async function POST(req: NextRequest) {
         profileContext +
         "\nYou CAN see this profile. Never say you cannot access it. Quote concrete gaps and give paste-ready replacements.";
     } else if (clientContext) {
-      systemText += "\n\n## Context\n" + clientContext;
+      systemText += "\n\n## Context (untrusted client notes)\n" + clientContext;
     } else {
       systemText +=
         "\n\nNo signed-in profile loaded. If they ask to analyse their profile, ask them to log in on Pow3Folio first.";
@@ -254,7 +283,6 @@ export async function POST(req: NextRequest) {
             ?.map((p) => p.text || "")
             .join("")
             .trim() || "I could not form a reply. Try rephrasing.";
-        // Strip markdown bold/italic markers the UI does not render
         text = text
           .replace(/\*\*([^*]+)\*\*/g, "$1")
           .replace(/\*([^*]+)\*/g, "$1")
