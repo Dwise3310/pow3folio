@@ -7,47 +7,65 @@ export const maxDuration = 60;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash-lite";
+const PRIMARY = (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim();
+const FALLBACKS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
 const MAX_HISTORY = 12;
 const MAX_USER_CHARS = 4000;
 
-// Simple in-memory rate limit per IP (best effort on serverless)
 const buckets = new Map<string, { count: number; reset: number }>();
-const LIMIT = 20;
+const LIMIT_GUEST = 12;
+const LIMIT_USER = 40;
 const WINDOW_MS = 60_000;
 
-function rateLimit(key: string): boolean {
+function rateLimit(key: string, limit: number): boolean {
   const now = Date.now();
   const b = buckets.get(key);
   if (!b || now > b.reset) {
     buckets.set(key, { count: 1, reset: now + WINDOW_MS });
     return true;
   }
-  if (b.count >= LIMIT) return false;
+  if (b.count >= limit) return false;
   b.count += 1;
   return true;
 }
 
+async function callGemini(
+  apiKey: string,
+  model: string,
+  systemText: string,
+  history: { role: string; parts: { text: string }[] }[]
+) {
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      systemInstruction: { parts: [{ text: systemText }] },
+      contents: history,
+      generationConfig: {
+        temperature: 0.55,
+        maxOutputTokens: 1024,
+      },
+    }),
+  });
+  const raw = await res.text();
+  let data: Record<string, unknown> = {};
+  try {
+    data = JSON.parse(raw);
+  } catch {
+    /* ignore */
+  }
+  return { ok: res.ok, status: res.status, raw: raw.slice(0, 600), data };
+}
+
 export async function POST(req: NextRequest) {
   try {
-    const ip =
-      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
-      req.headers.get("x-real-ip") ||
-      "anon";
-
-    if (!rateLimit(ip)) {
-      return NextResponse.json(
-        { error: "Too many requests. Wait a minute and try again." },
-        { status: 429 }
-      );
-    }
-
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = (process.env.GEMINI_API_KEY || "").trim();
     if (!apiKey) {
       return NextResponse.json(
         {
           error:
-            "Pow3Bot is not configured yet. Add GEMINI_API_KEY in Vercel env.",
+            "Pow3Bot is not configured. Add GEMINI_API_KEY on Vercel (Production + Preview) and redeploy.",
         },
         { status: 503 }
       );
@@ -69,70 +87,92 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Message too long" }, { status: 400 });
     }
 
-    // Optional auth: attach username for personalization later
-    let who = "guest";
+    let userId: string | null = null;
     try {
       const supabase = await createClient();
       const {
         data: { user },
       } = await supabase.auth.getUser();
-      if (user) who = user.id.slice(0, 8);
+      userId = user?.id ?? null;
     } catch {
-      /* guest ok */
+      /* guest */
     }
 
-    const history = messages.slice(-MAX_HISTORY).map((m) => ({
+    const ip =
+      req.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ||
+      req.headers.get("x-real-ip") ||
+      "anon";
+    const limitKey = userId ? `u:${userId}` : `ip:${ip}`;
+    const limit = userId ? LIMIT_USER : LIMIT_GUEST;
+    if (!rateLimit(limitKey, limit)) {
+      return NextResponse.json(
+        {
+          error: userId
+            ? "Rate limit: max 40 messages per minute for signed-in builders."
+            : "Rate limit: sign in for higher limits, or wait a minute.",
+        },
+        { status: 429 }
+      );
+    }
+
+    const trimmed = messages
+      .filter((m, i) => !(i === 0 && m.role === "assistant"))
+      .slice(-MAX_HISTORY);
+
+    const history = trimmed.map((m) => ({
       role: m.role === "assistant" ? "model" : "user",
       parts: [{ text: m.content.slice(0, MAX_USER_CHARS) }],
     }));
 
-    // Gemini requires alternating user/model; ensure first is user
     while (history.length && history[0].role !== "user") history.shift();
+    if (!history.length) {
+      return NextResponse.json({ error: "Empty conversation" }, { status: 400 });
+    }
 
     const systemText =
       SYSTEM_PROMPT +
-      (context
-        ? `\n\n## Current builder context (may be partial)\n${context}\nSession: ${who}`
-        : `\nSession: ${who}`);
+      (context ? `\n\n## Current builder context (may be partial)\n${context}` : "") +
+      (userId ? "\nSigned-in builder session." : "\nGuest session.");
 
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${apiKey}`;
+    const models = [PRIMARY, ...FALLBACKS.filter((m) => m !== PRIMARY)];
+    let lastErr = "";
 
-    const res = await fetch(url, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({
-        systemInstruction: { parts: [{ text: systemText }] },
-        contents: history,
-        generationConfig: {
-          temperature: 0.6,
-          maxOutputTokens: 1024,
-        },
-      }),
-    });
-
-    if (!res.ok) {
-      const errText = await res.text().catch(() => "");
-      console.error("Gemini error", res.status, errText.slice(0, 400));
-      if (res.status === 429) {
+    for (const model of models) {
+      const result = await callGemini(apiKey, model, systemText, history);
+      if (result.ok) {
+        const parts = (
+          result.data as {
+            candidates?: { content?: { parts?: { text?: string }[] } }[];
+          }
+        )?.candidates?.[0]?.content?.parts;
+        const text =
+          parts
+            ?.map((p) => p.text || "")
+            .join("")
+            .trim() || "I could not form a reply. Try rephrasing.";
+        return NextResponse.json({ reply: text, model });
+      }
+      lastErr = result.raw || `HTTP ${result.status}`;
+      if (result.status === 429) {
         return NextResponse.json(
-          { error: "Model rate limit hit. Try again shortly." },
+          { error: "Gemini rate limit. Wait a minute and try again." },
           { status: 429 }
         );
       }
-      return NextResponse.json(
-        { error: "Pow3Bot could not respond. Try again." },
-        { status: 502 }
-      );
+      if (result.status !== 404 && result.status !== 400) break;
     }
 
-    const data = await res.json();
-    const text =
-      data?.candidates?.[0]?.content?.parts
-        ?.map((p: { text?: string }) => p.text || "")
-        .join("")
-        .trim() || "I could not form a reply. Try rephrasing.";
-
-    return NextResponse.json({ reply: text, model: MODEL });
+    console.error("Gemini failed", lastErr);
+    let hint = "";
+    if (lastErr.includes("API_KEY") || lastErr.includes("API key")) {
+      hint = " Check GEMINI_API_KEY in Vercel Production env and redeploy.";
+    } else if (lastErr.includes("not found") || lastErr.includes("NOT_FOUND")) {
+      hint = " Try GEMINI_MODEL=gemini-2.0-flash in Vercel env.";
+    }
+    return NextResponse.json(
+      { error: `Pow3Bot could not reach Gemini.${hint}` },
+      { status: 502 }
+    );
   } catch (e) {
     console.error("Pow3Bot route", e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
