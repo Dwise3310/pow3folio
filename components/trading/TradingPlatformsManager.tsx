@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { searchPlatforms, getPlatformDomain } from "@/lib/cex-dex-list";
+import PlatformLogo from "@/components/ui/PlatformLogo";
 import type { TradingPlatform } from "@/types/database";
 
 type Props = {
@@ -13,6 +14,32 @@ type Props = {
 
 function uid() {
   return Math.random().toString(36).slice(2, 10);
+}
+
+/** Match public Trading tab chip look. */
+function PlatformChip({
+  name,
+  onRemove,
+}: {
+  name: string;
+  onRemove?: () => void;
+}) {
+  return (
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated pl-1 pr-2.5 py-1 text-xs font-medium">
+      <PlatformLogo name={name} size={18} className="h-[18px] w-[18px]" />
+      {name}
+      {onRemove && (
+        <button
+          type="button"
+          onClick={onRemove}
+          className="ml-0.5 rounded-full text-foreground-subtle hover:text-danger leading-none"
+          aria-label={`Remove ${name}`}
+        >
+          ×
+        </button>
+      )}
+    </span>
+  );
 }
 
 export default function TradingPlatformsManager({ userId, initial }: Props) {
@@ -50,9 +77,11 @@ export default function TradingPlatformsManager({ userId, initial }: Props) {
       .eq("id", userId);
     setSaving(false);
     if (error) {
-      setErr(error.message.includes("column")
-        ? "Run the SQL migration for trading_platforms column first."
-        : error.message);
+      setErr(
+        error.message.includes("column")
+          ? "Run the SQL migration for trading_platforms column first."
+          : error.message
+      );
       return;
     }
     setPlatforms(next);
@@ -114,23 +143,7 @@ export default function TradingPlatformsManager({ userId, initial }: Props) {
       {platforms.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {platforms.map((p) => (
-            <div
-              key={p.id}
-              className="inline-flex items-center gap-2 rounded-full border border-border bg-surface-elevated pl-2.5 pr-1.5 py-1.5 text-sm"
-            >
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/15 text-[10px] font-bold text-primary">
-                {p.name.slice(0, 2).toUpperCase()}
-              </span>
-              <span className="font-medium">{p.name}</span>
-              <button
-                type="button"
-                onClick={() => remove(p.id)}
-                className="ml-0.5 rounded-full p-0.5 text-foreground-subtle hover:text-danger"
-                aria-label={`Remove ${p.name}`}
-              >
-                ×
-              </button>
-            </div>
+            <PlatformChip key={p.id} name={p.name} onRemove={() => remove(p.id)} />
           ))}
         </div>
       )}
@@ -159,9 +172,7 @@ export default function TradingPlatformsManager({ userId, initial }: Props) {
                       className="flex w-full items-center gap-2 px-3 py-2 text-left text-sm hover:bg-surface-elevated"
                       onClick={() => pick(s.name)}
                     >
-                      <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-[10px] font-bold text-primary">
-                        {s.name.slice(0, 2).toUpperCase()}
-                      </span>
+                      <PlatformLogo name={s.name} size={18} className="h-[18px] w-[18px]" />
                       {s.name}
                     </button>
                   </li>
@@ -172,6 +183,10 @@ export default function TradingPlatformsManager({ userId, initial }: Props) {
 
           {selectedName && (
             <div className="space-y-2">
+              <div className="flex items-center gap-2">
+                <PlatformChip name={selectedName} />
+                <span className="text-xs text-foreground-subtle">selected</span>
+              </div>
               <label className="label text-xs">Profile or referral link (optional)</label>
               <input
                 className="input text-sm"
