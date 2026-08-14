@@ -6,7 +6,7 @@ import TradeCard from "@/components/trading/TradeCard";
 import CommunityCard from "@/components/community/CommunityCard";
 import AirdropCard from "@/components/airdrops/AirdropCard";
 import CollectibleCard from "@/components/collectibles/CollectibleCard";
-import { getPlatformLogo } from "@/lib/cex-dex-list";
+import PlatformLogo from "@/components/ui/PlatformLogo";
 import type {
   Writing,
   Trade,
@@ -356,14 +356,7 @@ export default function PublicProfileTabs({
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-elevated pl-1 pr-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary"
                   >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img
-                      src={getPlatformLogo(p.name)}
-                      alt=""
-                      width={18}
-                      height={18}
-                      className="h-[18px] w-[18px] rounded-full object-contain bg-white"
-                    />
+                    <PlatformLogo name={p.name} size={18} className="h-[18px] w-[18px]" />
                     {p.name}
                   </a>
                 ))}
