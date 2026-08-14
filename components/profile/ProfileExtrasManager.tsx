@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { WorkExperience, Education } from "@/types/database";
@@ -20,6 +20,23 @@ function absoluteUrl(url: string): string | null {
   if (!t) return null;
   if (/^https?:\/\//i.test(t)) return t;
   return `https://${t.replace(/^\/+/, "")}`;
+}
+
+/** Normalize AI date strings to YYYY-MM when possible. */
+function toMonth(raw: string | null | undefined): string {
+  if (!raw) return "";
+  const s = String(raw).trim();
+  const m = s.match(/^(\d{4})-(\d{1,2})/);
+  if (m) return `${m[1]}-${m[2].padStart(2, "0")}`;
+  const y = s.match(/^(\d{4})$/);
+  if (y) return `${y[1]}-01`;
+  return s.slice(0, 7);
+}
+
+function toYear(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const m = String(raw).match(/(\d{4})/);
+  return m ? m[1] : String(raw).slice(0, 4) || null;
 }
 
 export default function ProfileExtrasManager({
@@ -84,6 +101,119 @@ export default function ProfileExtrasManager({
     router.refresh();
     return true;
   }
+
+  // Listen for CV autofill from ProfileForm
+  useEffect(() => {
+    function onAutofill(ev: Event) {
+      const detail = (ev as CustomEvent).detail as {
+        work_experience?: {
+          company?: string;
+          role?: string;
+          description?: string;
+          url?: string;
+          employment_type?: string;
+          start_date?: string;
+          end_date?: string | null;
+        }[];
+        education?: {
+          institution?: string;
+          degree?: string;
+          field_of_study?: string;
+          country?: string;
+          start_year?: string;
+          end_year?: string;
+          description?: string;
+          url?: string;
+        }[];
+      } | null;
+      if (!detail) return;
+
+      setWork((prev) => {
+        const incoming = Array.isArray(detail.work_experience)
+          ? detail.work_experience
+          : [];
+        const mapped: WorkExperience[] = incoming
+          .filter((w) => w?.company && w?.role)
+          .slice(0, 5)
+          .map((w) => ({
+            id: uid(),
+            company: String(w.company).trim().slice(0, 120),
+            role: String(w.role).trim().slice(0, 120),
+            description: w.description ? String(w.description).trim().slice(0, 300) : null,
+            url: w.url ? absoluteUrl(String(w.url)) : null,
+            employment_type:
+              w.employment_type === "part-time" ? "part-time" : "full-time",
+            start_date: toMonth(w.start_date) || new Date().toISOString().slice(0, 7),
+            end_date: w.end_date ? toMonth(w.end_date) || null : null,
+          }));
+
+        if (!mapped.length) return prev;
+
+        // Merge: keep existing, add new by company+role that are not already present
+        const next = [...prev];
+        for (const item of mapped) {
+          if (next.length >= 5) break;
+          const exists = next.some(
+            (x) =>
+              x.company.toLowerCase() === item.company.toLowerCase() &&
+              x.role.toLowerCase() === item.role.toLowerCase()
+          );
+          if (!exists) next.push(item);
+        }
+
+        // Persist after state settle via queueMicrotask path
+        queueMicrotask(() => {
+          setEdu((eduPrev) => {
+            const incomingEdu = Array.isArray(detail.education)
+              ? detail.education
+              : [];
+            const mappedEdu: Education[] = incomingEdu
+              .filter((e) => e?.institution)
+              .slice(0, 8)
+              .map((e) => ({
+                id: uid(),
+                institution: String(e.institution).trim().slice(0, 120),
+                degree: e.degree ? String(e.degree).trim().slice(0, 80) : null,
+                field_of_study: e.field_of_study
+                  ? String(e.field_of_study).trim().slice(0, 80)
+                  : null,
+                country: e.country ? String(e.country).trim().slice(0, 60) : null,
+                start_year: toYear(e.start_year),
+                end_year: toYear(e.end_year),
+                description: e.description
+                  ? String(e.description).trim().slice(0, 200)
+                  : null,
+                url: e.url ? absoluteUrl(String(e.url)) : null,
+              }));
+
+            let eduNext = [...eduPrev];
+            for (const item of mappedEdu) {
+              const exists = eduNext.some(
+                (x) =>
+                  x.institution.toLowerCase() === item.institution.toLowerCase()
+              );
+              if (!exists) eduNext.push(item);
+            }
+
+            void persist(next, eduNext).then((ok) => {
+              if (ok) {
+                setMsg(
+                  "Work and education filled from your CV. Review the cards below."
+                );
+              }
+            });
+            return eduNext;
+          });
+        });
+
+        return next;
+      });
+    }
+
+    window.addEventListener("pow3-autofill-extras", onAutofill);
+    return () => window.removeEventListener("pow3-autofill-extras", onAutofill);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [userId]);
 
   async function addWork() {
     if (!wForm.company.trim() || !wForm.role.trim() || !wForm.start_date) {
@@ -171,7 +301,9 @@ export default function ProfileExtrasManager({
         <div className="flex items-center justify-between gap-2">
           <div>
             <h2 className="text-base font-semibold">Work experience</h2>
-            <p className="text-xs text-foreground-muted">Max 5 entries. Shown under About.</p>
+            <p className="text-xs text-foreground-muted">
+              Max 5 entries. Filled from CV upload when available.
+            </p>
           </div>
           {!showWorkForm && work.length < 5 && (
             <button
@@ -186,6 +318,12 @@ export default function ProfileExtrasManager({
             </button>
           )}
         </div>
+
+        {work.length === 0 && !showWorkForm && (
+          <p className="text-xs text-foreground-subtle rounded-lg border border-dashed border-border px-3 py-4 text-center">
+            No work entries yet. Upload a CV above or add manually.
+          </p>
+        )}
 
         {work.map((w) => (
           <div key={w.id} className="rounded-xl border border-border bg-surface-elevated p-3">
