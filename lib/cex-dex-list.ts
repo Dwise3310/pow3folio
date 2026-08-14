@@ -6,11 +6,23 @@ export type PlatformDef = {
 
 /** Popular CEX + DEX + related platforms. Used for typeahead search. */
 export const CEX_DEX_PLATFORMS: PlatformDef[] = [
-  { name: "Binance", domain: "https://www.binance.com" },
-  { name: "Bybit", domain: "https://www.bybit.com" },
-  { name: "Hyperliquid", domain: "https://app.hyperliquid.xyz" },
-  { name: "MEXC", domain: "https://www.mexc.com" },
-  { name: "OKX", domain: "https://www.okx.com" },
+  {
+    name: "Binance",
+    domain: "https://www.binance.com",
+    logo: "https://assets.coingecko.com/markets/images/52/small/binance.jpg",
+  },
+  {
+    name: "Bybit",
+    domain: "https://www.bybit.com",
+    logo: "https://assets.coingecko.com/markets/images/698/small/bybit_spot.png",
+  },
+  {
+    name: "Hyperliquid",
+    domain: "https://app.hyperliquid.xyz",
+    logo: "https://assets.coingecko.com/markets/images/1409/small/hyperliquid.jpg",
+  },
+  { name: "MEXC", domain: "https://www.mexc.com", logo: "https://assets.coingecko.com/markets/images/409/small/MEXC_logo_square_%281%29.png" },
+  { name: "OKX", domain: "https://www.okx.com", logo: "https://assets.coingecko.com/markets/images/96/small/WeChat_Image_20220117220452.png" },
   { name: "Bitget", domain: "https://www.bitget.com" },
   { name: "Gate.io", domain: "https://www.gate.io" },
   { name: "KuCoin", domain: "https://www.kucoin.com" },
@@ -91,11 +103,12 @@ export function getPlatformDomain(name: string): string {
   return found?.domain || `https://${name.toLowerCase().replace(/\s+/g, "")}.com`;
 }
 
-/** Resolve a display logo for a platform name (favicon CDN, works for most CEX/DEX). */
+/** Resolve a display logo for a platform name. */
 export function getPlatformLogo(name: string): string {
   const found = CEX_DEX_PLATFORMS.find(
     (p) => p.name.toLowerCase() === name.toLowerCase()
   );
+  if (found?.logo) return found.logo;
   const domain = found?.domain || getPlatformDomain(name);
   try {
     const host = new URL(domain).hostname.replace(/^www\./, "");
