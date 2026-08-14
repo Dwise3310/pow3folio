@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 
 type Msg = { role: "user" | "assistant"; content: string };
 
@@ -8,12 +9,11 @@ const QUICK = [
   "How do I improve my profile?",
   "What is Profile Score vs Builder Score?",
   "Help me write a short bio",
-  "How do I add work experience?",
-  "Where is View talents?",
+  "Diff mode: improve this community role (I will paste text next)",
+  "Where is the FAQ?",
 ];
 
 type Props = {
-  /** Optional snapshot string for personalization */
   context?: string;
 };
 
@@ -26,7 +26,7 @@ export default function Pow3Bot({ context }: Props) {
     {
       role: "assistant",
       content:
-        "I am Pow3Bot. I help with Pow3Folio only: profile setup, proof of work, scores, and discovery. Ask anything about this product.",
+        "I am Pow3Bot, the Pow3Folio product assistant only. I help with profiles, proof of work, scores, and how-tos on this site. For written FAQ see /faq. Paste rough text and ask for Diff mode to get Before / After rewrites.",
     },
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
@@ -76,7 +76,6 @@ export default function Pow3Bot({ context }: Props) {
 
   return (
     <>
-      {/* Launcher */}
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
@@ -95,22 +94,23 @@ export default function Pow3Bot({ context }: Props) {
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <div>
               <p className="text-sm font-semibold">Pow3Bot</p>
-              <p className="text-[10px] text-foreground-subtle">Pow3Folio assistant</p>
+              <p className="text-[10px] text-foreground-subtle">Pow3Folio only</p>
             </div>
-            <button
-              type="button"
-              className="btn-ghost text-xs px-2"
-              onClick={() => setOpen(false)}
-            >
-              Close
-            </button>
+            <div className="flex items-center gap-1">
+              <Link href="/faq" className="btn-ghost text-[10px] px-2" onClick={() => setOpen(false)}>
+                FAQ
+              </Link>
+              <button type="button" className="btn-ghost text-xs px-2" onClick={() => setOpen(false)}>
+                Close
+              </button>
+            </div>
           </div>
 
           <div className="flex max-h-[50vh] flex-col gap-2 overflow-y-auto p-3">
             {messages.map((m, i) => (
               <div
                 key={i}
-                className={`rounded-xl px-2.5 py-2 text-xs leading-relaxed ${
+                className={`rounded-xl px-2.5 py-2 text-xs leading-relaxed whitespace-pre-wrap ${
                   m.role === "user"
                     ? "ml-6 bg-primary/15 text-foreground"
                     : "mr-4 bg-surface-elevated text-foreground-muted"
@@ -119,13 +119,11 @@ export default function Pow3Bot({ context }: Props) {
                 {m.content}
               </div>
             ))}
-            {loading && (
-              <p className="text-[11px] text-foreground-subtle">Thinking…</p>
-            )}
+            {loading && <p className="text-[11px] text-foreground-subtle">Thinking…</p>}
             <div ref={bottomRef} />
           </div>
 
-          {!loading && messages.length < 4 && (
+          {!loading && messages.length < 5 && (
             <div className="flex flex-wrap gap-1.5 border-t border-border px-3 py-2">
               {QUICK.map((q) => (
                 <button
@@ -134,7 +132,7 @@ export default function Pow3Bot({ context }: Props) {
                   onClick={() => send(q)}
                   className="rounded-full border border-border px-2 py-1 text-[10px] text-foreground-muted hover:border-primary/30 hover:text-primary"
                 >
-                  {q}
+                  {q.length > 42 ? q.slice(0, 40) + "…" : q}
                 </button>
               ))}
             </div>
@@ -149,7 +147,7 @@ export default function Pow3Bot({ context }: Props) {
           >
             <input
               className="input flex-1 text-xs py-2"
-              placeholder="Ask about Pow3Folio…"
+              placeholder="Ask Pow3Folio… or paste text for Diff mode"
               value={input}
               onChange={(e) => setInput(e.target.value)}
               disabled={loading}
@@ -163,9 +161,7 @@ export default function Pow3Bot({ context }: Props) {
               Send
             </button>
           </form>
-          {error && (
-            <p className="px-3 pb-2 text-[10px] text-danger">{error}</p>
-          )}
+          {error && <p className="px-3 pb-2 text-[10px] text-danger">{error}</p>}
         </div>
       )}
     </>
