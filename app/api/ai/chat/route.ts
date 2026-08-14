@@ -7,8 +7,16 @@ export const maxDuration = 60;
 
 type ChatMessage = { role: "user" | "assistant"; content: string };
 
-const PRIMARY = (process.env.GEMINI_MODEL || "gemini-2.5-flash-lite").trim();
-const FALLBACKS = ["gemini-2.0-flash", "gemini-2.5-flash", "gemini-1.5-flash"];
+/** Current free-tier friendly IDs (2.0 flash was shut down June 2026). */
+const DEFAULT_MODELS = [
+  "gemini-2.5-flash-lite",
+  "gemini-2.5-flash",
+  "gemini-3.5-flash-lite",
+  "gemini-3.1-flash-lite",
+  "gemini-flash-latest",
+  "gemini-flash-lite-latest",
+];
+
 const MAX_HISTORY = 12;
 const MAX_USER_CHARS = 4000;
 
@@ -29,13 +37,37 @@ function rateLimit(key: string, limit: number): boolean {
   return true;
 }
 
+async function listGenerateModels(apiKey: string): Promise<string[]> {
+  try {
+    const res = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models?key=${apiKey}&pageSize=100`,
+      { next: { revalidate: 0 } }
+    );
+    if (!res.ok) return [];
+    const data = (await res.json()) as {
+      models?: { name?: string; supportedGenerationMethods?: string[] }[];
+    };
+    const names: string[] = [];
+    for (const m of data.models || []) {
+      const methods = m.supportedGenerationMethods || [];
+      if (!methods.includes("generateContent")) continue;
+      const id = (m.name || "").replace(/^models\//, "");
+      if (!id || id.includes("embed") || id.includes("image") || id.includes("tts")) continue;
+      names.push(id);
+    }
+    return names;
+  } catch {
+    return [];
+  }
+}
+
 async function callGemini(
   apiKey: string,
   model: string,
   systemText: string,
   history: { role: string; parts: { text: string }[] }[]
 ) {
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${apiKey}`;
+  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${apiKey}`;
   const res = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -55,12 +87,12 @@ async function callGemini(
   } catch {
     /* ignore */
   }
-  return { ok: res.ok, status: res.status, raw: raw.slice(0, 600), data };
+  return { ok: res.ok, status: res.status, raw: raw.slice(0, 800), data };
 }
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = (process.env.GEMINI_API_KEY || "").trim();
+    const apiKey = (process.env.GEMINI_API_KEY || "").trim().replace(/^["']|["']$/g, "");
     if (!apiKey) {
       return NextResponse.json(
         {
@@ -134,11 +166,21 @@ export async function POST(req: NextRequest) {
       (context ? `\n\n## Current builder context (may be partial)\n${context}` : "") +
       (userId ? "\nSigned-in builder session." : "\nGuest session.");
 
-    const models = [PRIMARY, ...FALLBACKS.filter((m) => m !== PRIMARY)];
-    let lastErr = "";
+    const preferred = (process.env.GEMINI_MODEL || "").trim();
+    const discovered = await listGenerateModels(apiKey);
+    const models: string[] = [];
+    if (preferred) models.push(preferred);
+    for (const m of DEFAULT_MODELS) if (!models.includes(m)) models.push(m);
+    for (const m of discovered) if (!models.includes(m)) models.push(m);
 
-    for (const model of models) {
+    let lastErr = "";
+    let lastStatus = 0;
+
+    for (const model of models.slice(0, 8)) {
       const result = await callGemini(apiKey, model, systemText, history);
+      lastStatus = result.status;
+      lastErr = result.raw || `HTTP ${result.status}`;
+
       if (result.ok) {
         const parts = (
           result.data as {
@@ -152,25 +194,49 @@ export async function POST(req: NextRequest) {
             .trim() || "I could not form a reply. Try rephrasing.";
         return NextResponse.json({ reply: text, model });
       }
-      lastErr = result.raw || `HTTP ${result.status}`;
+
       if (result.status === 429) {
         return NextResponse.json(
           { error: "Gemini rate limit. Wait a minute and try again." },
           { status: 429 }
         );
       }
+
+      // Invalid API key: stop immediately
+      if (
+        result.status === 400 &&
+        (lastErr.includes("API_KEY_INVALID") || lastErr.includes("API key not valid"))
+      ) {
+        return NextResponse.json(
+          {
+            error:
+              "Invalid GEMINI_API_KEY. Create a key at aistudio.google.com/apikey, paste it in Vercel Production env (no quotes), redeploy.",
+          },
+          { status: 502 }
+        );
+      }
+
+      // Try next model on not found / bad request
       if (result.status !== 404 && result.status !== 400) break;
     }
 
-    console.error("Gemini failed", lastErr);
-    let hint = "";
-    if (lastErr.includes("API_KEY") || lastErr.includes("API key")) {
-      hint = " Check GEMINI_API_KEY in Vercel Production env and redeploy.";
-    } else if (lastErr.includes("not found") || lastErr.includes("NOT_FOUND")) {
-      hint = " Try GEMINI_MODEL=gemini-2.0-flash in Vercel env.";
+    console.error("Gemini failed", lastStatus, lastErr);
+
+    if (lastStatus === 403) {
+      return NextResponse.json(
+        {
+          error:
+            "Gemini returned 403. Enable Generative Language API for this Google project, or create a new API key in AI Studio.",
+        },
+        { status: 502 }
+      );
     }
+
     return NextResponse.json(
-      { error: `Pow3Bot could not reach Gemini.${hint}` },
+      {
+        error:
+          "Pow3Bot could not reach Gemini. Set GEMINI_MODEL=gemini-2.5-flash in Vercel, confirm the key is for AI Studio (not Vertex), and redeploy.",
+      },
       { status: 502 }
     );
   } catch (e) {
