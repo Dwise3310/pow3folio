@@ -20,6 +20,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import EmailChip from "@/components/ui/EmailChip";
 import PublicProfileTabs from "@/components/profile/PublicProfileTabs";
+import { computeScores } from "@/lib/ai/scores";
 
 type Props = {
   params: Promise<{ username: string }>;
@@ -237,6 +238,16 @@ export default async function PublicProfilePage({ params }: Props) {
   const education = normalizeEducation(p.education as Education[]);
   const platforms = (p.trading_platforms as TradingPlatform[]) ?? [];
 
+  const scores = computeScores({
+    profile: p,
+    writings: writingItems,
+    trades: tradeItems,
+    community: communityItems,
+    airdrops: airdropItems,
+    nfts: collectibleItems,
+    credentials: credentialItems,
+  });
+
   const hasContacts =
     socials.length > 0 ||
     !!p.wallet_address ||
@@ -316,6 +327,32 @@ export default async function PublicProfilePage({ params }: Props) {
               {locationLabel}
             </p>
           )}
+
+          {/* Public scores */}
+          <div className="mt-3 flex flex-wrap gap-2">
+            <div
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5"
+              title="Completeness, richness and professionalism of profile fields"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-foreground-subtle">
+                Profile
+              </span>
+              <span className="text-sm font-semibold tabular-nums">{scores.profileScore}</span>
+              <span className="text-[10px] text-foreground-subtle">/100</span>
+            </div>
+            <div
+              className="inline-flex items-center gap-2 rounded-lg border border-border bg-surface px-2.5 py-1.5"
+              title="Evidence density from writing, trading, community and onchain proof"
+            >
+              <span className="text-[10px] uppercase tracking-wide text-foreground-subtle">
+                Builder
+              </span>
+              <span className="text-sm font-semibold tabular-nums text-primary">
+                {scores.builderScore}
+              </span>
+              <span className="text-[10px] text-foreground-subtle">/100</span>
+            </div>
+          </div>
         </div>
 
         {hasContacts && (
