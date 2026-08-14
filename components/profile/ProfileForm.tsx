@@ -6,6 +6,7 @@ import { createClient } from "@/lib/supabase/client";
 import LocationControl from "@/components/profile/LocationControl";
 import ConnectAccounts from "@/components/profile/ConnectAccounts";
 import type { Profile, Skill } from "@/types/database";
+import ProfileAutofill, { type AutofillPayload } from "@/components/profile/ProfileAutofill";
 
 type Props = {
   profile: Profile;
@@ -14,7 +15,7 @@ type Props = {
 };
 
 const URL_IN_BIO =
-  /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|ng||eth)\b/i;
+  /(?:https?:\/\/|www\.)[^\s]+|\b[a-z0-9-]+\.(?:com|io|xyz|net|org|app|dev|co|gg|me|link|bio|ng|eth)\b/i;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
 function normalizeSkills(raw: Profile["skills"]): Skill[] {
@@ -102,6 +103,33 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
 
   function update(key: string, value: string | boolean) {
     setForm((prev) => ({ ...prev, [key]: value }));
+  }
+
+  function applyAutofill(data: AutofillPayload) {
+    setForm((prev) => ({
+      ...prev,
+      display_name: data.display_name?.trim() || prev.display_name,
+      bio: data.bio?.trim() || prev.bio,
+      long_bio: data.long_bio?.trim() || prev.long_bio,
+      website_url: data.website_url?.trim() || prev.website_url,
+      github_url: data.github_url?.trim() || prev.github_url,
+      x_url: data.x_url?.trim() || prev.x_url,
+      location_country: data.location_country?.trim() || prev.location_country,
+      location_region: data.location_region?.trim() || prev.location_region,
+    }));
+    if (Array.isArray(data.skills) && data.skills.length) {
+      setSkills(
+        data.skills
+          .filter((s) => s?.name)
+          .slice(0, 12)
+          .map((s) => ({
+            name: String(s.name).slice(0, 60),
+            description: String(s.description || "").slice(0, 85),
+          }))
+      );
+    }
+    setSaveMsg("Review autofilled fields, then Save profile");
+    setSaveErr(null);
   }
 
   function addSkill() {
@@ -256,251 +284,164 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
     }
 
     setSaveMsg("Profile saved");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new Event("profile-saved"));
+    }
     router.refresh();
   }
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-6 overflow-x-hidden">
-      <div>
-        <label className="label">Profile header (banner)</label>
-        <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
-          <div className="relative h-28 sm:h-36 w-full">
-            {bannerUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={bannerUrl} alt="Banner" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full items-center justify-center bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10 text-xs text-foreground-subtle">
-                No banner yet
-              </div>
+    <form onSubmit={handleSubmit} className="space-y-7 overflow-x-hidden">
+      <ProfileAutofill onApply={applyAutofill} />
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border pb-2">Media</h2>
+        <div>
+          <label className="label">Banner</label>
+          <div className="overflow-hidden rounded-xl border border-border bg-surface-elevated">
+            <div className="relative h-28 sm:h-36 w-full">
+              {bannerUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={bannerUrl} alt="Banner" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full items-center justify-center bg-gradient-to-r from-primary/20 via-surface-elevated to-accent/10 text-xs text-foreground-subtle">
+                  No banner yet
+                </div>
+              )}
+            </div>
+          </div>
+          <div className="mt-2 flex flex-wrap items-center gap-2">
+            <label className="btn-secondary cursor-pointer text-sm">
+              {uploadingBanner ? "Uploading…" : "Upload banner"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleBannerChange} disabled={uploadingBanner} />
+            </label>
+            {bannerUrl && (
+              <button type="button" className="btn-ghost text-xs text-danger" onClick={() => { setBannerUrl(null); setBannerMsg("Banner removed. Click Save profile"); }}>
+                Remove
+              </button>
             )}
           </div>
+          <Feedback text={bannerMsg} tone="ok" />
+          <Feedback text={bannerErr} tone="err" />
         </div>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <label className="btn-secondary cursor-pointer text-sm">
-            {uploadingBanner ? "Uploading…" : "Upload banner"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleBannerChange}
-              disabled={uploadingBanner}
-            />
-          </label>
-          {bannerUrl && (
-            <button
-              type="button"
-              className="btn-ghost text-xs text-danger"
-              onClick={() => {
-                setBannerUrl(null);
-                setBannerMsg("Banner removed. Click Save profile");
-              }}
-            >
-              Remove
-            </button>
+
+        <div>
+          <label className="label">Avatar</label>
+          <div className="flex items-center gap-4">
+            <div className="h-20 w-20 overflow-hidden rounded-full border border-border bg-surface-elevated">
+              {avatarUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">No photo</div>
+              )}
+            </div>
+            <label className="btn-secondary cursor-pointer text-sm">
+              {uploading ? "Uploading…" : "Change avatar"}
+              <input type="file" accept="image/*" className="hidden" onChange={handleAvatarChange} disabled={uploading} />
+            </label>
+          </div>
+          <Feedback text={avatarMsg} tone="ok" />
+          <Feedback text={avatarErr} tone="err" />
+        </div>
+      </section>
+
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border pb-2">Basics</h2>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label className="label" htmlFor="username">Username *</label>
+            <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
+              <span className="text-xs text-foreground-subtle shrink-0">pow3folio.vercel.app/</span>
+              <input id="username" className="input" value={form.username} onChange={(e) => update("username", e.target.value.toLowerCase())} required minLength={3} maxLength={30} pattern="[a-z0-9_]{3,30}" />
+            </div>
+          </div>
+          <div>
+            <label className="label" htmlFor="display_name">Display name</label>
+            <input id="display_name" className="input" value={form.display_name} onChange={(e) => update("display_name", e.target.value)} />
+          </div>
+        </div>
+        <div>
+          <label className="label" htmlFor="bio">Short bio</label>
+          <textarea id="bio" className={`input min-h-[80px] resize-y ${bioHasLink ? "border-danger focus:border-danger focus:ring-danger" : ""}`} value={form.bio} onChange={(e) => update("bio", e.target.value)} maxLength={160} placeholder="One-line intro, no links" />
+          <p className="mt-1 text-xs text-foreground-subtle">{form.bio.length}/160</p>
+          {bioHasLink && (
+            <p className="mt-1.5 text-xs text-danger">Links are not accepted in the bio. Use My website instead.</p>
           )}
         </div>
-        <Feedback text={bannerMsg} tone="ok" />
-        <Feedback text={bannerErr} tone="err" />
-      </div>
-
-      <div>
-        <div className="flex items-center gap-4">
-          <div className="h-20 w-20 overflow-hidden rounded-full border border-border bg-surface-elevated">
-            {avatarUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={avatarUrl} alt="Avatar" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center text-foreground-subtle text-sm">
-                No photo
-              </div>
-            )}
-          </div>
-          <label className="btn-secondary cursor-pointer text-sm">
-            {uploading ? "Uploading…" : "Change avatar"}
-            <input
-              type="file"
-              accept="image/*"
-              className="hidden"
-              onChange={handleAvatarChange}
-              disabled={uploading}
-            />
-          </label>
-        </div>
-        <Feedback text={avatarMsg} tone="ok" />
-        <Feedback text={avatarErr} tone="err" />
-      </div>
-
-      <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="label" htmlFor="username">
-            Username *
-          </label>
-          <div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:gap-2">
-            <span className="text-xs text-foreground-subtle shrink-0">pow3folio.vercel.app/</span>
-            <input
-              id="username"
-              className="input"
-              value={form.username}
-              onChange={(e) => update("username", e.target.value.toLowerCase())}
-              required
-              minLength={3}
-              maxLength={30}
-              pattern="[a-z0-9_]{3,30}"
-            />
-          </div>
+          <label className="label" htmlFor="long_bio">About</label>
+          <textarea id="long_bio" className="input min-h-[100px]" value={form.long_bio} onChange={(e) => update("long_bio", e.target.value)} placeholder="Tell people what you do in Web3…" />
         </div>
-        <div>
-          <label className="label" htmlFor="display_name">
-            Display name
-          </label>
-          <input
-            id="display_name"
-            className="input"
-            value={form.display_name}
-            onChange={(e) => update("display_name", e.target.value)}
-          />
-        </div>
-      </div>
+      </section>
 
-      <div>
-        <label className="label" htmlFor="bio">
-          Short bio
-        </label>
-        <textarea
-          id="bio"
-          className={`input min-h-[96px] resize-y ${
-            bioHasLink ? "border-danger focus:border-danger focus:ring-danger" : ""
-          }`}
-          value={form.bio}
-          onChange={(e) => update("bio", e.target.value)}
-          maxLength={160}
-          placeholder="One-line intro, no links"
-        />
-        <p className="mt-1 text-xs text-foreground-subtle">{form.bio.length}/160</p>
-        {bioHasLink && (
-          <p className="mt-1.5 text-xs text-danger animate-fade-in">
-            Links are not accepted in the bio. Best place for a custom link is{" "}
-            <strong>My website</strong>.
-          </p>
-        )}
-      </div>
-
-      <div>
-        <label className="label" htmlFor="long_bio">
-          About
-        </label>
-        <textarea
-          id="long_bio"
-          className="input min-h-[90px]"
-          value={form.long_bio}
-          onChange={(e) => update("long_bio", e.target.value)}
-          placeholder="Tell people what you do in Web3…"
-        />
-      </div>
-
-      <div>
-        <label className="label">Skills / Service pillars</label>
-        <p className="mb-2 text-xs text-foreground-subtle">
-          Name + short description (max 85 chars). Max 12 pillars.
-        </p>
-        <div className="mb-3 space-y-2">
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border pb-2">Skills / Service pillars</h2>
+        <p className="text-xs text-foreground-subtle">Name + short description (max 85 chars). Max 12 pillars.</p>
+        <div className="space-y-2">
           {skills.map((s) => (
             <div key={s.name} className="space-y-1 rounded-xl border border-primary/20 bg-primary/5 px-3 py-2">
               <div className="flex items-start justify-between gap-2">
-                <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">
-                  {s.name}
-                </span>
-                <button
-                  type="button"
-                  onClick={() => removeSkill(s.name)}
-                  className="text-foreground-subtle hover:text-danger shrink-0"
-                  aria-label={`Remove ${s.name}`}
-                >
-                  ×
-                </button>
+                <span className="inline-flex rounded-full border border-primary/30 bg-primary/10 px-2.5 py-0.5 text-xs font-semibold text-primary">{s.name}</span>
+                <button type="button" onClick={() => removeSkill(s.name)} className="text-foreground-subtle hover:text-danger shrink-0" aria-label={`Remove ${s.name}`}>×</button>
               </div>
-              {s.description && (
-                <p className="text-xs text-foreground-muted leading-snug">{s.description}</p>
-              )}
+              {s.description && <p className="text-xs text-foreground-muted leading-snug">{s.description}</p>}
             </div>
           ))}
         </div>
         <div className="space-y-2 rounded-xl border border-border p-3">
-          <input
-            className="input text-sm"
-            value={skillName}
-            onChange={(e) => setSkillName(e.target.value)}
-            placeholder="Pillar name (e.g. Market Intelligence)"
-            maxLength={40}
-          />
-          <textarea
-            className="input text-sm min-h-[60px]"
-            value={skillDesc}
-            onChange={(e) => setSkillDesc(e.target.value.slice(0, 85))}
-            placeholder="Brief explanation (max 85 characters)"
-            maxLength={85}
-          />
+          <input className="input text-sm" value={skillName} onChange={(e) => setSkillName(e.target.value)} placeholder="Pillar name (e.g. Market Intelligence)" maxLength={40} />
+          <textarea className="input text-sm min-h-[60px]" value={skillDesc} onChange={(e) => setSkillDesc(e.target.value.slice(0, 85))} placeholder="Brief explanation (max 85 characters)" maxLength={85} />
           <div className="flex items-center justify-between">
             <span className="text-[11px] text-foreground-subtle">{skillDesc.length}/85</span>
-            <button type="button" onClick={addSkill} className="btn-secondary text-sm">
-              Add pillar
-            </button>
+            <button type="button" onClick={addSkill} className="btn-secondary text-sm">Add pillar</button>
           </div>
         </div>
-      </div>
+      </section>
 
-      <LocationControl
-        country={form.location_country}
-        region={form.location_region}
-        onChange={(c, r) => {
-          update("location_country", c);
-          update("location_region", r);
-        }}
-      />
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border pb-2">Location & visibility</h2>
+        <LocationControl
+          country={form.location_country}
+          region={form.location_region}
+          onChange={(c, r) => {
+            update("location_country", c);
+            update("location_region", r);
+          }}
+        />
+        <div className="flex flex-wrap gap-6">
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.open_to_work} onChange={(e) => update("open_to_work", e.target.checked)} className="h-4 w-4 rounded border-border" />
+            Open to opportunities
+          </label>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={form.is_public} onChange={(e) => update("is_public", e.target.checked)} className="h-4 w-4 rounded border-border" />
+            Public profile
+          </label>
+        </div>
+      </section>
 
-      <div className="flex flex-wrap gap-6">
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.open_to_work}
-            onChange={(e) => update("open_to_work", e.target.checked)}
-            className="h-4 w-4 rounded border-border"
-          />
-          Open to opportunities
-        </label>
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.is_public}
-            onChange={(e) => update("is_public", e.target.checked)}
-            className="h-4 w-4 rounded border-border"
-          />
-          Public profile
-        </label>
-      </div>
-
-      <ConnectAccounts
-        profileId={profile.id}
-        email={email}
-        linkedProviders={linkedProviders}
-        xUrl={form.x_url}
-        githubUrl={form.github_url}
-        websiteUrl={form.website_url}
-        telegramUrl={form.telegram_url}
-        ensName={form.ens_name}
-        walletAddress={form.wallet_address}
-        secondaryEmail={form.secondary_email}
-        showPrimaryEmail={form.show_primary_email}
-        showSecondaryEmail={form.show_secondary_email}
-        onChange={update}
-      />
+      <section className="space-y-4">
+        <h2 className="text-sm font-semibold tracking-tight border-b border-border pb-2">Accounts & contacts</h2>
+        <ConnectAccounts
+          profileId={profile.id}
+          email={email}
+          linkedProviders={linkedProviders}
+          xUrl={form.x_url}
+          githubUrl={form.github_url}
+          websiteUrl={form.website_url}
+          telegramUrl={form.telegram_url}
+          ensName={form.ens_name}
+          walletAddress={form.wallet_address}
+          secondaryEmail={form.secondary_email}
+          showPrimaryEmail={form.show_primary_email}
+          showSecondaryEmail={form.show_secondary_email}
+          onChange={update}
+        />
+      </section>
 
       <div>
-        <button
-          type="submit"
-          disabled={saving || uploading || uploadingBanner || bioHasLink}
-          className="btn-primary"
-        >
+        <button type="submit" disabled={saving || uploading || uploadingBanner || bioHasLink} className="btn-primary">
           {saving ? "Saving…" : "Save profile"}
         </button>
         <Feedback text={saveMsg} tone="ok" />
