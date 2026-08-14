@@ -96,6 +96,13 @@ const HOST_OVERRIDES: Record<string, string> = {
   tradingview: "tradingview.com",
   htx: "htx.com",
   deribit: "deribit.com",
+  blofin: "blofin.com",
+  weex: "weex.com",
+  bitunix: "bitunix.com",
+  bingx: "bingx.com",
+  phemex: "phemex.com",
+  crypto: "crypto.com",
+  "crypto.com": "crypto.com",
 };
 
 export function searchPlatforms(query: string, limit = 8): PlatformDef[] {
@@ -121,7 +128,10 @@ function hostFromDomain(domain: string): string {
   }
 }
 
-/** Resolve a display logo for a platform name. */
+/**
+ * Shared logo factory for public profile chips AND dashboard chips.
+ * Primary: DuckDuckGo icons. Fallback: Google favicons. Not CoinMarketCap.
+ */
 export function getPlatformLogo(name: string): string {
   const key = name.trim().toLowerCase();
   const found = CEX_DEX_PLATFORMS.find((p) => p.name.toLowerCase() === key);
@@ -131,7 +141,6 @@ export function getPlatformLogo(name: string): string {
     HOST_OVERRIDES[key] ||
     hostFromDomain(found?.domain || getPlatformDomain(name));
 
-  // DuckDuckGo icon service is reliable for exchange domains (incl. Hyperliquid)
   return `https://icons.duckduckgo.com/ip3/${host}.ico`;
 }
 
@@ -142,5 +151,5 @@ export function getPlatformLogoFallback(name: string): string {
   const host =
     HOST_OVERRIDES[key] ||
     hostFromDomain(found?.domain || getPlatformDomain(name));
-  return `https://www.google.com/s2/favicons?domain=${host}&sz=128`;
+  return `https://www.google.com/s2/favicons?domain=${encodeURIComponent(host)}&sz=128`;
 }
