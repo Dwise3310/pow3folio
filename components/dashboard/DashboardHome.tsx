@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import OnboardingTour, { resetOnboarding } from "@/components/onboarding/OnboardingTour";
+import DashboardAutofill from "@/components/dashboard/DashboardAutofill";
+import { loadPendingAutofill, type AutofillSection } from "@/lib/autofill-store";
 
 type SectionKey =
   | "show_writing"
@@ -26,17 +28,20 @@ const CARDS: {
   title: string;
   hint: string;
   flag?: SectionKey;
+  autofill?: AutofillSection;
 }[] = [
   {
     href: "/dashboard/profile",
     title: "Profile",
-    hint: "Bio, skills, CV autofill, work, education",
+    hint: "Bio, skills, work, education, links",
+    autofill: "profile",
   },
   {
     href: "/dashboard/writing",
     title: "Technical Writing",
     hint: "Articles, threads, research",
     flag: "show_writing",
+    autofill: "writing",
   },
   {
     href: "/dashboard/trading",
@@ -49,6 +54,7 @@ const CARDS: {
     title: "Community",
     hint: "Roles and contributions",
     flag: "show_community",
+    autofill: "community",
   },
   {
     href: "/dashboard/airdrops",
@@ -69,6 +75,18 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
   const [state, setState] = useState(flags);
   const [busy, setBusy] = useState<string | null>(null);
   const [tourKey, setTourKey] = useState(0);
+  const [pendingSections, setPendingSections] = useState<AutofillSection[]>([]);
+
+  useEffect(() => {
+    const p = loadPendingAutofill();
+    setPendingSections(p?.pending ?? []);
+    function onPending(ev: Event) {
+      const detail = (ev as CustomEvent).detail;
+      setPendingSections(detail?.pending ?? []);
+    }
+    window.addEventListener("pow3-pending-autofill", onPending);
+    return () => window.removeEventListener("pow3-pending-autofill", onPending);
+  }, []);
 
   async function toggle(flag: SectionKey) {
     setBusy(flag);
@@ -147,14 +165,27 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
         )}
       </div>
 
+      <DashboardAutofill />
+
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {CARDS.map((card) => {
           const on = card.flag ? state[card.flag] : true;
+          const needsReview =
+            !!card.autofill && pendingSections.includes(card.autofill);
           return (
             <div
               key={card.href}
-              className="card relative flex flex-col p-3.5 sm:p-4 transition-colors hover:border-primary/40"
+              className={`card relative flex flex-col p-3.5 sm:p-4 transition-colors hover:border-primary/40 ${
+                needsReview
+                  ? "ring-2 ring-amber-400/80 border-amber-400/50 shadow-[0_0_0_1px_rgba(251,191,36,0.25)]"
+                  : ""
+              }`}
             >
+              {needsReview && (
+                <span className="absolute top-2 left-2 rounded-full bg-amber-400/20 border border-amber-400/40 px-2 py-0.5 text-[10px] font-semibold text-amber-500">
+                  Review autofill
+                </span>
+              )}
               {card.flag && (
                 <button
                   type="button"
@@ -172,7 +203,12 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
                   {busy === card.flag ? "…" : on ? "ON" : "OFF"}
                 </button>
               )}
-              <Link href={card.href} className="flex flex-1 flex-col pr-12">
+              <Link
+                href={card.href}
+                className={`flex flex-1 flex-col pr-12 ${
+                  needsReview ? "pt-5" : ""
+                }`}
+              >
                 <h3 className="font-medium text-sm sm:text-base">{card.title}</h3>
                 <p className="mt-1 text-[11px] sm:text-xs text-foreground-muted line-clamp-2">
                   {card.hint}
