@@ -20,6 +20,7 @@ import ThemeToggle from "@/components/theme/ThemeToggle";
 import ImageLightbox from "@/components/ui/ImageLightbox";
 import EmailChip from "@/components/ui/EmailChip";
 import PublicProfileTabs from "@/components/profile/PublicProfileTabs";
+import PublicProfileCta from "@/components/profile/PublicProfileCta";
 import ScoreRings from "@/components/profile/ScoreRings";
 import { computeScores } from "@/lib/ai/scores";
 
@@ -114,6 +115,11 @@ export default async function PublicProfilePage({ params }: Props) {
   const showAirdrops = p.show_airdrops !== false;
   const showOnchain = p.show_nfts !== false;
   const showCredentials = p.show_credentials !== false;
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+  const isOwner = !!user && user.id === p.id;
 
   const [
     { data: writings },
@@ -254,7 +260,6 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         </div>
 
-        {/* Title row: name + open badge + rings only (bio is full width below) */}
         <div className="mt-12 sm:mt-13 flex items-start justify-between gap-3 pl-0.5 animate-slide-up">
           <div className="min-w-0 flex-1 space-y-0.5">
             <div className="flex flex-wrap items-center gap-2">
@@ -278,7 +283,6 @@ export default async function PublicProfilePage({ params }: Props) {
           />
         </div>
 
-        {/* Bio + location: full width, not squeezed by rings */}
         {(p.bio || locationLabel) && (
           <div className="mt-2 space-y-1 pl-0.5 animate-slide-up">
             {p.bio && (
@@ -353,6 +357,8 @@ export default async function PublicProfilePage({ params }: Props) {
           showAirdrops={showAirdrops}
           showOnchain={showOnchain}
         />
+
+        <PublicProfileCta isOwner={isOwner} />
       </main>
     </div>
   );
