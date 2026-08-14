@@ -114,7 +114,7 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
       website_url: data.website_url?.trim() || prev.website_url,
       github_url: data.github_url?.trim() || prev.github_url,
       x_url: data.x_url?.trim() || prev.x_url,
-      location_country: data.location_country?.trim() || prev.location_country,
+      location_country: data.location_country?.trim() || prev.location_region,
       location_region: data.location_region?.trim() || prev.location_region,
     }));
     if (Array.isArray(data.skills) && data.skills.length) {
@@ -128,7 +128,17 @@ export default function ProfileForm({ profile, email, linkedProviders }: Props) 
           }))
       );
     }
-    setSaveMsg("Review autofilled fields, then Save profile");
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(
+        new CustomEvent("pow3-autofill-extras", {
+          detail: {
+            work_experience: data.work_experience ?? [],
+            education: data.education ?? [],
+          },
+        })
+      );
+    }
+    setSaveMsg("Review autofilled fields, then Save profile. Work and education update below.");
     setSaveErr(null);
   }
 
