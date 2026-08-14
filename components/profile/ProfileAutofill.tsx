@@ -49,48 +49,44 @@ export default function ProfileAutofill({ onApply }: Props) {
     setErr(null);
     setMsg(null);
 
-    const allowed = [
-      "text/plain",
-      "text/markdown",
-      "application/pdf",
-      "application/msword",
-      "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-    ];
-    const okType =
-      allowed.includes(file.type) ||
-      /\.(txt|md|pdf|doc|docx)$/i.test(file.name);
-    if (!okType) {
-      setErr("Upload a PDF, DOC, DOCX, TXT or MD file");
+    const okName = /\.(pdf|txt|md|doc|docx)$/i.test(file.name);
+    if (!okName) {
+      setErr("Use a PDF, TXT, MD, DOC or DOCX file");
       return;
     }
     if (file.size > 4 * 1024 * 1024) {
       setErr("File must be under 4MB");
       return;
     }
+    if (file.size < 30) {
+      setErr("File looks empty");
+      return;
+    }
 
     setLoading(true);
     try {
       const fd = new FormData();
-      fd.append("file", file);
+      fd.append("file", file, file.name);
       const res = await fetch("/api/ai/autofill", {
         method: "POST",
         body: fd,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) {
-        setErr(data.error || "Could not read file");
+        const detail = typeof data.detail === "string" ? ` (${data.detail})` : "";
+        setErr((data.error || "Could not read file") + detail);
         setLoading(false);
         return;
       }
       if (!data.profile || typeof data.profile !== "object") {
-        setErr("No profile data extracted");
+        setErr("No profile data extracted from this file");
         setLoading(false);
         return;
       }
       onApply(data.profile as AutofillPayload);
-      setMsg("Fields filled from your document. Review and click Save profile.");
+      setMsg("Fields filled from your document. Review everything, then click Save profile.");
     } catch {
-      setErr("Network error");
+      setErr("Network error. Check you are signed in and try again.");
     } finally {
       setLoading(false);
     }
@@ -102,26 +98,22 @@ export default function ProfileAutofill({ onApply }: Props) {
         <div>
           <p className="text-sm font-medium">Fill from CV or profile doc</p>
           <p className="text-xs text-foreground-subtle mt-0.5">
-            Pow3Bot reads the file and suggests bio, skills, work and education. You still confirm with Save.
+            Best results with PDF or TXT. DOC/DOCX also accepted. Review before Save.
           </p>
         </div>
         <label className="btn-secondary cursor-pointer text-xs sm:text-sm shrink-0 w-fit">
           {loading ? "Reading…" : "Upload CV / doc"}
           <input
             type="file"
-            accept=".pdf,.doc,.docx,.txt,.md,text/plain,application/pdf"
+            accept=".pdf,.txt,.md,.doc,.docx,application/pdf,text/plain"
             className="hidden"
             onChange={handleFile}
             disabled={loading}
           />
         </label>
       </div>
-      {msg && (
-        <p className="mt-2 text-xs text-primary">{msg}</p>
-      )}
-      {err && (
-        <p className="mt-2 text-xs text-danger">{err}</p>
-      )}
+      {msg && <p className="mt-2 text-xs text-primary">{msg}</p>}
+      {err && <p className="mt-2 text-xs text-danger break-words">{err}</p>}
     </div>
   );
 }
