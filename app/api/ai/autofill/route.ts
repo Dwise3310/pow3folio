@@ -6,10 +6,13 @@ export const maxDuration = 60;
 
 const buckets = new Map<string, { count: number; reset: number }>();
 
+/** Lite first = less capacity pressure on free tier */
 const MODELS = [
-  "gemini-2.5-flash",
   "gemini-2.5-flash-lite",
+  "gemini-2.0-flash-lite",
+  "gemini-2.5-flash",
   "gemini-2.0-flash",
+  "gemini-flash-lite-latest",
   "gemini-flash-latest",
 ];
 
@@ -25,6 +28,10 @@ function rateLimit(key: string, limit = 8): boolean {
   return true;
 }
 
+function sleep(ms: number) {
+  return new Promise((r) => setTimeout(r, ms));
+}
+
 function detectMime(name: string, declared: string): string {
   const n = name.toLowerCase();
   if (n.endsWith(".pdf")) return "application/pdf";
@@ -38,9 +45,17 @@ function detectMime(name: string, declared: string): string {
 }
 
 function isTextMime(mime: string, name: string) {
+  return mime.startsWith("text/") || /\.(txt|md)$/i.test(name);
+}
+
+function isCapacityError(status: number, msg: string) {
+  const m = msg.toLowerCase();
   return (
-    mime.startsWith("text/") ||
-    /\.(txt|md)$/i.test(name)
+    status === 429 ||
+    m.includes("high demand") ||
+    m.includes("resource_exhausted") ||
+    m.includes("quota") ||
+    m.includes("try again later")
   );
 }
 
@@ -117,7 +132,6 @@ export async function POST(req: NextRequest) {
 
     const form = await req.formData();
     const entry = form.get("file");
-    // Next/Node may give File or Blob
     if (!entry || typeof entry === "string") {
       return NextResponse.json({ error: "file required" }, { status: 400 });
     }
@@ -151,10 +165,14 @@ export async function POST(req: NextRequest) {
       );
     }
 
+    // DOC/DOCX are unreliable on Gemini free tier; prefer PDF/TXT
+    if (/\.(doc|docx)$/i.test(fileName) || mime.includes("word") || mime.includes("document")) {
+      // still attempt, but we will surface a clearer tip if it fails
+    }
+
     let text = "";
     if (isTextMime(mime, fileName)) {
       text = buf.toString("utf8").slice(0, 50000);
-      // strip nulls from binary mislabeled as text
       if (text.includes("\u0000")) text = "";
     }
 
@@ -180,7 +198,6 @@ ${text ? "\nDocument text:\n" + text : "\nThe document is attached. Read it and 
       { text: prompt },
     ];
 
-    // Attach binary for PDF (and try DOC/DOCX if Gemini accepts)
     if (!text) {
       let attachMime = mime;
       if (/\.pdf$/i.test(fileName) || mime === "application/pdf") {
@@ -200,49 +217,66 @@ ${text ? "\nDocument text:\n" + text : "\nThe document is attached. Read it and 
       : MODELS;
 
     let lastErr = "";
+    let sawCapacity = false;
+
     for (const model of models) {
-      const result = await callGemini(apiKey, model, parts);
-      if (!result.ok) {
-        lastErr = result.data.error?.message || result.raw || `HTTP ${result.status}`;
-        console.error("autofill model fail", model, result.status, lastErr.slice(0, 200));
-        // try next model on 404/400
-        if (result.status === 429) {
-          return NextResponse.json(
-            { error: "AI rate limit. Wait a minute and try again." },
-            { status: 429 }
-          );
+      for (let attempt = 0; attempt < 2; attempt++) {
+        if (attempt > 0) await sleep(1200 * attempt);
+
+        const result = await callGemini(apiKey, model, parts);
+        const errMsg = result.data.error?.message || result.raw || `HTTP ${result.status}`;
+
+        if (!result.ok) {
+          lastErr = errMsg;
+          console.error("autofill model fail", model, result.status, lastErr.slice(0, 200));
+          if (isCapacityError(result.status, errMsg)) {
+            sawCapacity = true;
+            // try next model / retry instead of aborting
+            continue;
+          }
+          // non-capacity error on this model → next model
+          break;
         }
-        continue;
+
+        const outText =
+          result.data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") ||
+          "";
+        if (!outText.trim()) {
+          lastErr = "Empty model reply";
+          break;
+        }
+
+        const profile = extractJson(outText);
+        if (!profile || typeof profile !== "object") {
+          lastErr = "Could not parse JSON from model";
+          break;
+        }
+
+        if (Array.isArray(profile.skills)) profile.skills = profile.skills.slice(0, 8);
+        if (Array.isArray(profile.work_experience))
+          profile.work_experience = profile.work_experience.slice(0, 5);
+        if (typeof profile.bio === "string") profile.bio = profile.bio.slice(0, 160);
+
+        return NextResponse.json({ profile, model });
       }
-
-      const outText =
-        result.data.candidates?.[0]?.content?.parts?.map((p) => p.text || "").join("") ||
-        "";
-      if (!outText.trim()) {
-        lastErr = "Empty model reply";
-        continue;
-      }
-
-      const profile = extractJson(outText);
-      if (!profile || typeof profile !== "object") {
-        lastErr = "Could not parse JSON from model";
-        continue;
-      }
-
-      if (Array.isArray(profile.skills)) profile.skills = profile.skills.slice(0, 8);
-      if (Array.isArray(profile.work_experience))
-        profile.work_experience = profile.work_experience.slice(0, 5);
-      if (typeof profile.bio === "string") profile.bio = profile.bio.slice(0, 160);
-
-      return NextResponse.json({ profile, model });
     }
 
-    // If PDF/binary failed, surface a clear message
+    if (sawCapacity) {
+      return NextResponse.json(
+        {
+          error:
+            "Gemini is busy right now (high demand). Wait 30 to 60 seconds, then try again. PDF or TXT works best.",
+          detail: lastErr.slice(0, 180),
+        },
+        { status: 503 }
+      );
+    }
+
     return NextResponse.json(
       {
         error:
-          lastErr.includes("inline") || lastErr.includes("mime") || lastErr.includes("Unsupported")
-            ? "This file type failed with Gemini. Export your CV as PDF or plain TXT and try again."
+          /\.(doc|docx)$/i.test(fileName)
+            ? "DOC/DOCX is flaky on free AI. Save as PDF or paste into a TXT file and upload that."
             : "Could not read document. Try PDF or TXT under 4MB.",
         detail: lastErr.slice(0, 180),
       },
