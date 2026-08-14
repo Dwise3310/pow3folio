@@ -40,62 +40,48 @@ export async function POST(req: NextRequest) {
     }
 
     const uid = user.id;
-
-    // Wipe proof tables first (RLS should allow owner deletes)
-    for (const table of TABLES) {
-      const { error } = await supabase.from(table).delete().eq("user_id", uid);
-      if (error && !error.message.toLowerCase().includes("does not exist")) {
-        console.error("delete", table, error.message);
-      }
-    }
-
-    // Soft-clear profile public fields then delete row if allowed
-    await supabase
-      .from("profiles")
-      .update({
-        is_public: false,
-        bio: null,
-        long_bio: null,
-        avatar_url: null,
-        banner_url: null,
-        skills: [],
-        work_experience: [],
-        education: [],
-        trading_platforms: [],
-        wallet_address: null,
-        ens_name: null,
-        x_url: null,
-        telegram_url: null,
-        github_url: null,
-        website_url: null,
-        secondary_email: null,
-      })
-      .eq("id", uid);
-
-    await supabase.from("profiles").delete().eq("id", uid);
-
-    // Prefer service role for auth user deletion
-    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    if (serviceKey && url) {
-      const admin = createAdminClient(url, serviceKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-      const { error: delErr } = await admin.auth.admin.deleteUser(uid);
-      if (delErr) {
-        console.error("auth delete", delErr.message);
-        // Still sign out client session below
-      }
+    const serviceKey = (process.env.SUPABASE_SERVICE_ROLE_KEY || "").trim();
+
+    if (!url || !serviceKey) {
+      return NextResponse.json(
+        {
+          error:
+            "Hard delete needs SUPABASE_SERVICE_ROLE_KEY on Vercel. Add it, redeploy, try again.",
+        },
+        { status: 503 }
+      );
     }
 
-    await supabase.auth.signOut();
-
-    return NextResponse.json({
-      ok: true,
-      note: serviceKey
-        ? "Account and data removed."
-        : "Data wiped and signed out. Add SUPABASE_SERVICE_ROLE_KEY to fully remove the auth user.",
+    const admin = createAdminClient(url, serviceKey, {
+      auth: { autoRefreshToken: false, persistSession: false },
     });
+
+    // Bypass RLS: wipe all related rows as service role
+    for (const table of TABLES) {
+      const { error } = await admin.from(table).delete().eq("user_id", uid);
+      if (error) console.error("hard delete", table, error.message);
+    }
+
+    const { error: profileErr } = await admin.from("profiles").delete().eq("id", uid);
+    if (profileErr) console.error("hard delete profiles", profileErr.message);
+
+    const { error: delErr } = await admin.auth.admin.deleteUser(uid);
+    if (delErr) {
+      console.error("auth delete", delErr.message);
+      return NextResponse.json(
+        { error: "Data wiped but auth user delete failed: " + delErr.message },
+        { status: 500 }
+      );
+    }
+
+    try {
+      await supabase.auth.signOut();
+    } catch {
+      /* session may already be invalid */
+    }
+
+    return NextResponse.json({ ok: true, note: "Account and all data permanently deleted." });
   } catch (e) {
     console.error("account delete", e);
     return NextResponse.json({ error: "Server error" }, { status: 500 });
