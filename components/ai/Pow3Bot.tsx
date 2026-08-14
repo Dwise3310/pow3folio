@@ -13,8 +13,6 @@ const QUICK = [
   "Where is the FAQ?",
 ];
 
-const POS_KEY = "pow3bot-btn-pos";
-
 function stripMd(s: string) {
   return s
     .replace(/\*\*([^*]+)\*\*/g, "$1")
@@ -42,7 +40,7 @@ export default function Pow3Bot({ context }: Props) {
   ]);
   const bottomRef = useRef<HTMLDivElement>(null);
 
-  // Draggable button position
+  // Session only drag position (resets on full page refresh)
   const [pos, setPos] = useState<{ x: number; y: number } | null>(null);
   const drag = useRef<{
     active: boolean;
@@ -54,20 +52,18 @@ export default function Pow3Bot({ context }: Props) {
   } | null>(null);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(POS_KEY);
-      if (raw) {
-        const p = JSON.parse(raw) as { x: number; y: number };
-        if (typeof p.x === "number" && typeof p.y === "number") setPos(p);
-      }
-    } catch {
-      /* ignore */
-    }
-  }, []);
-
-  useEffect(() => {
     if (open) bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, open, loading]);
+
+  // Lock body scroll while open
+  useEffect(() => {
+    if (!open) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    return () => {
+      document.body.style.overflow = prev;
+    };
+  }, [open]);
 
   const onPointerDown = useCallback((e: React.PointerEvent) => {
     const el = e.currentTarget as HTMLElement;
@@ -98,20 +94,7 @@ export default function Pow3Bot({ context }: Props) {
     const d = drag.current;
     if (!d) return;
     d.active = false;
-    if (d.moved) {
-      setPos((prev) => {
-        if (prev) {
-          try {
-            localStorage.setItem(POS_KEY, JSON.stringify(prev));
-          } catch {
-            /* ignore */
-          }
-        }
-        return prev;
-      });
-    } else {
-      setOpen((v) => !v);
-    }
+    if (!d.moved) setOpen((v) => !v);
     drag.current = null;
     try {
       (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
@@ -177,6 +160,14 @@ export default function Pow3Bot({ context }: Props) {
 
   return (
     <>
+      {open && (
+        <div
+          className="fixed inset-0 z-[75] bg-black/50 backdrop-blur-[2px]"
+          aria-hidden
+          onClick={() => setOpen(false)}
+        />
+      )}
+
       <button
         type="button"
         onPointerDown={onPointerDown}
@@ -201,11 +192,12 @@ export default function Pow3Bot({ context }: Props) {
           className={`fixed z-[80] flex w-[min(100vw-1.5rem,22rem)] flex-col overflow-hidden rounded-2xl border border-border bg-background shadow-xl ${
             pos ? "" : "bottom-20 right-3 sm:bottom-24 sm:right-6"
           }`}
+          onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center justify-between border-b border-border px-3 py-2.5">
             <div>
               <p className="text-sm font-semibold">Pow3Bot</p>
-              <p className="text-[10px] text-foreground-subtle">Drag the AI button to move it</p>
+              <p className="text-[10px] text-foreground-subtle">Drag the button to move · tap outside to close</p>
             </div>
             <div className="flex items-center gap-1">
               <Link href="/faq" className="btn-ghost text-[10px] px-2" onClick={() => setOpen(false)}>
