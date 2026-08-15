@@ -59,22 +59,26 @@ export default async function HomePage() {
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute -top-40 left-1/2 h-[32rem] w-[48rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl glow-orb"
+        className="pointer-events-none absolute -top-40 left-1/2 h-[36rem] w-[52rem] -translate-x-1/2 rounded-full bg-primary/20 blur-3xl glow-orb"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute top-[32%] -right-24 h-72 w-72 rounded-full bg-sky-500/15 blur-3xl float-y"
+        className="pointer-events-none absolute top-[28%] -right-24 h-80 w-80 rounded-full bg-sky-500/20 blur-3xl float-y"
         aria-hidden
       />
       <div
-        className="pointer-events-none absolute bottom-[8%] -left-20 h-64 w-64 rounded-full bg-violet-500/12 blur-3xl float-y-slow"
+        className="pointer-events-none absolute bottom-[6%] -left-20 h-72 w-72 rounded-full bg-violet-500/15 blur-3xl float-y-slow"
+        aria-hidden
+      />
+      <div
+        className="pointer-events-none absolute top-[55%] left-[12%] h-40 w-40 rounded-full bg-emerald-400/10 blur-2xl float-y"
         aria-hidden
       />
 
       <header className="sticky top-0 z-30 border-b border-border/40 bg-background/70 backdrop-blur-xl">
         <div className="container-app flex h-14 items-center justify-between gap-2">
           <Link href="/" className="flex items-center gap-2 min-w-0 group">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary transition group-hover:bg-primary/25 group-hover:shadow-glow-sm">
+            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary transition group-hover:bg-primary/25 group-hover:shadow-glow-sm logo-spin-hover">
               <span className="text-xs font-bold">P3</span>
             </div>
             <span className="text-sm sm:text-base font-semibold tracking-tight truncate">
@@ -119,57 +123,57 @@ export default async function HomePage() {
 
       <main className="relative z-10">
         {/* HERO */}
-        <section className="container-app pt-14 pb-10 sm:pt-24 sm:pb-14">
+        <section className="container-app pt-16 pb-12 sm:pt-28 sm:pb-16">
           <div className="mx-auto max-w-3xl text-center">
-            <div className="landing-reveal landing-delay-1 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-3.5 py-1.5 text-[11px] text-foreground-muted backdrop-blur-sm">
+            <div className="landing-reveal landing-delay-1 inline-flex items-center gap-2 rounded-full border border-primary/30 bg-primary/10 px-4 py-1.5 text-[11px] font-medium text-foreground-muted backdrop-blur-sm shadow-sm">
               <span className="relative flex h-1.5 w-1.5">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-70" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
               </span>
               Live scores · real proof · talent discovery
             </div>
 
-            <h1 className="landing-reveal landing-delay-2 mt-6 text-3xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.08]">
+            <h1 className="landing-reveal landing-delay-2 mt-7 text-4xl sm:text-5xl lg:text-[3.75rem] font-bold tracking-tight leading-[1.06]">
               Your Web3 work.{" "}
               <span className="hero-gradient-text">Verified. Visible. Hireable.</span>
             </h1>
 
-            <p className="landing-reveal landing-delay-3 mt-5 text-sm sm:text-base text-foreground-muted max-w-2xl mx-auto leading-relaxed">
+            <p className="landing-reveal landing-delay-3 mt-6 text-base sm:text-lg text-foreground-muted max-w-2xl mx-auto leading-relaxed">
               Stop scattering trades, threads and roles across ten apps.
               One sleek public profile with strict scores teams actually trust.
-              Built for people who ship, not just claim.
+              Built for people who ship — not just claim.
             </p>
 
-            <div className="landing-reveal landing-delay-4 mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
+            <div className="landing-reveal landing-delay-4 mt-9 flex flex-col sm:flex-row items-center justify-center gap-3">
               {user ? (
                 <Link
                   href="/dashboard"
-                  className="btn-primary px-7 py-3 text-sm shadow-lg shadow-primary/25 cta-pulse"
+                  className="btn-primary px-8 py-3.5 text-sm shadow-lg shadow-primary/30 cta-pulse"
                 >
                   Open dashboard
                 </Link>
               ) : (
                 <Link
                   href="/signup"
-                  className="btn-primary px-7 py-3 text-sm shadow-lg shadow-primary/25 cta-pulse"
+                  className="btn-primary px-8 py-3.5 text-sm shadow-lg shadow-primary/30 cta-pulse"
                 >
                   Create free profile →
                 </Link>
               )}
-              <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
+              <Link href="/talents" className="btn-secondary px-8 py-3.5 text-sm hover:border-primary/40">
                 Browse talents
               </Link>
             </div>
 
-            <div className="landing-reveal landing-delay-5 mt-12 grid grid-cols-2 sm:grid-cols-4 gap-2.5 max-w-xl mx-auto">
+            <div className="landing-reveal landing-delay-5 mt-14 grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-xl mx-auto">
               {STATS.map((s, i) => (
                 <div
                   key={s.label}
-                  className="stat-pop glass-panel rounded-xl px-3 py-3.5 transition duration-300 hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-0.5"
+                  className="stat-pop glass-panel rounded-xl px-3 py-4 transition duration-300 hover:border-primary/50 hover:shadow-glow-sm hover:-translate-y-1"
                   style={{ animationDelay: `${0.35 + i * 0.08}s` }}
                 >
-                  <p className="text-lg sm:text-xl font-bold tracking-tight text-primary">{s.value}</p>
-                  <p className="text-[10px] text-foreground-subtle mt-0.5">{s.label}</p>
+                  <p className="text-xl sm:text-2xl font-bold tracking-tight text-primary">{s.value}</p>
+                  <p className="text-[10px] text-foreground-subtle mt-0.5 uppercase tracking-wide">{s.label}</p>
                 </div>
               ))}
             </div>
@@ -177,7 +181,7 @@ export default async function HomePage() {
         </section>
 
         {/* ROLE MARQUEE */}
-        <div className="marquee-wrap landing-reveal landing-delay-6 mb-10 border-y border-border/40 bg-surface/40">
+        <div className="marquee-wrap landing-reveal landing-delay-6 mb-12 border-y border-border/40 bg-surface/50">
           <div className="marquee-track">
             {[...ROLES, ...ROLES].map((role, i) => (
               <span key={`${role}-${i}`} className="marquee-item flex items-center gap-2">
@@ -188,22 +192,22 @@ export default async function HomePage() {
         </div>
 
         {/* FEATURES */}
-        <section id="features" className="pb-14 sm:pb-18">
+        <section id="features" className="pb-16 sm:pb-20">
           <div className="container-app">
             <FeatureScroller />
           </div>
         </section>
 
         {/* WHY */}
-        <section className="container-app pb-14 sm:pb-16">
-          <div className="shine-border rounded-2xl glass-panel p-5 sm:p-8">
+        <section className="container-app pb-16 sm:pb-20">
+          <div className="shine-border rounded-2xl glass-panel p-6 sm:p-10">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
               Why this exists
             </p>
-            <h2 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight max-w-xl">
+            <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight max-w-xl">
               Your work is real. Most profiles still look like claims.
             </h2>
-            <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="mt-8 grid gap-4 sm:grid-cols-3">
               {[
                 {
                   t: "Scattered proof",
@@ -220,10 +224,10 @@ export default async function HomePage() {
               ].map((x) => (
                 <div
                   key={x.t}
-                  className="rounded-xl border border-border/80 bg-background/60 p-4 transition duration-300 hover:-translate-y-1 hover:border-primary/30 hover:shadow-md"
+                  className="rounded-xl border border-border/80 bg-background/60 p-5 transition duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/5"
                 >
                   <h3 className="text-sm font-semibold">{x.t}</h3>
-                  <p className="mt-1.5 text-xs text-foreground-muted leading-relaxed">{x.d}</p>
+                  <p className="mt-2 text-xs text-foreground-muted leading-relaxed">{x.d}</p>
                 </div>
               ))}
             </div>
@@ -231,12 +235,12 @@ export default async function HomePage() {
         </section>
 
         {/* HOW */}
-        <section id="how" className="container-app pb-14 sm:pb-16">
-          <div className="mx-auto max-w-xl text-center mb-8">
+        <section id="how" className="container-app pb-16 sm:pb-20">
+          <div className="mx-auto max-w-xl text-center mb-10">
             <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
               How it works
             </p>
-            <h2 className="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight">
+            <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">
               Four steps. Built for people who ship.
             </h2>
           </div>
@@ -244,16 +248,16 @@ export default async function HomePage() {
             {STEPS.map((s, i) => (
               <div
                 key={s.step}
-                className="relative rounded-2xl border border-border/80 bg-surface/60 p-4 transition duration-300 hover:-translate-y-1 hover:border-primary/35 hover:shadow-lg hover:shadow-primary/5"
+                className="relative rounded-2xl border border-border/80 bg-surface/60 p-5 transition duration-300 hover:-translate-y-1.5 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 step-card"
               >
-                <div className="flex h-9 w-9 items-center justify-center rounded-full border border-primary/30 bg-primary/10 text-primary text-xs font-bold">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/35 bg-primary/15 text-primary text-sm font-bold">
                   {s.step}
                 </div>
-                <h3 className="mt-3 font-semibold text-sm">{s.title}</h3>
-                <p className="mt-1.5 text-xs text-foreground-muted leading-relaxed">{s.desc}</p>
+                <h3 className="mt-4 font-semibold text-sm">{s.title}</h3>
+                <p className="mt-2 text-xs text-foreground-muted leading-relaxed">{s.desc}</p>
                 {i < STEPS.length - 1 && (
                   <span
-                    className="hidden lg:block absolute top-8 -right-2 text-foreground-subtle text-lg"
+                    className="hidden lg:block absolute top-9 -right-2.5 text-primary/40 text-xl"
                     aria-hidden
                   >
                     →
@@ -265,25 +269,25 @@ export default async function HomePage() {
         </section>
 
         {/* TEAMS */}
-        <section className="container-app pb-14 sm:pb-16">
-          <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-surface via-surface to-primary/8 p-5 sm:p-8">
-            <div className="grid gap-6 lg:grid-cols-2 lg:items-center">
+        <section className="container-app pb-16 sm:pb-20">
+          <div className="overflow-hidden rounded-2xl border border-border/80 bg-gradient-to-br from-surface via-surface to-primary/10 p-6 sm:p-10">
+            <div className="grid gap-8 lg:grid-cols-2 lg:items-center">
               <div>
                 <p className="text-[11px] font-medium uppercase tracking-wider text-foreground-subtle">
                   For teams
                 </p>
-                <h2 className="mt-1.5 text-xl sm:text-2xl font-bold tracking-tight">
+                <h2 className="mt-2 text-2xl sm:text-3xl font-bold tracking-tight">
                   Hire builders with real proof
                 </h2>
-                <p className="mt-2 text-sm text-foreground-muted leading-relaxed">
+                <p className="mt-3 text-sm text-foreground-muted leading-relaxed">
                   Browse trading records, research, community roles and onchain activity.
                   Filter open-to-work talent. Skip the noise.
                 </p>
-                <Link href="/talents" className="btn-primary mt-5 inline-flex text-sm">
+                <Link href="/talents" className="btn-primary mt-6 inline-flex text-sm cta-pulse">
                   Browse talents
                 </Link>
               </div>
-              <div className="grid grid-cols-2 gap-2.5">
+              <div className="grid grid-cols-2 gap-3">
                 {[
                   { k: "Track record", v: "Trades & ROI" },
                   { k: "Research", v: "Writing you can read" },
@@ -292,10 +296,10 @@ export default async function HomePage() {
                 ].map((row) => (
                   <div
                     key={row.k}
-                    className="rounded-xl border border-border/80 bg-background/80 p-3 transition duration-300 hover:border-primary/30 hover:-translate-y-0.5"
+                    className="rounded-xl border border-border/80 bg-background/80 p-4 transition duration-300 hover:border-primary/40 hover:-translate-y-1 hover:shadow-md"
                   >
                     <p className="text-[11px] text-foreground-subtle">{row.k}</p>
-                    <p className="mt-0.5 text-sm font-medium">{row.v}</p>
+                    <p className="mt-1 text-sm font-medium">{row.v}</p>
                   </div>
                 ))}
               </div>
@@ -304,29 +308,29 @@ export default async function HomePage() {
         </section>
 
         {/* FINAL CTA */}
-        <section className="container-app pb-16 sm:pb-24">
-          <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/30 bg-surface/80 px-5 py-12 sm:px-10 text-center shine-border">
+        <section className="container-app pb-20 sm:pb-28">
+          <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/40 bg-surface/90 px-6 py-14 sm:px-12 text-center shine-border">
             <div
-              className="pointer-events-none absolute -top-12 left-1/2 h-40 w-72 -translate-x-1/2 rounded-full bg-primary/20 blur-3xl glow-orb"
+              className="pointer-events-none absolute -top-16 left-1/2 h-48 w-80 -translate-x-1/2 rounded-full bg-primary/25 blur-3xl glow-orb"
               aria-hidden
             />
-            <h2 className="relative text-xl sm:text-2xl font-bold tracking-tight">
+            <h2 className="relative text-2xl sm:text-3xl font-bold tracking-tight">
               Ready to get discovered?
             </h2>
-            <p className="relative mt-2 text-sm text-foreground-muted">
+            <p className="relative mt-3 text-sm sm:text-base text-foreground-muted">
               Create your Pow3Folio in minutes. One link. Real scores. Real opportunities.
             </p>
-            <div className="relative mt-7 flex flex-col sm:flex-row gap-3 justify-center">
+            <div className="relative mt-8 flex flex-col sm:flex-row gap-3 justify-center">
               {user ? (
-                <Link href="/dashboard" className="btn-primary px-7 py-3 text-sm cta-pulse">
+                <Link href="/dashboard" className="btn-primary px-8 py-3.5 text-sm cta-pulse">
                   Open dashboard
                 </Link>
               ) : (
-                <Link href="/signup" className="btn-primary px-7 py-3 text-sm cta-pulse">
+                <Link href="/signup" className="btn-primary px-8 py-3.5 text-sm cta-pulse">
                   Get started free →
                 </Link>
               )}
-              <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
+              <Link href="/talents" className="btn-secondary px-8 py-3.5 text-sm">
                 Browse talents
               </Link>
             </div>

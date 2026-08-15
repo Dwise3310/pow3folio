@@ -138,26 +138,26 @@
 
   /* Landing page entrance */
   .landing-reveal {
-    animation: landing-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: landing-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .landing-delay-1 {
-    animation-delay: 0.08s;
+    animation-delay: 0.06s;
   }
   .landing-delay-2 {
-    animation-delay: 0.16s;
+    animation-delay: 0.14s;
   }
   .landing-delay-3 {
-    animation-delay: 0.26s;
+    animation-delay: 0.24s;
   }
   .landing-delay-4 {
-    animation-delay: 0.34s;
+    animation-delay: 0.32s;
   }
   .landing-delay-5 {
-    animation-delay: 0.42s;
+    animation-delay: 0.4s;
   }
   .landing-delay-6 {
-    animation-delay: 0.5s;
+    animation-delay: 0.48s;
   }
 
   /* Glass + glow for first impression */
@@ -189,12 +189,12 @@
     background: linear-gradient(
       120deg,
       transparent 20%,
-      rgba(16, 185, 129, 0.45) 45%,
-      rgba(34, 211, 238, 0.35) 55%,
+      rgba(16, 185, 129, 0.55) 45%,
+      rgba(34, 211, 238, 0.45) 55%,
       transparent 80%
     );
     background-size: 200% 200%;
-    animation: shine-move 4s linear infinite;
+    animation: shine-move 3.5s linear infinite;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
     -webkit-mask-composite: xor;
@@ -203,20 +203,28 @@
   }
 
   .stat-pop {
-    animation: stat-pop 0.6s cubic-bezier(0.22, 1, 0.36, 1) both;
+    animation: stat-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
   .hero-gradient-text {
-    background: linear-gradient(135deg, rgb(16 185 129) 0%, rgb(34 211 238) 50%, rgb(16 185 129) 100%);
+    background: linear-gradient(135deg, rgb(16 185 129) 0%, rgb(34 211 238) 45%, rgb(16 185 129) 100%);
     background-size: 200% auto;
     -webkit-background-clip: text;
     background-clip: text;
     color: transparent;
-    animation: gradient-shift 6s ease infinite;
+    animation: gradient-shift 5s ease infinite;
   }
 
   .cta-pulse {
-    animation: cta-pulse 2.4s ease-in-out infinite;
+    animation: cta-pulse 2.2s ease-in-out infinite;
+  }
+
+  .logo-spin-hover:hover {
+    animation: logo-nudge 0.5s ease;
+  }
+
+  .step-card:hover .step-num {
+    transform: scale(1.08);
   }
 
   /* New: infinite marquee for roles */
@@ -226,7 +234,7 @@
   }
   .marquee-track {
     @apply flex w-max gap-8;
-    animation: marquee 28s linear infinite;
+    animation: marquee 26s linear infinite;
   }
   .marquee-track:hover {
     animation-play-state: paused;
@@ -305,7 +313,7 @@
 @keyframes landing-rise {
   from {
     opacity: 0;
-    transform: translateY(22px);
+    transform: translateY(24px);
   }
   to {
     opacity: 1;
@@ -316,12 +324,12 @@
 @keyframes glow-pulse {
   0%,
   100% {
-    opacity: 0.55;
+    opacity: 0.5;
     transform: scale(1);
   }
   50% {
-    opacity: 0.9;
-    transform: scale(1.08);
+    opacity: 0.95;
+    transform: scale(1.1);
   }
 }
 
@@ -331,7 +339,7 @@
     transform: translateY(0);
   }
   50% {
-    transform: translateY(-14px);
+    transform: translateY(-18px);
   }
 }
 
@@ -347,7 +355,7 @@
 @keyframes stat-pop {
   from {
     opacity: 0;
-    transform: translateY(12px) scale(0.96);
+    transform: translateY(14px) scale(0.94);
   }
   to {
     opacity: 1;
@@ -368,10 +376,10 @@
 @keyframes cta-pulse {
   0%,
   100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.35);
+    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
   }
   50% {
-    box-shadow: 0 0 0 10px rgba(16, 185, 129, 0);
+    box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
   }
 }
 
@@ -384,6 +392,19 @@
   }
 }
 
+@keyframes logo-nudge {
+  0%,
+  100% {
+    transform: rotate(0deg);
+  }
+  30% {
+    transform: rotate(-8deg);
+  }
+  60% {
+    transform: rotate(6deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-reveal,
   .glow-orb,
@@ -393,7 +414,8 @@
   .stat-pop,
   .hero-gradient-text,
   .cta-pulse,
-  .marquee-track {
+  .marquee-track,
+  .logo-spin-hover {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
