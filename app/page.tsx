@@ -33,6 +33,17 @@ const STATS = [
   { label: "Talent discovery", value: "Open" },
 ];
 
+const ROLES = [
+  "Traders",
+  "Researchers",
+  "Community Leads",
+  "Airdrop Hunters",
+  "Builders",
+  "Mods",
+  "Onchain Analysts",
+  "Campaign Managers",
+];
+
 export default async function HomePage() {
   const supabase = await createClient();
   const {
@@ -108,25 +119,25 @@ export default async function HomePage() {
 
       <main className="relative z-10">
         {/* HERO */}
-        <section className="container-app pt-14 pb-12 sm:pt-24 sm:pb-16">
+        <section className="container-app pt-14 pb-10 sm:pt-24 sm:pb-14">
           <div className="mx-auto max-w-3xl text-center">
             <div className="landing-reveal landing-delay-1 inline-flex items-center gap-2 rounded-full border border-primary/25 bg-primary/5 px-3.5 py-1.5 text-[11px] text-foreground-muted backdrop-blur-sm">
               <span className="relative flex h-1.5 w-1.5">
                 <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-primary opacity-60" />
                 <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-primary" />
               </span>
-              Web3 proof of work · live scores · talent discovery
+              Live scores · real proof · talent discovery
             </div>
 
-            <h1 className="landing-reveal landing-delay-2 mt-6 text-3xl sm:text-5xl lg:text-[3.4rem] font-bold tracking-tight leading-[1.08]">
-              The public portfolio for{" "}
-              <span className="hero-gradient-text">verifiable Web3 work</span>
+            <h1 className="landing-reveal landing-delay-2 mt-6 text-3xl sm:text-5xl lg:text-[3.5rem] font-bold tracking-tight leading-[1.08]">
+              Your Web3 work.{" "}
+              <span className="hero-gradient-text">Verified. Visible. Hireable.</span>
             </h1>
 
             <p className="landing-reveal landing-delay-3 mt-5 text-sm sm:text-base text-foreground-muted max-w-2xl mx-auto leading-relaxed">
-              Built for traders, researchers, community leads and airdrop hunters.
-              Put real trades, writing, roles and onchain proof on one link.
-              Strict Profile + Builder scores teams actually trust.
+              Stop scattering trades, threads and roles across ten apps.
+              One sleek public profile with strict scores teams actually trust.
+              Built for people who ship, not just claim.
             </p>
 
             <div className="landing-reveal landing-delay-4 mt-8 flex flex-col sm:flex-row items-center justify-center gap-3">
@@ -142,11 +153,11 @@ export default async function HomePage() {
                   href="/signup"
                   className="btn-primary px-7 py-3 text-sm shadow-lg shadow-primary/25 cta-pulse"
                 >
-                  Create your profile — free
+                  Create free profile →
                 </Link>
               )}
               <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
-                Browse talents →
+                Browse talents
               </Link>
             </div>
 
@@ -154,7 +165,7 @@ export default async function HomePage() {
               {STATS.map((s, i) => (
                 <div
                   key={s.label}
-                  className="stat-pop glass-panel rounded-xl px-3 py-3.5 transition duration-300 hover:border-primary/40 hover:shadow-glow-sm"
+                  className="stat-pop glass-panel rounded-xl px-3 py-3.5 transition duration-300 hover:border-primary/40 hover:shadow-glow-sm hover:-translate-y-0.5"
                   style={{ animationDelay: `${0.35 + i * 0.08}s` }}
                 >
                   <p className="text-lg sm:text-xl font-bold tracking-tight text-primary">{s.value}</p>
@@ -164,6 +175,17 @@ export default async function HomePage() {
             </div>
           </div>
         </section>
+
+        {/* ROLE MARQUEE */}
+        <div className="marquee-wrap landing-reveal landing-delay-6 mb-10 border-y border-border/40 bg-surface/40">
+          <div className="marquee-track">
+            {[...ROLES, ...ROLES].map((role, i) => (
+              <span key={`${role}-${i}`} className="marquee-item flex items-center gap-2">
+                <span className="text-primary">◆</span> {role}
+              </span>
+            ))}
+          </div>
+        </div>
 
         {/* FEATURES */}
         <section id="features" className="pb-14 sm:pb-18">
@@ -289,10 +311,10 @@ export default async function HomePage() {
               aria-hidden
             />
             <h2 className="relative text-xl sm:text-2xl font-bold tracking-tight">
-              Ready to show your work?
+              Ready to get discovered?
             </h2>
             <p className="relative mt-2 text-sm text-foreground-muted">
-              Create your Pow3Folio in minutes. Share one link. Get found by the right teams.
+              Create your Pow3Folio in minutes. One link. Real scores. Real opportunities.
             </p>
             <div className="relative mt-7 flex flex-col sm:flex-row gap-3 justify-center">
               {user ? (
@@ -301,7 +323,7 @@ export default async function HomePage() {
                 </Link>
               ) : (
                 <Link href="/signup" className="btn-primary px-7 py-3 text-sm cta-pulse">
-                  Get started free
+                  Get started free →
                 </Link>
               )}
               <Link href="/talents" className="btn-secondary px-7 py-3 text-sm">
