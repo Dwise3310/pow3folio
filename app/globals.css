@@ -218,6 +218,22 @@
   .cta-pulse {
     animation: cta-pulse 2.4s ease-in-out infinite;
   }
+
+  /* New: infinite marquee for roles */
+  .marquee-wrap {
+    @apply relative overflow-hidden py-4;
+    mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
+  }
+  .marquee-track {
+    @apply flex w-max gap-8;
+    animation: marquee 28s linear infinite;
+  }
+  .marquee-track:hover {
+    animation-play-state: paused;
+  }
+  .marquee-item {
+    @apply shrink-0 text-sm font-medium text-foreground-muted tracking-wide;
+  }
 }
 
 @keyframes open-dot-blink {
@@ -359,6 +375,15 @@
   }
 }
 
+@keyframes marquee {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(-50%);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .landing-reveal,
   .glow-orb,
@@ -367,7 +392,8 @@
   .shine-border::before,
   .stat-pop,
   .hero-gradient-text,
-  .cta-pulse {
+  .cta-pulse,
+  .marquee-track {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
