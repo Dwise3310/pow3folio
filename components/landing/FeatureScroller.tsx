@@ -110,7 +110,7 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
         {items.map((card) => (
           <article
             key={card.title}
-            className="group relative h-64 w-[min(85vw,19rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/70 bg-zinc-900 shadow-sm transition duration-500 hover:border-primary/40 hover:shadow-xl hover:shadow-primary/10 hover:-translate-y-1"
+            className="group relative h-64 w-[min(85vw,19rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/70 bg-zinc-900 shadow-sm transition duration-500 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1.5"
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
@@ -120,9 +120,9 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
               loading="lazy"
               decoding="async"
             />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20 transition duration-500 group-hover:from-black/90" />
             <div className="relative flex h-full flex-col justify-end p-4">
-              <span className="mb-2 w-fit rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm">
+              <span className="mb-2 w-fit rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm transition group-hover:border-primary/50 group-hover:bg-primary/20">
                 {card.tag}
               </span>
               <h3 className="text-lg font-bold text-white drop-shadow-md">{card.title}</h3>
