@@ -37,6 +37,13 @@ const CARDS: {
     autofill: "profile",
   },
   {
+    href: "/dashboard/community",
+    title: "Projects / Collab",
+    hint: "Builds, partnerships, community roles",
+    flag: "show_community",
+    autofill: "community",
+  },
+  {
     href: "/dashboard/writing",
     title: "Technical Writing",
     hint: "Articles, threads, research",
@@ -50,23 +57,16 @@ const CARDS: {
     flag: "show_trading",
   },
   {
-    href: "/dashboard/community",
-    title: "Community",
-    hint: "Roles and contributions",
-    flag: "show_community",
-    autofill: "community",
-  },
-  {
-    href: "/dashboard/airdrops",
-    title: "Airdrops",
-    hint: "Campaigns and status",
-    flag: "show_airdrops",
-  },
-  {
     href: "/dashboard/collectibles",
     title: "Onchain / NFTs",
     hint: "Wallet showcase and NFTs",
     flag: "show_nfts",
+  },
+  {
+    href: "/dashboard/airdrops",
+    title: "Airdrops",
+    hint: "Optional. Off by default on public profile",
+    flag: "show_airdrops",
   },
 ];
 
