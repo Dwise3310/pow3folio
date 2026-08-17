@@ -80,6 +80,7 @@ export type Writing = {
   title: string;
   url: string;
   thumbnail_url: string | null;
+  image_url_2: string | null;
   description: string | null;
   tags: string[] | null;
   published_at: string | null;
