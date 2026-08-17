@@ -36,6 +36,7 @@ export type AutofillPayload = {
     platform?: string;
     description?: string;
     url?: string;
+    category?: "built" | "collaboration" | "community";
   }[];
   writings?: {
     title: string;
@@ -152,6 +153,6 @@ export function clearPendingAutofill() {
   }
 }
 
-/** Amber outline for fields filled from pending autofill */
+/** Amber outline for fields / cards filled from pending autofill (force over any primary/blue rings) */
 export const AUTOFILL_HIGHLIGHT =
-  "ring-2 ring-amber-400/70 border-amber-400/60 bg-amber-400/5";
+  "!ring-2 !ring-amber-400/80 !border-amber-400/70 !bg-amber-400/5";
