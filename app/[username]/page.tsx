@@ -64,7 +64,7 @@ function absoluteUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const t = url.trim();
   if (!t) return null;
-  if (/^https?:\/\/i.test(t)) return t;
+  if (/^https?:\/\//i.test(t)) return t;
   return `https://${t.replace(/^\/+/, "")}`;
 }
 
