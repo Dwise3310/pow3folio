@@ -303,23 +303,6 @@ export default async function HomePage() {
           </div>
         </section>
 
-        <section className="container-app pb-12 sm:pb-16">
-          <div className="mx-auto max-w-2xl rounded-2xl border border-border/80 bg-surface/60 px-6 py-8 text-center">
-            <p className="text-[11px] font-medium uppercase tracking-widest text-foreground-subtle">
-              Help
-            </p>
-            <h2 className="mt-2 text-xl sm:text-2xl font-bold tracking-tight">
-              Questions about Pow3Folio?
-            </h2>
-            <p className="mt-2 text-sm text-foreground-muted">
-              How profiles work, scores, tabs, wallets, and more. Clear answers in one place.
-            </p>
-            <Link href="/faq" className="btn-secondary mt-5 inline-flex text-sm">
-              Read the FAQ →
-            </Link>
-          </div>
-        </section>
-
         <section className="container-app pb-20 sm:pb-28">
           <div className="relative mx-auto max-w-2xl overflow-hidden rounded-2xl border border-primary/40 bg-surface/90 px-6 py-14 sm:px-12 text-center shine-border">
             <div
