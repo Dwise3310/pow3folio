@@ -6,7 +6,6 @@ export const maxDuration = 60;
 
 const buckets = new Map<string, { count: number; reset: number }>();
 
-/** Lite first = less capacity pressure on free tier */
 const MODELS = [
   "gemini-2.5-flash-lite",
   "gemini-2.0-flash-lite",
@@ -72,7 +71,10 @@ function extractJson(raw: string): Record<string, unknown> | null {
     const end = cleaned.lastIndexOf("}");
     if (start >= 0 && end > start) {
       try {
-        return JSON.parse(cleaned.slice(start, end + 1)) as Record<string, unknown>;
+        return JSON.parse(cleaned.slice(start, end + 1)) as Record<
+          string,
+          unknown
+        >;
       } catch {
         return null;
       }
@@ -94,7 +96,7 @@ async function callGemini(
       contents: [{ role: "user", parts }],
       generationConfig: {
         temperature: 0.2,
-        maxOutputTokens: 2500,
+        maxOutputTokens: 3500,
       },
     }),
   });
@@ -110,6 +112,30 @@ async function callGemini(
   }
   return { ok: res.ok, status: res.status, raw: raw.slice(0, 600), data };
 }
+
+const PROMPT = `You extract structured profile data for Pow3Folio (Web3 proof of work portfolio).
+Return ONLY a JSON object (no markdown fences) with any of these keys you can infer:
+{
+  "display_name": string,
+  "bio": string (max 160 chars, no URLs),
+  "long_bio": string,
+  "skills": [{"name": string, "description": string max 85 chars}],
+  "work_experience": [{"company": string, "role": string, "description": string, "url": string, "employment_type": "full-time" or "part-time", "start_date": "YYYY-MM", "end_date": "YYYY-MM" or null}],
+  "education": [{"institution": string, "degree": string, "field_of_study": string, "country": string, "start_year": string, "end_year": string}],
+  "website_url": string,
+  "github_url": string,
+  "x_url": string,
+  "telegram_url": string,
+  "location_country": string,
+  "location_region": string,
+  "community": [{"title": string, "role": string, "platform": string, "description": string, "url": string}],
+  "writings": [{"title": string, "url": string, "description": string}]
+}
+Rules:
+- Max 8 skills, 5 work, 6 community, 6 writings.
+- Community roles, Discord/Telegram mod work, campaign work → "community".
+- Articles, threads, research with links → "writings".
+- Prefer concrete facts from the document. Omit unknown keys.`;
 
 export async function POST(req: NextRequest) {
   try {
@@ -165,37 +191,20 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // DOC/DOCX are unreliable on Gemini free tier; prefer PDF/TXT
-    if (/\.(doc|docx)$/i.test(fileName) || mime.includes("word") || mime.includes("document")) {
-      // still attempt, but we will surface a clearer tip if it fails
-    }
-
     let text = "";
     if (isTextMime(mime, fileName)) {
       text = buf.toString("utf8").slice(0, 50000);
       if (text.includes("\u0000")) text = "";
     }
 
-    const prompt = `You extract structured profile data for Pow3Folio (Web3 proof of work portfolio).
-Return ONLY a JSON object (no markdown fences) with any of these keys you can infer:
-{
-  "display_name": string,
-  "bio": string (max 160 chars, no URLs),
-  "long_bio": string,
-  "skills": [{"name": string, "description": string max 85 chars}],
-  "work_experience": [{"company": string, "role": string, "description": string, "url": string, "employment_type": "full-time" or "part-time", "start_date": "YYYY-MM", "end_date": "YYYY-MM" or null}],
-  "education": [{"institution": string, "degree": string, "field_of_study": string, "country": string, "start_year": string, "end_year": string}],
-  "website_url": string,
-  "github_url": string,
-  "x_url": string,
-  "location_country": string,
-  "location_region": string
-}
-Max 8 skills, max 5 work entries. Prefer concrete facts from the document. Omit unknown keys.
-${text ? "\nDocument text:\n" + text : "\nThe document is attached. Read it and extract the fields."}`;
-
     const parts: { text?: string; inlineData?: { mimeType: string; data: string } }[] = [
-      { text: prompt },
+      {
+        text:
+          PROMPT +
+          (text
+            ? "\n\nDocument text:\n" + text
+            : "\n\nThe document is attached. Read it and extract all fields."),
+      },
     ];
 
     if (!text) {
@@ -231,10 +240,8 @@ ${text ? "\nDocument text:\n" + text : "\nThe document is attached. Read it and 
           console.error("autofill model fail", model, result.status, lastErr.slice(0, 200));
           if (isCapacityError(result.status, errMsg)) {
             sawCapacity = true;
-            // try next model / retry instead of aborting
             continue;
           }
-          // non-capacity error on this model → next model
           break;
         }
 
@@ -255,6 +262,10 @@ ${text ? "\nDocument text:\n" + text : "\nThe document is attached. Read it and 
         if (Array.isArray(profile.skills)) profile.skills = profile.skills.slice(0, 8);
         if (Array.isArray(profile.work_experience))
           profile.work_experience = profile.work_experience.slice(0, 5);
+        if (Array.isArray(profile.community))
+          profile.community = profile.community.slice(0, 6);
+        if (Array.isArray(profile.writings))
+          profile.writings = profile.writings.slice(0, 6);
         if (typeof profile.bio === "string") profile.bio = profile.bio.slice(0, 160);
 
         return NextResponse.json({ profile, model });
