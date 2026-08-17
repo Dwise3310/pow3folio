@@ -64,7 +64,7 @@ function absoluteUrl(url: string | null | undefined): string | null {
   if (!url) return null;
   const t = url.trim();
   if (!t) return null;
-  if (/^https?:\/\//i.test(t)) return t;
+  if (/^https?:\/\/i.test(t)) return t;
   return `https://${t.replace(/^\/+/, "")}`;
 }
 
@@ -112,7 +112,7 @@ export default async function PublicProfilePage({ params }: Props) {
   const showWriting = p.show_writing !== false;
   const showTrading = p.show_trading !== false;
   const showCommunity = p.show_community !== false;
-  const showAirdrops = p.show_airdrops !== false;
+  const showAirdrops = p.show_airdrops === true;
   const showOnchain = p.show_nfts !== false;
   const showCredentials = p.show_credentials !== false;
 
