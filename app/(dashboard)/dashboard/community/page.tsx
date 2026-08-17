@@ -41,9 +41,9 @@ export default async function CommunityPage() {
 
       <main className="container-app max-w-3xl py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">Community</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Projects / Collab</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Mods, ambassadors, campaigns, DAO work. Proof of community impact.
+            Personal builds, partnerships and community roles. Tag each item so viewers know the type.
           </p>
         </div>
         <div className="card">
