@@ -25,7 +25,8 @@ export default async function DashboardPage() {
     show_writing: profile?.show_writing !== false,
     show_trading: profile?.show_trading !== false,
     show_community: profile?.show_community !== false,
-    show_airdrops: profile?.show_airdrops !== false,
+    // Airdrops off by default until talent turns them on
+    show_airdrops: profile?.show_airdrops === true,
     show_nfts: profile?.show_nfts !== false,
     show_credentials: profile?.show_credentials !== false,
   };
