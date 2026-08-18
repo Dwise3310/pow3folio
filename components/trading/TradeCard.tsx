@@ -52,15 +52,15 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
 
   return (
     <>
-      <article className="card flex flex-col overflow-hidden p-0 transition-colors hover:border-primary/40">
+      <article className="card flex h-auto w-full flex-col overflow-hidden p-0 transition-colors hover:border-primary/40">
         <TradeImageCarousel
           images={images}
           className="aspect-[16/10] w-full"
           href={post}
+          hideEmpty
         />
 
-        <div className="flex flex-1 flex-col gap-1.5 p-3">
-          {/* Title hyperlinked to original post like writings */}
+        <div className="flex flex-col gap-1.5 p-3">
           {post ? (
             <a
               href={post}
@@ -74,7 +74,6 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
             <div className="flex flex-wrap items-baseline gap-x-1.5 gap-y-0.5">{titleBlock}</div>
           )}
 
-          {/* Colored badges: direction / status / ROI */}
           <div className="flex flex-wrap items-center gap-1">
             {trade.direction && (
               <span
@@ -121,7 +120,7 @@ export default function TradeCard({ trade, updates, profileUrl }: Props) {
             )
           )}
 
-          <div className="mt-auto flex flex-wrap items-center gap-x-2.5 gap-y-1 pt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-x-2.5 gap-y-1">
             {post && (
               <a
                 href={post}
