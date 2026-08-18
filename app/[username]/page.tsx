@@ -22,6 +22,7 @@ import EmailChip from "@/components/ui/EmailChip";
 import PublicProfileTabs from "@/components/profile/PublicProfileTabs";
 import PublicProfileCta from "@/components/profile/PublicProfileCta";
 import ScoreRings from "@/components/profile/ScoreRings";
+import ResumeDownload from "@/components/profile/ResumeDownload";
 import { computeScores } from "@/lib/ai/scores";
 
 type Props = {
@@ -40,7 +41,7 @@ function normalizeSkills(raw: Profile["skills"]): Skill[] {
             if (parsed?.name) {
               return {
                 name: String(parsed.name).slice(0, 60),
-                description: String(parsed.description || "").slice(0, 85),
+                description: String(parsed.description || "").slice(0, 250),
               };
             }
           } catch {
@@ -52,7 +53,7 @@ function normalizeSkills(raw: Profile["skills"]): Skill[] {
       if (s && typeof s === "object" && "name" in s) {
         return {
           name: String((s as Skill).name || "").slice(0, 60),
-          description: String((s as Skill).description || "").slice(0, 85),
+          description: String((s as Skill).description || "").slice(0, 250),
         };
       }
       return { name: "", description: "" };
@@ -261,19 +262,17 @@ export default async function PublicProfilePage({ params }: Props) {
         </div>
 
         <div className="mt-12 sm:mt-13 flex items-start justify-between gap-3 pl-0.5 animate-slide-up">
-          <div className="min-w-0 flex-1 space-y-0.5">
-            <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
-                {p.display_name || p.username}
-              </h1>
-              {p.open_to_work && (
-                <span className="badge-open">
-                  <span className="badge-open-dot" aria-hidden />
-                  Open to opportunities
-                </span>
-              )}
-            </div>
+          <div className="min-w-0 flex-1 space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight break-words">
+              {p.display_name || p.username}
+            </h1>
             <p className="text-sm text-foreground-muted">@{p.username}</p>
+            {p.open_to_work && (
+              <span className="badge-open">
+                <span className="badge-open-dot" aria-hidden />
+                Open to opportunities
+              </span>
+            )}
           </div>
 
           <ScoreRings
@@ -299,40 +298,43 @@ export default async function PublicProfilePage({ params }: Props) {
           </div>
         )}
 
-        {hasContacts && (
-          <div className="mt-2.5 flex flex-wrap items-center gap-1.5 animate-slide-up">
-            {socials.map((s) => (
-              <a
-                key={s.label}
-                href={s.href!}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary"
-              >
-                {s.label}
-              </a>
-            ))}
-            {publicEmails.map((em) => (
-              <EmailChip key={em} email={em} />
-            ))}
-            {p.ens_name && (
-              <span className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground-muted">
-                {p.ens_name}
-              </span>
-            )}
-            {p.wallet_address && arkhamUrl && (
-              <a
-                href={arkhamUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                title="View on Arkham"
-                className="rounded-full border border-border px-2.5 py-1 font-mono text-[10px] text-foreground-subtle transition-all hover:border-primary/40 hover:text-primary"
-              >
-                {p.wallet_address.slice(0, 6)}…{p.wallet_address.slice(-4)}
-              </a>
-            )}
-          </div>
-        )}
+        <div className="mt-2.5 flex flex-wrap items-center gap-1.5 animate-slide-up">
+          <ResumeDownload username={p.username} />
+          {hasContacts && (
+            <>
+              {socials.map((s) => (
+                <a
+                  key={s.label}
+                  href={s.href!}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-xs font-medium transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  {s.label}
+                </a>
+              ))}
+              {publicEmails.map((em) => (
+                <EmailChip key={em} email={em} />
+              ))}
+              {p.ens_name && (
+                <span className="rounded-full border border-border px-2.5 py-1 text-xs text-foreground-muted">
+                  {p.ens_name}
+                </span>
+              )}
+              {p.wallet_address && arkhamUrl && (
+                <a
+                  href={arkhamUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title="View on Arkham"
+                  className="rounded-full border border-border px-2.5 py-1 font-mono text-[10px] text-foreground-subtle transition-all hover:border-primary/40 hover:text-primary"
+                >
+                  {p.wallet_address.slice(0, 6)}…{p.wallet_address.slice(-4)}
+                </a>
+              )}
+            </>
+          )}
+        </div>
 
         <PublicProfileTabs
           profileUrl={profileUrl}
