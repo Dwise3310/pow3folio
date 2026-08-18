@@ -65,7 +65,7 @@ export default function AirdropCard({ item, profileUrl }: Props) {
           {item.reward}
         </p>
       )}
-      <div className="mt-auto flex items-center justify-between gap-2 pt-3">
+      <div className="mt-2 flex items-center justify-between gap-2">
         <div className="flex min-w-0 flex-wrap gap-1">
           {(item.tags ?? []).slice(0, 3).map((tag) => (
             <span
@@ -87,12 +87,12 @@ export default function AirdropCard({ item, profileUrl }: Props) {
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="card flex flex-col p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+        className="card flex h-auto w-full flex-col p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
       >
         {CardInner}
       </a>
     );
   }
 
-  return <article className="card flex flex-col p-3">{CardInner}</article>;
+  return <article className="card flex h-auto w-full flex-col p-3">{CardInner}</article>;
 }

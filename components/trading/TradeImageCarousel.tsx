@@ -6,14 +6,16 @@ type Props = {
   images: string[];
   className?: string;
   href?: string | null;
+  hideEmpty?: boolean;
 };
 
-export default function TradeImageCarousel({ images, className = "", href }: Props) {
+export default function TradeImageCarousel({ images, className = "", href, hideEmpty }: Props) {
   const valid = images.filter(Boolean);
   const [index, setIndex] = useState(0);
   const startX = useRef<number | null>(null);
 
   if (valid.length === 0) {
+    if (hideEmpty) return null;
     return (
       <div
         className={`flex items-center justify-center bg-surface-elevated text-xs text-foreground-subtle ${className}`}

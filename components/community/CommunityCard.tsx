@@ -108,7 +108,7 @@ export default function CommunityCard({ item, profileUrl }: Props) {
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="card h-auto self-start flex flex-col p-2.5 sm:p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+        className="card h-auto w-full self-start flex flex-col p-2.5 sm:p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
       >
         {CardInner}
       </a>
@@ -116,6 +116,6 @@ export default function CommunityCard({ item, profileUrl }: Props) {
   }
 
   return (
-    <article className="card h-auto self-start flex flex-col p-2.5 sm:p-3">{CardInner}</article>
+    <article className="card h-auto w-full self-start flex flex-col p-2.5 sm:p-3">{CardInner}</article>
   );
 }
