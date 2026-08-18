@@ -39,7 +39,17 @@ export default function CommunityCard({ item, profileUrl }: Props) {
   const categoryLabel = CATEGORY_LABELS[category] || "Collaboration";
   const otherTags = (item.tags ?? []).filter((t) => {
     const k = t.toLowerCase().trim();
-    return !["built", "built by me", "personal project", "collaboration", "collab", "partner", "community", "community role", "mod"].includes(k);
+    return ![
+      "built",
+      "built by me",
+      "personal project",
+      "collaboration",
+      "collab",
+      "partner",
+      "community",
+      "community role",
+      "mod",
+    ].includes(k);
   });
 
   const CardInner = (
@@ -65,9 +75,7 @@ export default function CommunityCard({ item, profileUrl }: Props) {
           <p className="mt-0.5 text-[10px] sm:text-xs text-foreground-muted line-clamp-1">
             {[item.role, item.platform].filter(Boolean).join(" · ")}
           </p>
-          {period && (
-            <p className="mt-0.5 text-[10px] text-foreground-subtle">{period}</p>
-          )}
+          {period && <p className="mt-0.5 text-[10px] text-foreground-subtle">{period}</p>}
         </div>
       </div>
       {item.description && (
@@ -78,7 +86,7 @@ export default function CommunityCard({ item, profileUrl }: Props) {
           {item.metrics}
         </p>
       )}
-      <div className="mt-auto flex items-center justify-between gap-1 pt-2">
+      <div className="mt-2 flex items-center justify-between gap-1">
         <div className="flex min-w-0 flex-wrap gap-1">
           {otherTags.slice(0, 2).map((tag) => (
             <span
@@ -100,12 +108,14 @@ export default function CommunityCard({ item, profileUrl }: Props) {
         href={item.url}
         target="_blank"
         rel="noopener noreferrer"
-        className="card flex flex-col p-2.5 sm:p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
+        className="card h-auto self-start flex flex-col p-2.5 sm:p-3 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md"
       >
         {CardInner}
       </a>
     );
   }
 
-  return <article className="card flex flex-col p-2.5 sm:p-3">{CardInner}</article>;
+  return (
+    <article className="card h-auto self-start flex flex-col p-2.5 sm:p-3">{CardInner}</article>
+  );
 }
