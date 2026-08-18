@@ -108,7 +108,16 @@
   }
 
   .writing-grid {
-    @apply grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+    @apply grid grid-cols-1 items-start gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4;
+  }
+
+  /* Public profile grids: each card keeps its own height */
+  .tab-panel-enter .grid {
+    align-items: start;
+  }
+  .tab-panel-enter .grid > * {
+    height: auto;
+    align-self: start;
   }
 
   .animate-fade-in {
@@ -136,63 +145,33 @@
     display: none;
   }
 
-  /* Landing page entrance */
   .landing-reveal {
     animation: landing-rise 0.75s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
 
-  .landing-delay-1 {
-    animation-delay: 0.06s;
-  }
-  .landing-delay-2 {
-    animation-delay: 0.14s;
-  }
-  .landing-delay-3 {
-    animation-delay: 0.24s;
-  }
-  .landing-delay-4 {
-    animation-delay: 0.32s;
-  }
-  .landing-delay-5 {
-    animation-delay: 0.4s;
-  }
-  .landing-delay-6 {
-    animation-delay: 0.48s;
-  }
+  .landing-delay-1 { animation-delay: 0.06s; }
+  .landing-delay-2 { animation-delay: 0.14s; }
+  .landing-delay-3 { animation-delay: 0.24s; }
+  .landing-delay-4 { animation-delay: 0.32s; }
+  .landing-delay-5 { animation-delay: 0.4s; }
+  .landing-delay-6 { animation-delay: 0.48s; }
 
-  /* Glass + glow for first impression */
   .glass-panel {
     @apply border border-white/10 bg-white/5 backdrop-blur-xl dark:bg-white/[0.04];
   }
 
-  .glow-orb {
-    animation: glow-pulse 5s ease-in-out infinite;
-  }
+  .glow-orb { animation: glow-pulse 5s ease-in-out infinite; }
+  .float-y { animation: float-y 7s ease-in-out infinite; }
+  .float-y-slow { animation: float-y 11s ease-in-out infinite; }
 
-  .float-y {
-    animation: float-y 7s ease-in-out infinite;
-  }
-
-  .float-y-slow {
-    animation: float-y 11s ease-in-out infinite;
-  }
-
-  .shine-border {
-    position: relative;
-  }
+  .shine-border { position: relative; }
   .shine-border::before {
     content: "";
     position: absolute;
     inset: -1px;
     border-radius: inherit;
     padding: 1px;
-    background: linear-gradient(
-      120deg,
-      transparent 20%,
-      rgba(16, 185, 129, 0.55) 45%,
-      rgba(34, 211, 238, 0.45) 55%,
-      transparent 80%
-    );
+    background: linear-gradient(120deg, transparent 20%, rgba(16, 185, 129, 0.55) 45%, rgba(34, 211, 238, 0.45) 55%, transparent 80%);
     background-size: 200% 200%;
     animation: shine-move 3.5s linear infinite;
     -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
@@ -202,9 +181,7 @@
     pointer-events: none;
   }
 
-  .stat-pop {
-    animation: stat-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
-  }
+  .stat-pop { animation: stat-pop 0.65s cubic-bezier(0.22, 1, 0.36, 1) both; }
 
   .hero-gradient-text {
     background: linear-gradient(135deg, rgb(16 185 129) 0%, rgb(34 211 238) 45%, rgb(16 185 129) 100%);
@@ -215,19 +192,10 @@
     animation: gradient-shift 5s ease infinite;
   }
 
-  .cta-pulse {
-    animation: cta-pulse 2.2s ease-in-out infinite;
-  }
+  .cta-pulse { animation: cta-pulse 2.2s ease-in-out infinite; }
+  .logo-spin-hover:hover { animation: logo-nudge 0.5s ease; }
+  .step-card:hover .step-num { transform: scale(1.08); }
 
-  .logo-spin-hover:hover {
-    animation: logo-nudge 0.5s ease;
-  }
-
-  .step-card:hover .step-num {
-    transform: scale(1.08);
-  }
-
-  /* New: infinite marquee for roles */
   .marquee-wrap {
     @apply relative overflow-hidden py-4;
     mask-image: linear-gradient(to right, transparent, black 8%, black 92%, transparent);
@@ -236,186 +204,36 @@
     @apply flex w-max gap-8;
     animation: marquee 26s linear infinite;
   }
-  .marquee-track:hover {
-    animation-play-state: paused;
-  }
+  .marquee-track:hover { animation-play-state: paused; }
   .marquee-item {
     @apply shrink-0 text-sm font-medium text-foreground-muted tracking-wide;
   }
 }
 
 @keyframes open-dot-blink {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55);
-  }
-  50% {
-    opacity: 0.35;
-    box-shadow: 0 0 0 5px rgba(52, 211, 153, 0);
-  }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(52, 211, 153, 0.55); }
+  50% { opacity: 0.35; box-shadow: 0 0 0 5px rgba(52, 211, 153, 0); }
 }
-
 @keyframes location-dot-blink {
-  0%,
-  100% {
-    opacity: 1;
-    box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55);
-  }
-  50% {
-    opacity: 0.35;
-    box-shadow: 0 0 0 5px rgba(56, 189, 248, 0);
-  }
+  0%, 100% { opacity: 1; box-shadow: 0 0 0 0 rgba(56, 189, 248, 0.55); }
+  50% { opacity: 0.35; box-shadow: 0 0 0 5px rgba(56, 189, 248, 0); }
 }
-
-@keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-  to {
-    opacity: 1;
-  }
-}
-
-@keyframes slide-up {
-  from {
-    opacity: 0;
-    transform: translateY(10px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes zoom-in {
-  from {
-    opacity: 0;
-    transform: scale(0.92);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-@keyframes tab-swipe {
-  from {
-    opacity: 0;
-    transform: translateX(16px);
-  }
-  to {
-    opacity: 1;
-    transform: translateX(0);
-  }
-}
-
-@keyframes landing-rise {
-  from {
-    opacity: 0;
-    transform: translateY(24px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes glow-pulse {
-  0%,
-  100% {
-    opacity: 0.5;
-    transform: scale(1);
-  }
-  50% {
-    opacity: 0.95;
-    transform: scale(1.1);
-  }
-}
-
-@keyframes float-y {
-  0%,
-  100% {
-    transform: translateY(0);
-  }
-  50% {
-    transform: translateY(-18px);
-  }
-}
-
-@keyframes shine-move {
-  0% {
-    background-position: 0% 50%;
-  }
-  100% {
-    background-position: 200% 50%;
-  }
-}
-
-@keyframes stat-pop {
-  from {
-    opacity: 0;
-    transform: translateY(14px) scale(0.94);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-@keyframes gradient-shift {
-  0%,
-  100% {
-    background-position: 0% 50%;
-  }
-  50% {
-    background-position: 100% 50%;
-  }
-}
-
-@keyframes cta-pulse {
-  0%,
-  100% {
-    box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4);
-  }
-  50% {
-    box-shadow: 0 0 0 12px rgba(16, 185, 129, 0);
-  }
-}
-
-@keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
-}
-
-@keyframes logo-nudge {
-  0%,
-  100% {
-    transform: rotate(0deg);
-  }
-  30% {
-    transform: rotate(-8deg);
-  }
-  60% {
-    transform: rotate(6deg);
-  }
-}
+@keyframes fade-in { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slide-up { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes zoom-in { from { opacity: 0; transform: scale(0.92); } to { opacity: 1; transform: scale(1); } }
+@keyframes tab-swipe { from { opacity: 0; transform: translateX(16px); } to { opacity: 1; transform: translateX(0); } }
+@keyframes landing-rise { from { opacity: 0; transform: translateY(24px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes glow-pulse { 0%, 100% { opacity: 0.5; transform: scale(1); } 50% { opacity: 0.95; transform: scale(1.1); } }
+@keyframes float-y { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-18px); } }
+@keyframes shine-move { 0% { background-position: 0% 50%; } 100% { background-position: 200% 50%; } }
+@keyframes stat-pop { from { opacity: 0; transform: translateY(14px) scale(0.94); } to { opacity: 1; transform: translateY(0) scale(1); } }
+@keyframes gradient-shift { 0%, 100% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } }
+@keyframes cta-pulse { 0%, 100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); } 50% { box-shadow: 0 0 0 12px rgba(16, 185, 129, 0); } }
+@keyframes marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+@keyframes logo-nudge { 0%, 100% { transform: rotate(0deg); } 30% { transform: rotate(-8deg); } 60% { transform: rotate(6deg); } }
 
 @media (prefers-reduced-motion: reduce) {
-  .landing-reveal,
-  .glow-orb,
-  .float-y,
-  .float-y-slow,
-  .shine-border::before,
-  .stat-pop,
-  .hero-gradient-text,
-  .cta-pulse,
-  .marquee-track,
-  .logo-spin-hover {
+  .landing-reveal, .glow-orb, .float-y, .float-y-slow, .shine-border::before, .stat-pop, .hero-gradient-text, .cta-pulse, .marquee-track, .logo-spin-hover {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
