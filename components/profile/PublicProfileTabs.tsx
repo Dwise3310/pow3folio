@@ -5,10 +5,10 @@ import ShareButton from "@/components/writing/ShareButton";
 import TradeCard from "@/components/trading/TradeCard";
 import CommunityCard from "@/components/community/CommunityCard";
 import AirdropCard from "@/components/airdrops/AirdropCard";
-import CollectibleCard from "@/components/collectibles/CollectibleCard";
 import PlatformLogo from "@/components/ui/PlatformLogo";
 import TradeImageCarousel from "@/components/trading/TradeImageCarousel";
 import CredentialThumb from "@/components/profile/CredentialThumb";
+import OnchainSection from "@/components/profile/OnchainSection";
 import type {
   Writing,
   Trade,
@@ -309,36 +309,13 @@ export default function PublicProfileTabs({
         )}
 
         {active === "onchain" && (
-          <div className="space-y-4">
-            <div className="card p-3 sm:p-4 space-y-2">
-              <h3 className="text-xs font-medium uppercase tracking-wide text-foreground-subtle">Wallet</h3>
-              {walletAddress || ensName ? (
-                <div className="space-y-1.5 text-sm">
-                  {ensName && <p className="font-medium">{ensName}</p>}
-                  {walletAddress && arkhamUrl && (
-                    <a href={arkhamUrl} target="_blank" rel="noopener noreferrer" className="block font-mono text-xs text-primary hover:underline break-all">{walletAddress}</a>
-                  )}
-                  {walletAddress && arkhamUrl && (
-                    <a href={arkhamUrl} target="_blank" rel="noopener noreferrer" className="inline-flex text-xs text-foreground-muted hover:text-primary">View on Arkham →</a>
-                  )}
-                </div>
-              ) : (
-                <p className="text-sm text-foreground-subtle">No wallet connected.</p>
-              )}
-            </div>
-            <div>
-              <h3 className="mb-2 text-xs font-medium uppercase tracking-wide text-foreground-subtle">NFTs</h3>
-              {nfts.length === 0 ? (
-                <div className="card text-sm text-foreground-subtle">No NFTs yet.</div>
-              ) : (
-                <div className="tight-cards tight-cards-4">
-                  {nfts.map((c) => (
-                    <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
-                  ))}
-                </div>
-              )}
-            </div>
-          </div>
+          <OnchainSection
+            profileUrl={profileUrl}
+            nfts={nfts}
+            walletAddress={walletAddress}
+            ensName={ensName}
+            arkhamUrl={arkhamUrl}
+          />
         )}
       </div>
 
