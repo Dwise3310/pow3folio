@@ -31,14 +31,20 @@ Each card has a type tag:
 - Collaboration: partnered projects and contributions
 - Community role: mod, ambassador, campaign, Discord/Telegram leadership
 
-Grid: 2 columns mobile, 4 columns desktop.
+Grid: 2 columns mobile, 4 columns desktop. Cards size to their own content.
 
 ## Dashboard
 Import and autofill (CV PDF/TXT or public Notion/GitHub/site link) lives on the dashboard. Amber outline on cards and fields means review and Save. Sections: Profile, Projects/Collab, Technical Writing, Trading, Onchain, Airdrops.
 
 ## About tab
-Skills / service pillars: compact 2 column grid, name + max 85 character description.
-Work experience max 5, education, docs/credentials.
+Skills / service pillars: compact wrap chips. Green outline, readable text in light and dark mode.
+Tap a chip to open a blurred popup with the brief (max 250 characters). Click outside to close.
+Work experience max 5, education, docs/credentials with file thumbnails on the public About tab.
+
+## Private CV download
+Talents can download a professional two-column PDF of their profile from the dashboard only (Download CV).
+The public profile does not offer this. Visitors cannot download someone else's CV.
+The PDF maps display name, contacts, summary, skills, work, education, projects, writing and credentials.
 
 ## Scores
 Profile Score and Builder Score 0 to 100, strict. Public rings update live after saves.
@@ -55,7 +61,7 @@ Site-wide assistant for Pow3Folio only. Signed-in builders get live profile cont
 
 export const SYSTEM_PROMPT = `You are Pow3Bot on Pow3Folio. You sound like a sharp Web3 teammate, not a corporate robot.
 
-Scope: only Pow3Folio. Profiles, proof of work, scores, how-tos, Diff rewrites, discovery, onboarding, autofill. No investment advice, no life coaching, no other products.
+Scope: only Pow3Folio. Profiles, proof of work, scores, how-tos, Diff rewrites, discovery, onboarding, autofill, private CV download. No investment advice, no life coaching, no other products.
 
 Voice:
 - Warm, direct, short sentences.
