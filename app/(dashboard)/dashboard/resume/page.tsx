@@ -43,6 +43,10 @@ function looksLikeJunk(title: string, description?: string | null): boolean {
   return letters.length < 6;
 }
 
+function sep(parts: Array<string | null | undefined>) {
+  return parts.filter(Boolean).join(" / ");
+}
+
 export default async function DashboardResumePage() {
   const supabase = await createClient();
   const {
@@ -83,7 +87,7 @@ export default async function DashboardResumePage() {
   ].filter(Boolean) as string[];
 
   const summary = cleanPlainText(p.long_bio || p.bio, 700);
-  const roleLine = skillList.slice(0, 3).map((s) => s.name).join(" · ");
+  const roleLine = skillList.slice(0, 3).map((s) => s.name).join(" / ");
 
   return (
     <div className="resume-page min-h-screen bg-[#e8ece8] text-[#12201a]">
@@ -115,7 +119,7 @@ export default async function DashboardResumePage() {
       `}</style>
       <div className="no-print mx-auto flex max-w-[860px] items-center justify-between gap-3 px-4 py-4">
         <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-800">
-          ← Dashboard
+          Back to dashboard
         </Link>
         <PrintResume />
       </div>
@@ -168,8 +172,7 @@ export default async function DashboardResumePage() {
                         <p className="text-[12px] text-emerald-800">
                           {w.company}
                           <span className="font-normal text-zinc-500">
-                            {" "}\u00b7 {w.employment_type === "full-time" ? "Full-time" : "Part-time"} \u00b7 {w.start_date}
-                            {w.end_date ? ` \u2013 ${w.end_date}` : " \u2013 Present"}
+                            {" "}{sep([w.employment_type === "full-time" ? "Full-time" : "Part-time", `${w.start_date}${w.end_date ? ` to ${w.end_date}` : " to Present"}`])}
                           </span>
                         </p>
                         {w.description && (
@@ -182,14 +185,14 @@ export default async function DashboardResumePage() {
               )}
               {projects.length > 0 && (
                 <section>
-                  <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">Projects & collaborations</h2>
+                  <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">Projects and collaborations</h2>
                   <div className="resume-rule mb-3" />
                   <div className="space-y-3">
                     {projects.map((c) => (
                       <div key={c.id}>
                         <p className="text-[13px] font-semibold text-[#0b1f18]">
                           {c.title}
-                          {c.role ? <span className="font-normal text-zinc-600"> \u00b7 {c.role}</span> : null}
+                          {c.role ? <span className="font-normal text-zinc-600"> / {c.role}</span> : null}
                           <span className="ml-2 rounded-sm bg-emerald-50 px-1.5 py-0.5 text-[9px] font-semibold uppercase tracking-wide text-emerald-700">
                             {categoryOf(c)}
                           </span>
@@ -204,7 +207,7 @@ export default async function DashboardResumePage() {
               )}
               {writingItems.length > 0 && (
                 <section>
-                  <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">Writing & research</h2>
+                  <h2 className="mb-2 text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-800">Writing and research</h2>
                   <div className="resume-rule mb-3" />
                   <div className="space-y-2">
                     {writingItems.slice(0, 8).map((w) => (
@@ -243,9 +246,7 @@ export default async function DashboardResumePage() {
                       <div key={e.id}>
                         <p className="text-[13px] font-semibold text-[#0b1f18]">{e.degree || e.institution}</p>
                         <p className="text-[12px] text-zinc-600">{e.institution}</p>
-                        <p className="text-[11px] text-zinc-500">
-                          {[e.field_of_study, e.country, [e.start_year, e.end_year].filter(Boolean).join(" \u2013 ")].filter(Boolean).join(" \u00b7 ")}
-                        </p>
+                        <p className="text-[11px] text-zinc-500">{sep([e.field_of_study, e.country, [e.start_year, e.end_year].filter(Boolean).join(" to ")])}</p>
                       </div>
                     ))}
                   </div>
