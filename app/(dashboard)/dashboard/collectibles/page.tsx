@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CollectibleManager from "@/components/collectibles/CollectibleManager";
+import OnchainFootprint from "@/components/profile/OnchainFootprint";
 import type { Collectible } from "@/types/database";
 
 export default async function CollectiblesPage() {
@@ -14,12 +15,19 @@ export default async function CollectiblesPage() {
     redirect("/login");
   }
 
-  const { data: items } = await supabase
-    .from("collectibles")
-    .select("*")
-    .eq("user_id", user.id)
-    .order("sort_order", { ascending: true })
-    .order("created_at", { ascending: false });
+  const [{ data: items }, { data: profile }] = await Promise.all([
+    supabase
+      .from("collectibles")
+      .select("*")
+      .eq("user_id", user.id)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: false }),
+    supabase.from("profiles").select("wallet_address, ens_name").eq("id", user.id).maybeSingle(),
+  ]);
+
+  const walletAddress = profile?.wallet_address || null;
+  const ensName = profile?.ens_name || null;
+  const arkhamUrl = walletAddress ? `https://arkm.com/explorer/address/${walletAddress}` : null;
 
   return (
     <div className="min-h-screen">
@@ -41,15 +49,20 @@ export default async function CollectiblesPage() {
 
       <main className="container-app max-w-2xl py-10">
         <div className="mb-8">
-          <h1 className="text-2xl font-bold tracking-tight">NFTs</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Onchain</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            PFPs and on-chain collectibles. CVs and certificates live under Profile → Docs.
+            Live footprint from the connected wallet, plus NFTs actually held on that address.
           </p>
+        </div>
+
+        <div className="mb-8">
+          <OnchainFootprint address={walletAddress} ensName={ensName} arkhamUrl={arkhamUrl} />
         </div>
 
         <CollectibleManager
           userId={user.id}
           initialItems={(items as Collectible[]) ?? []}
+          walletAddress={walletAddress}
         />
       </main>
     </div>
