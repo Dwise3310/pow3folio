@@ -44,15 +44,18 @@ Work experience max 5, education, docs/credentials with file thumbnails on the p
 ## Private CV download
 Talents can download a professional two-column PDF of their profile from the dashboard only (Download CV).
 The public profile does not offer this. Visitors cannot download someone else's CV.
-The PDF maps display name, contacts, summary, skills, work, education, projects, writing and credentials.
+The PDF has an emerald header, skill chips, sidebar, and a low-opacity Pow3Folio watermark.
 
 ## Scores
 Profile Score and Builder Score 0 to 100, strict. Public rings update live after saves.
 
 ## Onchain Stats
-Public tab aggregates the connected wallet across Ethereum, Base, Arbitrum, Optimism and Polygon.
+Public tab and dashboard Onchain page aggregate the connected wallet across Ethereum, Base, Arbitrum, Optimism and Polygon.
 Shows ENS, balances, transaction counts, tokens, and explorer links (Etherscan, Arkham, DeBank).
-Manual NFT showcase still sits under this tab.
+NFTs are imported from the wallet (Blockscout + OpenSea links). Manual NFT upload is not used, so a talent cannot fake a hold.
+
+## Location
+Detect uses device GPS. The site allows geolocation. IP lookup is not used because Nigerian networks often report Rivers instead of Cross River. Calabar maps to Cross River.
 
 ## Discovery
 /talents with search and filters.
