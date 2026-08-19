@@ -8,50 +8,97 @@ type Props = {
   onChange: (country: string, region: string) => void;
 };
 
+type GeoResult = { country: string; region: string };
+
+async function fromCoords(latitude: number, longitude: number): Promise<GeoResult> {
+  const res = await fetch(
+    `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
+  );
+  if (!res.ok) throw new Error("Could not resolve location");
+  const data = (await res.json()) as {
+    countryName?: string;
+    principalSubdivision?: string;
+  };
+  const country = data.countryName?.trim() || "";
+  if (!country) throw new Error("Could not detect country");
+  return { country, region: data.principalSubdivision?.trim() || "" };
+}
+
+async function fromIp(): Promise<GeoResult> {
+  try {
+    const res = await fetch(
+      "https://api.bigdatacloud.net/data/reverse-geocode-client?localityLanguage=en"
+    );
+    if (res.ok) {
+      const data = (await res.json()) as {
+        countryName?: string;
+        principalSubdivision?: string;
+      };
+      if (data.countryName?.trim()) {
+        return {
+          country: data.countryName.trim(),
+          region: data.principalSubdivision?.trim() || "",
+        };
+      }
+    }
+  } catch {
+    /* try next */
+  }
+
+  const res = await fetch("https://ipapi.co/json/");
+  if (!res.ok) throw new Error("Could not detect location from network");
+  const data = (await res.json()) as {
+    country_name?: string;
+    region?: string;
+  };
+  const country = data.country_name?.trim() || "";
+  if (!country) throw new Error("Could not detect country");
+  return { country, region: data.region?.trim() || "" };
+}
+
 export default function LocationControl({ country, region, onChange }: Props) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function detect() {
     setError(null);
+    setLoading(true);
+
+    const apply = (result: GeoResult) => {
+      onChange(result.country, result.region);
+      setLoading(false);
+    };
+
+    const failToIp = async (reason?: string) => {
+      try {
+        apply(await fromIp());
+      } catch {
+        setLoading(false);
+        setError(reason || "Could not detect location. Type country and state below.");
+      }
+    };
+
     if (!navigator.geolocation) {
-      setError("Location is not supported on this device/browser.");
+      await failToIp();
       return;
     }
-
-    setLoading(true);
 
     navigator.geolocation.getCurrentPosition(
       async (pos) => {
         try {
-          const { latitude, longitude } = pos.coords;
-          // Coarse reverse geocode: country + region only (no street)
-          const res = await fetch(
-            `https://api.bigdatacloud.net/data/reverse-geocode-client?latitude=${latitude}&longitude=${longitude}&localityLanguage=en`
-          );
-          if (!res.ok) throw new Error("Could not resolve location");
-          const data = (await res.json()) as {
-            countryName?: string;
-            principalSubdivision?: string;
-          };
-          const c = data.countryName?.trim() || "";
-          const r = data.principalSubdivision?.trim() || "";
-          if (!c) throw new Error("Could not detect country");
-          onChange(c, r);
-        } catch (e) {
-          setError(e instanceof Error ? e.message : "Location lookup failed");
-        }
-        setLoading(false);
-      },
-      (err) => {
-        setLoading(false);
-        if (err.code === err.PERMISSION_DENIED) {
-          setError("Allow location access in your browser, then try again.");
-        } else {
-          setError("Could not get device location.");
+          apply(await fromCoords(pos.coords.latitude, pos.coords.longitude));
+        } catch {
+          await failToIp("GPS lookup failed. Using network location.");
         }
       },
-      { enableHighAccuracy: false, timeout: 15000, maximumAge: 60_000 }
+      async (err) => {
+        const hint =
+          err.code === err.PERMISSION_DENIED
+            ? "Location permission was blocked. Using network location instead."
+            : "Device GPS unavailable. Using network location instead.";
+        await failToIp(hint);
+      },
+      { enableHighAccuracy: false, timeout: 8000, maximumAge: 120_000 }
     );
   }
 
@@ -67,7 +114,7 @@ export default function LocationControl({ country, region, onChange }: Props) {
             Location
           </p>
           <p className="text-xs text-foreground-muted truncate">
-            {label || "Country & state only, not exact pin"}
+            {label || "Country and state only, not an exact pin"}
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -85,9 +132,29 @@ export default function LocationControl({ country, region, onChange }: Props) {
           )}
         </div>
       </div>
-      {error && (
-        <p className="text-xs text-danger animate-fade-in">{error}</p>
-      )}
+
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+        <div>
+          <label className="label">Country</label>
+          <input
+            className="input"
+            value={country}
+            onChange={(e) => onChange(e.target.value, region)}
+            placeholder="Nigeria"
+          />
+        </div>
+        <div>
+          <label className="label">State / region</label>
+          <input
+            className="input"
+            value={region}
+            onChange={(e) => onChange(country, e.target.value)}
+            placeholder="Cross River"
+          />
+        </div>
+      </div>
+
+      {error && <p className="text-xs text-danger animate-fade-in">{error}</p>}
     </div>
   );
 }
