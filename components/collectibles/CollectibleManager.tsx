@@ -4,23 +4,12 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Collectible } from "@/types/database";
+import type { WalletNft } from "@/lib/nfts";
 
 type Props = {
   userId: string;
   initialItems: Collectible[];
-};
-
-const emptyForm = {
-  title: "",
-  description: "",
-  url: "",
-  chain: "",
-  collection_name: "",
-  token_id: "",
-  acquired_at: "",
-  tags: "",
-  is_visible: true,
-  image_url: "" as string | null,
+  walletAddress: string | null;
 };
 
 function sortItems(list: Collectible[]) {
@@ -32,160 +21,94 @@ function sortItems(list: Collectible[]) {
   });
 }
 
-export default function CollectibleManager({ userId, initialItems }: Props) {
+function nftKey(chain: string | null, tokenId: string | null) {
+  return `${(chain || "").toLowerCase()}|${tokenId || ""}`;
+}
+
+export default function CollectibleManager({ userId, initialItems, walletAddress }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<Collectible[]>(() => sortItems(initialItems));
-  const [form, setForm] = useState(emptyForm);
-  const [editingId, setEditingId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hint, setHint] = useState<string | null>(null);
   const [reordering, setReordering] = useState(false);
 
-  function startEdit(item: Collectible) {
-    setEditingId(item.id);
-    setForm({
-      title: item.title,
-      description: item.description ?? "",
-      url: item.url ?? "",
-      chain: item.chain ?? "",
-      collection_name: item.collection_name ?? "",
-      token_id: item.token_id ?? "",
-      acquired_at: item.acquired_at ?? "",
-      tags: (item.tags ?? []).join(", "),
-      is_visible: item.is_visible,
-      image_url: item.image_url,
-    });
-  }
-
-  function resetForm() {
-    setEditingId(null);
-    setForm(emptyForm);
-    setError(null);
-  }
-
-  async function handleImage(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (!file.type.startsWith("image/")) {
-      setError("Must be an image");
+  async function importFromWallet() {
+    if (!walletAddress) {
+      setError("Connect a wallet in Profile first. Import only reads NFTs that address actually holds.");
       return;
     }
-    if (file.size > 3 * 1024 * 1024) {
-      setError("Image must be under 3MB");
-      return;
-    }
-
-    setUploading(true);
-    setError(null);
-    const supabase = createClient();
-    const ext = file.name.split(".").pop() || "jpg";
-    const path = `${userId}/nft-${Date.now()}.${ext}`;
-
-    const { error: uploadError } = await supabase.storage
-      .from("avatars")
-      .upload(path, file, { upsert: true });
-
-    setUploading(false);
-    if (uploadError) {
-      setError(uploadError.message);
-      return;
-    }
-
-    const {
-      data: { publicUrl },
-    } = supabase.storage.from("avatars").getPublicUrl(path);
-
-    setForm((prev) => ({ ...prev, image_url: publicUrl }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
     setLoading(true);
     setError(null);
+    setHint(null);
+    try {
+      const res = await fetch(`/api/onchain/${walletAddress}/nfts`);
+      if (!res.ok) throw new Error("Could not read NFTs for this wallet");
+      const json = (await res.json()) as { nfts?: WalletNft[] };
+      const found = json.nfts ?? [];
+      if (!found.length) {
+        setHint("No ERC-721 / ERC-1155 tokens found on Ethereum, Base, Arbitrum, Optimism or Polygon.");
+        setLoading(false);
+        return;
+      }
 
-    const supabase = createClient();
-    const payload: Record<string, unknown> = {
-      kind: "nft",
-      title: form.title.trim(),
-      description: form.description.trim() || null,
-      url: form.url.trim() || null,
-      chain: form.chain.trim() || null,
-      collection_name: form.collection_name.trim() || null,
-      token_id: form.token_id.trim() || null,
-      issuer: null,
-      acquired_at: form.acquired_at || null,
-      tags: form.tags
-        .split(",")
-        .map((t) => t.trim())
-        .filter(Boolean),
-      is_visible: form.is_visible,
-      image_url: form.image_url || null,
-      user_id: userId,
-    };
+      const existing = new Set(items.map((i) => nftKey(i.chain, i.token_id)));
+      const fresh = found.filter((n) => n.token_id && !existing.has(nftKey(n.chain, n.token_id)));
+      if (!fresh.length) {
+        setHint(`Already imported. Wallet currently holds ${found.length} NFT${found.length === 1 ? "" : "s"}.`);
+        setLoading(false);
+        return;
+      }
 
-    if (editingId) {
-      const { data, error: err } = await supabase
-        .from("collectibles")
-        .update(payload)
-        .eq("id", editingId)
-        .eq("user_id", userId)
-        .select()
-        .single();
+      const supabase = createClient();
+      let maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
+      const rows = fresh.map((n) => {
+        maxOrder += 1;
+        return {
+          user_id: userId,
+          kind: "nft",
+          title: n.title,
+          description: n.description,
+          url: n.url,
+          image_url: n.image_url,
+          chain: n.chain,
+          collection_name: n.collection_name,
+          token_id: n.token_id,
+          acquired_at: n.acquired_at,
+          tags: ["imported"],
+          is_visible: true,
+          sort_order: maxOrder,
+        };
+      });
 
-      setLoading(false);
+      const { data, error: err } = await supabase.from("collectibles").insert(rows).select();
       if (err) {
         setError(
           err.message.includes("collectibles") || err.code === "42P01"
             ? "Run the collectibles SQL in Supabase first."
             : err.message
         );
+        setLoading(false);
         return;
       }
-      setItems((prev) =>
-        sortItems(prev.map((i) => (i.id === editingId ? (data as Collectible) : i)))
-      );
-    } else {
-      const maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
-      payload.sort_order = maxOrder + 1;
-
-      const { data, error: err } = await supabase
-        .from("collectibles")
-        .insert(payload)
-        .select()
-        .single();
-
-      setLoading(false);
-      if (err) {
-        setError(
-          err.message.includes("collectibles") || err.code === "42P01"
-            ? "Run the collectibles SQL in Supabase first."
-            : err.message
-        );
-        return;
-      }
-      setItems((prev) => sortItems([...prev, data as Collectible]));
+      setItems((prev) => sortItems([...prev, ...((data as Collectible[]) ?? [])]));
+      setHint(`Imported ${rows.length} NFT${rows.length === 1 ? "" : "s"} held by this wallet.`);
+      router.refresh();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Import failed");
     }
-
-    resetForm();
-    router.refresh();
+    setLoading(false);
   }
 
   async function handleDelete(id: string) {
-    if (!confirm("Delete this NFT?")) return;
+    if (!confirm("Remove this NFT from the profile?")) return;
     const supabase = createClient();
-    const { error: err } = await supabase
-      .from("collectibles")
-      .delete()
-      .eq("id", id)
-      .eq("user_id", userId);
-
+    const { error: err } = await supabase.from("collectibles").delete().eq("id", id).eq("user_id", userId);
     if (err) {
       setError(err.message);
       return;
     }
     setItems((prev) => prev.filter((i) => i.id !== id));
-    if (editingId === id) resetForm();
     router.refresh();
   }
 
@@ -197,217 +120,70 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
       .eq("id", item.id)
       .select()
       .single();
-
     if (err) {
       setError(err.message);
       return;
     }
-    setItems((prev) =>
-      prev.map((i) => (i.id === item.id ? (data as Collectible) : i))
-    );
+    setItems((prev) => prev.map((i) => (i.id === item.id ? (data as Collectible) : i)));
     router.refresh();
   }
 
   async function moveItem(index: number, direction: "up" | "down") {
     const target = direction === "up" ? index - 1 : index + 1;
     if (target < 0 || target >= items.length) return;
-
     setReordering(true);
     setError(null);
-
     const next = [...items];
     const tmp = next[index];
     next[index] = next[target];
     next[target] = tmp;
     const normalized = next.map((item, i) => ({ ...item, sort_order: i }));
-
     const supabase = createClient();
     const results = await Promise.all(
       normalized.map((item) =>
-        supabase
-          .from("collectibles")
-          .update({ sort_order: item.sort_order })
-          .eq("id", item.id)
-          .eq("user_id", userId)
+        supabase.from("collectibles").update({ sort_order: item.sort_order }).eq("id", item.id).eq("user_id", userId)
       )
     );
-
     setReordering(false);
     const failed = results.find((r) => r.error);
     if (failed?.error) {
       setError(failed.error.message);
       return;
     }
-
     setItems(normalized);
     router.refresh();
   }
 
   return (
-    <div className="space-y-8">
-      <form onSubmit={handleSubmit} className="card space-y-4">
-        <h2 className="font-semibold">{editingId ? "Edit NFT" : "Add NFT"}</h2>
-
-        {error && (
-          <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">
-            {error}
-          </div>
+    <div className="space-y-6">
+      <div className="card space-y-3">
+        <h2 className="font-semibold">NFTs held by this wallet</h2>
+        <p className="text-sm text-foreground-muted">
+          Import reads Ethereum, Base, Arbitrum, Optimism and Polygon via public explorers. Links resolve to OpenSea. No upload form, so a talent cannot showcase a Pudgy they do not hold.
+        </p>
+        {!walletAddress && (
+          <p className="text-sm text-foreground-subtle">
+            Connect a wallet in Profile first.{" "}
+            <a href="/dashboard/profile" className="text-primary hover:underline">
+              Open Profile
+            </a>
+          </p>
         )}
-
-        <div>
-          <label className="label">Image</label>
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-            <div className="h-20 w-20 overflow-hidden rounded-xl border border-border bg-surface-elevated">
-              {form.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={form.image_url} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full items-center justify-center text-[10px] text-foreground-subtle">
-                  Image
-                </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-2">
-              <label className="btn-secondary cursor-pointer text-sm w-fit">
-                {uploading ? "Uploading…" : "Upload image"}
-                <input
-                  type="file"
-                  accept="image/*"
-                  className="hidden"
-                  onChange={handleImage}
-                  disabled={uploading}
-                />
-              </label>
-              {form.image_url && (
-                <button
-                  type="button"
-                  className="btn-ghost text-xs w-fit text-danger"
-                  onClick={() => setForm((p) => ({ ...p, image_url: null }))}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-
-        <div>
-          <label className="label">Title *</label>
-          <input
-            className="input"
-            required
-            value={form.title}
-            onChange={(e) => setForm({ ...form, title: e.target.value })}
-            placeholder="Pudgy #1234"
-          />
-        </div>
-
-        <div>
-          <label className="label">Description</label>
-          <textarea
-            className="input min-h-[70px]"
-            value={form.description}
-            onChange={(e) => setForm({ ...form, description: e.target.value })}
-            placeholder="Why it matters…"
-          />
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">OpenSea / marketplace link</label>
-            <input
-              className="input"
-              type="url"
-              value={form.url}
-              onChange={(e) => setForm({ ...form, url: e.target.value })}
-              placeholder="https://…"
-            />
-          </div>
-          <div>
-            <label className="label">Chain</label>
-            <input
-              className="input"
-              value={form.chain}
-              onChange={(e) => setForm({ ...form, chain: e.target.value })}
-              placeholder="Ethereum, Solana…"
-            />
-          </div>
-        </div>
-
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div>
-            <label className="label">Collection</label>
-            <input
-              className="input"
-              value={form.collection_name}
-              onChange={(e) => setForm({ ...form, collection_name: e.target.value })}
-              placeholder="Collection name"
-            />
-          </div>
-          <div>
-            <label className="label">Token ID</label>
-            <input
-              className="input"
-              value={form.token_id}
-              onChange={(e) => setForm({ ...form, token_id: e.target.value })}
-              placeholder="#1234"
-            />
-          </div>
-        </div>
-
-        <div>
-          <label className="label">Acquired</label>
-          <input
-            className="input"
-            type="date"
-            value={form.acquired_at}
-            onChange={(e) => setForm({ ...form, acquired_at: e.target.value })}
-          />
-        </div>
-
-        <div>
-          <label className="label">Tags (comma separated)</label>
-          <input
-            className="input"
-            value={form.tags}
-            onChange={(e) => setForm({ ...form, tags: e.target.value })}
-            placeholder="pfp, art"
-          />
-        </div>
-
-        <label className="flex items-center gap-2 text-sm">
-          <input
-            type="checkbox"
-            checked={form.is_visible}
-            onChange={(e) => setForm({ ...form, is_visible: e.target.checked })}
-            className="h-4 w-4 rounded border-border"
-          />
-          Visible when NFTs section is ON
-        </label>
-
-        <div className="flex flex-wrap gap-3">
-          <button type="submit" disabled={loading || uploading} className="btn-primary">
-            {loading ? "Saving…" : editingId ? "Update" : "Add NFT"}
-          </button>
-          {editingId && (
-            <button type="button" onClick={resetForm} className="btn-secondary">
-              Cancel
-            </button>
-          )}
-        </div>
-      </form>
+        {error && (
+          <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>
+        )}
+        {hint && <p className="text-sm text-foreground-muted">{hint}</p>}
+        <button type="button" className="btn-primary" disabled={loading || !walletAddress} onClick={importFromWallet}>
+          {loading ? "Reading wallet…" : items.length ? "Refresh from wallet" : "Import NFTs from wallet"}
+        </button>
+      </div>
 
       <div className="space-y-3">
-        <h2 className="font-semibold">Your NFTs ({items.length})</h2>
-        <p className="text-xs text-foreground-subtle">Use ↑ ↓ to reorder.</p>
-        {items.length === 0 && (
-          <p className="text-sm text-foreground-subtle">No NFTs yet.</p>
-        )}
+        <h2 className="font-semibold">On profile ({items.length})</h2>
+        <p className="text-xs text-foreground-subtle">Hide, reorder or remove. Import again to pick up new holdings.</p>
+        {items.length === 0 && <p className="text-sm text-foreground-subtle">None imported yet.</p>}
         {items.map((item, index) => (
-          <div
-            key={item.id}
-            className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"
-          >
+          <div key={item.id} className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 gap-3">
               <div className="flex flex-col gap-1 shrink-0">
                 <button
@@ -429,11 +205,7 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
               </div>
               {item.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.image_url}
-                  alt=""
-                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                />
+                <img src={item.image_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
               ) : (
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] uppercase text-foreground-subtle">
                   NFT
@@ -442,26 +214,24 @@ export default function CollectibleManager({ userId, initialItems }: Props) {
               <div className="min-w-0">
                 <p className="font-medium break-words">{item.title}</p>
                 <p className="mt-0.5 text-xs text-foreground-muted">
-                  {[item.chain, item.collection_name].filter(Boolean).join(" · ")}
+                  {[item.chain, item.collection_name, item.token_id ? `#${item.token_id}` : null]
+                    .filter(Boolean)
+                    .join(" · ")}
                 </p>
-                <p className="mt-0.5 text-xs text-foreground-subtle">
-                  {item.is_visible ? "Public" : "Hidden"}
-                </p>
+                <p className="mt-0.5 text-xs text-foreground-subtle">{item.is_visible ? "Public" : "Hidden"}</p>
               </div>
             </div>
             <div className="flex shrink-0 flex-wrap gap-2">
+              {item.url && (
+                <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn-ghost text-xs">
+                  OpenSea
+                </a>
+              )}
               <button type="button" onClick={() => toggleVisible(item)} className="btn-ghost text-xs">
                 {item.is_visible ? "Hide" : "Show"}
               </button>
-              <button type="button" onClick={() => startEdit(item)} className="btn-secondary text-xs">
-                Edit
-              </button>
-              <button
-                type="button"
-                onClick={() => handleDelete(item.id)}
-                className="btn-ghost text-xs text-danger"
-              >
-                Delete
+              <button type="button" onClick={() => handleDelete(item.id)} className="btn-ghost text-xs text-danger">
+                Remove
               </button>
             </div>
           </div>
