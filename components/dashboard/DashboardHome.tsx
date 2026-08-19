@@ -92,10 +92,7 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
     setBusy(flag);
     const next = !state[flag];
     const supabase = createClient();
-    const { error } = await supabase
-      .from("profiles")
-      .update({ [flag]: next })
-      .eq("id", userId);
+    const { error } = await supabase.from("profiles").update({ [flag]: next }).eq("id", userId);
     setBusy(null);
     if (error) {
       alert(
@@ -112,24 +109,20 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
   return (
     <main className="container-app py-6 sm:py-10">
       <OnboardingTour key={tourKey} />
-
       {username ? (
         <div className="mb-6 rounded-xl border border-border bg-surface/80 p-4 sm:p-5">
-          <p className="text-xs font-medium uppercase tracking-wider text-foreground-subtle">
-            Public link
-          </p>
+          <p className="text-xs font-medium uppercase tracking-wider text-foreground-subtle">Public link</p>
           <p className="mt-1 text-sm text-foreground-muted break-all">
-            <Link
-              href={`/${username}`}
-              className="text-primary hover:underline font-medium"
-              target="_blank"
-            >
+            <Link href={`/${username}`} className="text-primary hover:underline font-medium" target="_blank">
               pow3folio.vercel.app/{username}
             </Link>
           </p>
           <div className="mt-3 flex flex-wrap gap-2">
             <Link href={`/${username}`} target="_blank" className="btn-secondary text-xs">
               Open public profile
+            </Link>
+            <Link href="/dashboard/resume" className="btn-primary text-xs">
+              Download CV
             </Link>
             <button
               type="button"
@@ -146,32 +139,24 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
       ) : (
         <div className="mb-6 rounded-xl border border-primary/30 bg-primary/5 p-4">
           <p className="text-sm font-medium">Set a username to unlock your public URL</p>
-          <p className="mt-1 text-xs text-foreground-muted">
-            Open Profile, choose a unique username, then Save.
-          </p>
+          <p className="mt-1 text-xs text-foreground-muted">Open Profile, choose a unique username, then Save.</p>
           <Link href="/dashboard/profile" className="btn-primary mt-3 inline-flex text-xs">
             Complete profile
           </Link>
         </div>
       )}
-
       <div className="mb-6">
         <h1 className="text-xl sm:text-2xl font-bold tracking-tight">Dashboard</h1>
         <p className="mt-1 text-sm text-foreground-muted max-w-xl">
           Manage proof of work. ON/OFF on each card shows or hides that tab on your public profile.
         </p>
-        {email && (
-          <p className="mt-1 text-xs text-foreground-subtle sm:hidden">{email}</p>
-        )}
+        {email && <p className="mt-1 text-xs text-foreground-subtle sm:hidden">{email}</p>}
       </div>
-
       <DashboardAutofill />
-
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-3">
         {CARDS.map((card) => {
           const on = card.flag ? state[card.flag] : true;
-          const needsReview =
-            !!card.autofill && pendingSections.includes(card.autofill);
+          const needsReview = !!card.autofill && pendingSections.includes(card.autofill);
           return (
             <div
               key={card.href}
@@ -203,16 +188,9 @@ export default function DashboardHome({ userId, username, email, flags }: Props)
                   {busy === card.flag ? "…" : on ? "ON" : "OFF"}
                 </button>
               )}
-              <Link
-                href={card.href}
-                className={`flex flex-1 flex-col pr-12 ${
-                  needsReview ? "pt-5" : ""
-                }`}
-              >
+              <Link href={card.href} className={`flex flex-1 flex-col pr-12 ${needsReview ? "pt-5" : ""}`}>
                 <h3 className="font-medium text-sm sm:text-base">{card.title}</h3>
-                <p className="mt-1 text-[11px] sm:text-xs text-foreground-muted line-clamp-2">
-                  {card.hint}
-                </p>
+                <p className="mt-1 text-[11px] sm:text-xs text-foreground-muted line-clamp-2">{card.hint}</p>
                 <p className="mt-auto pt-3 text-xs text-primary">Manage →</p>
               </Link>
             </div>
