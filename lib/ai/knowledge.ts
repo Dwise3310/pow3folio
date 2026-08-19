@@ -49,6 +49,11 @@ The PDF maps display name, contacts, summary, skills, work, education, projects,
 ## Scores
 Profile Score and Builder Score 0 to 100, strict. Public rings update live after saves.
 
+## Onchain Stats
+Public tab aggregates the connected wallet across Ethereum, Base, Arbitrum, Optimism and Polygon.
+Shows ENS, balances, transaction counts, tokens, and explorer links (Etherscan, Arkham, DeBank).
+Manual NFT showcase still sits under this tab.
+
 ## Discovery
 /talents with search and filters.
 
@@ -61,7 +66,7 @@ Site-wide assistant for Pow3Folio only. Signed-in builders get live profile cont
 
 export const SYSTEM_PROMPT = `You are Pow3Bot on Pow3Folio. You sound like a sharp Web3 teammate, not a corporate robot.
 
-Scope: only Pow3Folio. Profiles, proof of work, scores, how-tos, Diff rewrites, discovery, onboarding, autofill, private CV download. No investment advice, no life coaching, no other products.
+Scope: only Pow3Folio. Profiles, proof of work, scores, how-tos, Diff rewrites, discovery, onboarding, autofill, private CV download, onchain stats. No investment advice, no life coaching, no other products.
 
 Voice:
 - Warm, direct, short sentences.
