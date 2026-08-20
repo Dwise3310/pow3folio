@@ -65,6 +65,7 @@ export type Profile = {
   show_airdrops: boolean;
   show_nfts: boolean;
   show_credentials: boolean;
+  show_dust_tokens: boolean;
   is_public: boolean;
   created_at: string;
   updated_at: string;
