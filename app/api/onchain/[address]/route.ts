@@ -2,11 +2,9 @@ import { NextResponse } from "next/server";
 import { loadOnchainFootprint } from "@/lib/onchain";
 
 export const revalidate = 300;
+export const maxDuration = 30;
 
-export async function GET(
-  _req: Request,
-  { params }: { params: Promise<{ address: string }> }
-) {
+export async function GET(_req: Request, { params }: { params: Promise<{ address: string }> }) {
   const { address } = await params;
   const data = await loadOnchainFootprint(address);
   if (!data) {
