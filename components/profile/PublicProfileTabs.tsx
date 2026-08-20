@@ -47,6 +47,7 @@ type Props = {
   showCommunity: boolean;
   showAirdrops: boolean;
   showOnchain: boolean;
+  showDustTokens?: boolean;
 };
 
 export default function PublicProfileTabs({
@@ -71,6 +72,7 @@ export default function PublicProfileTabs({
   showCommunity,
   showAirdrops,
   showOnchain,
+  showDustTokens = false,
 }: Props) {
   const allTabs: { id: TabId; label: string; show: boolean }[] = [
     { id: "about", label: "About", show: true },
@@ -181,7 +183,7 @@ export default function PublicProfileTabs({
             )}
             {education.length > 0 && (
               <div>
-                <h3 className="mb-2 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">Education</h3>
+                <h3 className="mb-2 text-sm font-extrabold tracking-wide text-amber-700 dark:text-amber-400">Education</h3>
                 <div className="space-y-4">
                   {education.map((e, i) => (
                     <div key={e.id} className={i > 0 ? "pt-3 border-t border-border/50" : ""}>
@@ -315,6 +317,7 @@ export default function PublicProfileTabs({
             walletAddress={walletAddress}
             ensName={ensName}
             arkhamUrl={arkhamUrl}
+            showDustTokens={showDustTokens}
           />
         )}
       </div>
