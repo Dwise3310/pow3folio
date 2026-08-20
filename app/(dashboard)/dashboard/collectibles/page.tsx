@@ -22,7 +22,11 @@ export default async function CollectiblesPage() {
       .eq("user_id", user.id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false }),
-    supabase.from("profiles").select("wallet_address, ens_name").eq("id", user.id).maybeSingle(),
+    supabase
+      .from("profiles")
+      .select("wallet_address, ens_name, show_dust_tokens")
+      .eq("id", user.id)
+      .maybeSingle(),
   ]);
 
   const walletAddress = profile?.wallet_address || null;
@@ -56,7 +60,14 @@ export default async function CollectiblesPage() {
         </div>
 
         <div className="mb-8">
-          <OnchainFootprint address={walletAddress} ensName={ensName} arkhamUrl={arkhamUrl} />
+          <OnchainFootprint
+            address={walletAddress}
+            ensName={ensName}
+            arkhamUrl={arkhamUrl}
+            owner
+            profileId={user.id}
+            showDustTokens={profile?.show_dust_tokens === true}
+          />
         </div>
 
         <CollectibleManager
