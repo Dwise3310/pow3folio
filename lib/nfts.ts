@@ -90,16 +90,17 @@ function mapNft(item: BlockscoutNft, chainName: string, opensea: string): Wallet
     (item.token?.name && tokenId ? `${item.token.name} #${tokenId.slice(0, 10)}` : null) ||
     item.token?.symbol ||
     "NFT";
+  const metaImage = item.metadata?.image;
   const image =
     (isHttp(item.image_url) && item.image_url) ||
     (isHttp(item.media_url) && item.media_url) ||
-    (isHttp(item.metadata?.image) && item.metadata.image) ||
+    (isHttp(metaImage) && metaImage) ||
     null;
   return {
     title: title.slice(0, 120),
     description: item.metadata?.description?.slice(0, 400) || null,
     url: contract ? marketplaceUrl(opensea, contract, tokenId) : "",
-    image_url: image,
+    image_url: image || null,
     chain: chainName,
     collection_name: item.token?.name || null,
     token_id: tokenId,
