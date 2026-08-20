@@ -21,17 +21,74 @@ function sortItems(list: Collectible[]) {
   });
 }
 
-function nftKey(chain: string | null, tokenId: string | null) {
-  return `${(chain || "").toLowerCase()}|${tokenId || ""}`;
+function nftKey(chain: string | null, contractHint: string | null, tokenId: string | null) {
+  return `${(chain || "").toLowerCase()}|${(contractHint || "").toLowerCase()}|${tokenId || ""}`;
+}
+
+function parseAssetQuery(value: string) {
+  const contractMatch = value.trim().match(/0x[a-fA-F0-9]{40}/);
+  const idMatch = value.trim().match(/0x[a-fA-F0-9]{40}\/(\d+)/i);
+  return {
+    contract: contractMatch ? contractMatch[0].toLowerCase() : "",
+    tokenId: idMatch ? idMatch[1] : "",
+  };
 }
 
 export default function CollectibleManager({ userId, initialItems, walletAddress }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<Collectible[]>(() => sortItems(initialItems));
   const [loading, setLoading] = useState(false);
+  const [searching, setSearching] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
+  const [query, setQuery] = useState("");
   const [reordering, setReordering] = useState(false);
+
+  async function insertNfts(fresh: WalletNft[], alreadyLabel: string) {
+    const existing = new Set(
+      items.map((i) => {
+        const ca = (i.tags || []).find((t) => t.startsWith("ca:"))?.slice(3) || "";
+        return nftKey(i.chain, ca, i.token_id);
+      })
+    );
+    const unique = fresh.filter((n) => n.token_id && !existing.has(nftKey(n.chain, n.contract, n.token_id)));
+    if (!unique.length) {
+      setHint(alreadyLabel);
+      return;
+    }
+    const supabase = createClient();
+    let maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
+    const rows = unique.map((n) => {
+      maxOrder += 1;
+      return {
+        user_id: userId,
+        kind: "nft",
+        title: n.title,
+        description: n.description,
+        url: n.url,
+        image_url: n.image_url,
+        chain: n.chain,
+        collection_name: n.collection_name,
+        token_id: n.token_id,
+        acquired_at: n.acquired_at,
+        tags: ["imported", n.contract ? `ca:${n.contract}` : ""].filter(Boolean),
+        is_visible: true,
+        sort_order: maxOrder,
+      };
+    });
+    const { data, error: err } = await supabase.from("collectibles").insert(rows).select();
+    if (err) {
+      setError(
+        err.message.includes("collectibles") || err.code === "42P01"
+          ? "Run the collectibles SQL in Supabase first."
+          : err.message
+      );
+      return;
+    }
+    setItems((prev) => sortItems([...prev, ...((data as Collectible[]) ?? [])]));
+    setHint(`Imported ${rows.length} NFT${rows.length === 1 ? "" : "s"} held by this wallet.`);
+    router.refresh();
+  }
 
   async function importFromWallet() {
     if (!walletAddress) {
@@ -48,56 +105,60 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       const found = json.nfts ?? [];
       if (!found.length) {
         setHint("No ERC-721 / ERC-1155 tokens found on Ethereum, Base, Arbitrum, Optimism or Polygon.");
-        setLoading(false);
-        return;
-      }
-
-      const existing = new Set(items.map((i) => nftKey(i.chain, i.token_id)));
-      const fresh = found.filter((n) => n.token_id && !existing.has(nftKey(n.chain, n.token_id)));
-      if (!fresh.length) {
-        setHint(`Already imported. Wallet currently holds ${found.length} NFT${found.length === 1 ? "" : "s"}.`);
-        setLoading(false);
-        return;
-      }
-
-      const supabase = createClient();
-      let maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
-      const rows = fresh.map((n) => {
-        maxOrder += 1;
-        return {
-          user_id: userId,
-          kind: "nft",
-          title: n.title,
-          description: n.description,
-          url: n.url,
-          image_url: n.image_url,
-          chain: n.chain,
-          collection_name: n.collection_name,
-          token_id: n.token_id,
-          acquired_at: n.acquired_at,
-          tags: ["imported"],
-          is_visible: true,
-          sort_order: maxOrder,
-        };
-      });
-
-      const { data, error: err } = await supabase.from("collectibles").insert(rows).select();
-      if (err) {
-        setError(
-          err.message.includes("collectibles") || err.code === "42P01"
-            ? "Run the collectibles SQL in Supabase first."
-            : err.message
+      } else {
+        await insertNfts(
+          found,
+          `Already imported. Wallet currently holds ${found.length} NFT${found.length === 1 ? "" : "s"}.`
         );
-        setLoading(false);
-        return;
       }
-      setItems((prev) => sortItems([...prev, ...((data as Collectible[]) ?? [])]));
-      setHint(`Imported ${rows.length} NFT${rows.length === 1 ? "" : "s"} held by this wallet.`);
-      router.refresh();
     } catch (e) {
       setError(e instanceof Error ? e.message : "Import failed");
     }
     setLoading(false);
+  }
+
+  async function searchByContract(e: React.FormEvent) {
+    e.preventDefault();
+    if (!walletAddress) {
+      setError("Connect a wallet in Profile first.");
+      return;
+    }
+    const { contract, tokenId } = parseAssetQuery(query);
+    if (!contract) {
+      setError("Paste a contract address or an OpenSea / Magic Eden link that contains one.");
+      return;
+    }
+    setSearching(true);
+    setError(null);
+    setHint(null);
+    try {
+      const qs = new URLSearchParams({ contract });
+      if (tokenId) qs.set("tokenId", tokenId);
+      const res = await fetch(`/api/onchain/${walletAddress}/lookup?${qs.toString()}`);
+      if (!res.ok) throw new Error("Lookup failed");
+      const json = (await res.json()) as {
+        nfts?: WalletNft[];
+        tokens?: Array<{ symbol: string; chain: string; balance: string; href: string }>;
+      };
+      const nfts = json.nfts ?? [];
+      const tokens = json.tokens ?? [];
+      if (!nfts.length && !tokens.length) {
+        setHint("This wallet does not hold that contract on Ethereum, Base, Arbitrum, Optimism or Polygon.");
+      } else {
+        if (nfts.length) await insertNfts(nfts, "That NFT is already on the profile.");
+        if (tokens.length) {
+          const names = tokens.map((t) => `${t.symbol} on ${t.chain} (${t.balance})`).join(", ");
+          setHint((prev) =>
+            [prev, `Token found: ${names}. It appears in Onchain Stats if the balance is still held.`]
+              .filter(Boolean)
+              .join(" ")
+          );
+        }
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Search failed");
+    }
+    setSearching(false);
   }
 
   async function handleDelete(id: string) {
@@ -159,7 +220,8 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       <div className="card space-y-3">
         <h2 className="font-semibold">NFTs held by this wallet</h2>
         <p className="text-sm text-foreground-muted">
-          Import reads Ethereum, Base, Arbitrum, Optimism and Polygon via public explorers. Links resolve to OpenSea. No upload form, so a talent cannot showcase a Pudgy they do not hold.
+          Import only adds items this wallet actually holds. If a collection is missing, paste the contract or OpenSea
+          link and we will import it only after ownership is confirmed.
         </p>
         {!walletAddress && (
           <p className="text-sm text-foreground-subtle">
@@ -176,6 +238,20 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
         <button type="button" className="btn-primary" disabled={loading || !walletAddress} onClick={importFromWallet}>
           {loading ? "Reading wallet…" : items.length ? "Refresh from wallet" : "Import NFTs from wallet"}
         </button>
+        <form onSubmit={searchByContract} className="space-y-2 border-t border-border pt-3">
+          <label className="label">Find by contract</label>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              className="input text-sm"
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              placeholder="0x… or https://opensea.io/item/polygon/0x…/854"
+            />
+            <button type="submit" className="btn-secondary shrink-0" disabled={searching || !walletAddress}>
+              {searching ? "Checking…" : "Import if held"}
+            </button>
+          </div>
+        </form>
       </div>
 
       <div className="space-y-3">
