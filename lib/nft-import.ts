@@ -1,4 +1,4 @@
-import { lookupWalletNfts, type WalletNft } from "@/lib/nfts";
+import { lookupWalletNfts } from "@/lib/nfts";
 import { fetchNftArtwork } from "@/lib/nft-art";
 import { parseNftQuery } from "@/lib/nft-url";
 import { gatewayUrls, resolveMediaUrl } from "@/lib/nft-media";
@@ -164,7 +164,12 @@ export async function importNftFromInput(input: {
       alchemy?.name ||
       art?.title ||
       `NFT #${parsed.tokenId}`,
-    collection: held?.collection_name || reservoir?.collection || alchemy?.collection || art?.collection_name,
+    collection:
+      held?.collection_name ||
+      reservoir?.collection ||
+      alchemy?.collection ||
+      art?.collection_name ||
+      null,
     chain: held?.chain || art?.chain || (parsed.chain ? titleCase(parsed.chain) : "Unknown"),
     contractAddress: parsed.contract,
     tokenId: parsed.tokenId,
