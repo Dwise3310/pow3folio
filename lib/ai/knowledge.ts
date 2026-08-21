@@ -6,8 +6,13 @@
 export const POW3_KNOWLEDGE = `
 # Pow3Folio product knowledge (keep current)
 
-Last repo commit on main before this onchain pass: 0b32ad0 (Fix CV punctuation separators, 19 Aug 2026).
-Shipped after that: Education heading restyle, accurate tx counts, DeFi protocol chips, token contract links, dust-token visibility, and contract-address import for tokens/NFTs.
+Latest product pass after 0fc8135 (NFT metadata type fix):
+- NFT import now resolves ipfs/arweave artwork and refreshes missing images on re-import.
+- Chain cards only show chains where the wallet still holds a token. Transaction, transfer and token totals still count every chain.
+- Stat boxes (Chains, Transactions, Transfers, Tokens) are equal height.
+- Public section headings share one amber style at slightly reduced opacity.
+- Docs and credentials use a document-card placeholder with type tags (CV, Resume, Certificate, Transcript, Award, License, Portfolio, Other). PDF iframe thumbs are not used.
+- Location is GPS detect only. Manual country/state typing was removed.
 
 ## What it is
 Pow3Folio is a public proof of work portfolio for Web3 builders (traders, researchers, community leads, developers). One public URL: https://pow3folio.vercel.app/{username}
@@ -42,29 +47,28 @@ Import and autofill (CV PDF/TXT or public Notion/GitHub/site link) lives on the 
 ## About tab
 Skills / service pillars: compact wrap chips. Green outline, readable text in light and dark mode.
 Tap a chip to open a blurred popup with the brief (max 250 characters). Click outside to close.
-Work experience max 5, education, docs/credentials with file thumbnails on the public About tab.
-The Education heading is bold amber (not green or cyan) so it stands out from skills.
+Work experience max 5, education, docs/credentials.
+Section headings (Skills, About, Work experience, Education, Docs and credentials, Wallet, Onchain activity, Tokens, NFTs held) use the same bold amber heading, slightly muted in dark mode.
+
+## Docs and credentials
+Public cards are document placeholders, not live PDF previews. Each card shows a document icon, a type tag, title and issuer. Type is chosen when uploading: CV, Resume, Certificate, Transcript, Award, License, Portfolio or Other.
 
 ## Private CV download
 Talents can download a professional two-column PDF of their profile from the dashboard only (Download CV).
 The public profile does not offer this. Visitors cannot download someone else's CV.
-The PDF has an emerald header, skill chips, sidebar, and a low-opacity Pow3Folio watermark.
 
 ## Scores
 Profile Score and Builder Score 0 to 100, strict. Public rings update live after saves.
 
 ## Onchain Stats
 Public tab and dashboard Onchain page aggregate the connected wallet across Ethereum, Base, Arbitrum, Optimism and Polygon via Blockscout.
-Transaction count is taken from listed transactions (and token transfers), not the broken explorer counters field that often returns 0.
-Tokens: every ERC-20 still held is loaded, priced when DexScreener has a quote, and hyperlinked to the chain explorer token page by contract.
-Dust rule: tokens worth under $1, or with no reliable USD quote, stay hidden unless the talent turns on show_dust_tokens from the dashboard Onchain page. Tokens worth $1+ always display.
-DeFi: recent txs and transfers are matched against popular protocol routers (Uniswap, Aave, Lido, Curve, Morpho, Aerodrome, GMX, Velodrome, QuickSwap, and similar).
-NFTs: import from the wallet only (Blockscout + OpenSea links). Manual upload is not used, so a talent cannot fake a hold.
-If a collection is missed, the talent can paste a contract address or OpenSea link on the dashboard Onchain page. Import only succeeds if the connected wallet still holds it.
-Example: KiiChain Genesis on Polygon 0x729053e4e0f3603ca17fa3cc6cbab16b7489395f token 854 can be imported that way.
+Transaction and transfer totals include every chain even if the wallet no longer holds a token there.
+Chain activity cards only list chains with a current token holding.
+Tokens: ERC-20 holdings are loaded, priced when DexScreener has a quote, and hyperlinked by contract. Dust under $1 stays hidden unless show_dust_tokens is on.
+NFTs import from the wallet only, with artwork when Blockscout/IPFS provides it. Paste a contract or OpenSea link if a hold was missed. Refresh from wallet updates a missing image.
 
 ## Location
-Detect uses device GPS. The site allows geolocation. IP lookup is not used because Nigerian networks often report Rivers instead of Cross River. Calabar maps to Cross River.
+Detect uses device GPS only. There is no manual country/state form. Calabar maps to Cross River.
 
 ## Discovery
 /talents with search and filters.
