@@ -3,6 +3,7 @@
 import { useState } from "react";
 import Link from "next/link";
 import { createClient } from "@/lib/supabase/client";
+import { markNewSignup } from "@/components/onboarding/OnboardingTour";
 
 export default function SignupForm() {
   const [email, setEmail] = useState("");
@@ -46,7 +47,6 @@ export default function SignupForm() {
       return;
     }
 
-    // Supabase returns a user with empty identities when the email already exists
     const identities = data?.user?.identities;
     if (data?.user && Array.isArray(identities) && identities.length === 0) {
       setError(
@@ -55,12 +55,14 @@ export default function SignupForm() {
       return;
     }
 
+    markNewSignup();
     setSuccess(true);
   }
 
   async function signInWithProvider(provider: "google" | "twitter") {
     setError(null);
     setOauthLoading(provider);
+    markNewSignup();
     const supabase = createClient();
     const { error: oauthError } = await supabase.auth.signInWithOAuth({
       provider,
