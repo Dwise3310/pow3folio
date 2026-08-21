@@ -5,7 +5,9 @@ import CollectibleManager from "@/components/collectibles/CollectibleManager";
 import OnchainFootprint from "@/components/profile/OnchainFootprint";
 import WalletAutoScan from "@/components/collectibles/WalletAutoScan";
 import ExtraWallets from "@/components/profile/ExtraWallets";
+import BrandMark from "@/components/ui/BrandMark";
 import type { Collectible, CustomChain, ExtraWallet, Profile } from "@/types/database";
+import type { ImportedTokenRef } from "@/lib/onchain";
 
 export default async function CollectiblesPage() {
   const supabase = await createClient();
@@ -41,14 +43,7 @@ export default async function CollectiblesPage() {
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="container-app flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-              <span className="text-xs font-bold">P3</span>
-            </div>
-            <span className="font-semibold">
-              Pow<span className="text-primary">3</span>Folio
-            </span>
-          </Link>
+          <BrandMark />
           <Link href="/dashboard" className="btn-ghost text-sm">
             ← Dashboard
           </Link>
@@ -76,6 +71,8 @@ export default async function CollectiblesPage() {
             showDustTokens={p.show_dust_tokens === true}
             wallets={wallets}
             customChains={(p.custom_chains as CustomChain[]) || []}
+            publicChainIds={p.public_chain_ids || null}
+            importedTokens={(p.imported_tokens as ImportedTokenRef[]) || []}
           />
         </div>
 

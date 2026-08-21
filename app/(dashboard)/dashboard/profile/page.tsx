@@ -5,6 +5,7 @@ import ProfileForm from "@/components/profile/ProfileForm";
 import CredentialsManager from "@/components/profile/CredentialsManager";
 import ProfileExtrasManager from "@/components/profile/ProfileExtrasManager";
 import DeleteAccount from "@/components/profile/DeleteAccount";
+import BrandMark from "@/components/ui/BrandMark";
 import type { Profile, Credential, WorkExperience, Education } from "@/types/database";
 
 export default async function ProfileEditPage() {
@@ -43,14 +44,7 @@ export default async function ProfileEditPage() {
     <div className="min-h-screen overflow-x-hidden">
       <header className="border-b border-border">
         <div className="container-app flex h-14 items-center justify-between gap-2">
-          <Link href="/dashboard" className="flex items-center gap-2 min-w-0">
-            <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-primary/15 text-primary">
-              <span className="text-xs font-bold">P3</span>
-            </div>
-            <span className="font-semibold truncate">
-              Pow<span className="text-primary">3</span>Folio
-            </span>
-          </Link>
+          <BrandMark />
           <Link href="/dashboard" className="btn-ghost text-xs sm:text-sm shrink-0">← Dashboard</Link>
         </div>
       </header>
