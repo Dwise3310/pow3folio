@@ -1,12 +1,12 @@
 export const IPFS_GATEWAYS = [
-  "https://ipfs.io/ipfs/",
-  "https://cloudflare-ipfs.com/ipfs/",
-  "https://cf-ipfs.com/ipfs/",
-  "https://dweb.link/ipfs/",
-  "https://nftstorage.link/ipfs/",
   "https://gateway.pinata.cloud/ipfs/",
+  "https://nftstorage.link/ipfs/",
+  "https://cloudflare-ipfs.com/ipfs/",
   "https://4everland.io/ipfs/",
+  "https://dweb.link/ipfs/",
+  "https://cf-ipfs.com/ipfs/",
   "https://w3s.link/ipfs/",
+  "https://ipfs.io/ipfs/",
 ] as const;
 
 const CID_RE = /(?:Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]{20,}|bafk[a-z0-9]{20,}|baf[a-z0-9]{20,})/i;
@@ -43,12 +43,12 @@ export function resolveMediaUrl(raw: string | null | undefined): string | null {
   const value = String(raw).trim().replace(/^"|"$/g, "");
   if (!value) return null;
   if (value.startsWith("ar://")) return `https://arweave.net/${value.slice(5)}`;
+  if (/^https?:\/\//i.test(value)) return value;
   const cid = extractCid(value);
   if (cid) {
     const rest = cid.rest && cid.rest !== "/" ? cid.rest : "";
     return `${IPFS_GATEWAYS[0]}${cid.cid}${rest}`;
   }
-  if (/^https?:\/\//i.test(value)) return value;
   return null;
 }
 
@@ -60,11 +60,17 @@ export function gatewayUrls(raw: string | null | undefined): string[] {
   const resolved = resolveMediaUrl(raw);
   if (!resolved) return [];
   const cid = extractCid(raw || resolved);
-  if (!cid) return [resolved, rewriteUrl(resolved)];
-  const rest = cid.rest && cid.rest !== "/" ? cid.rest : "";
-  const urls = IPFS_GATEWAYS.map((g) => `${g}${cid.cid}${rest}`);
-  urls.push(rewriteUrl(urls[0]));
-  return [...new Set(urls)];
+  const urls: string[] = [];
+  if (/^https?:\/\//i.test(String(raw || "").trim())) urls.push(String(raw).trim());
+  if (resolved) urls.push(resolved);
+  if (cid) {
+    const rest = cid.rest && cid.rest !== "/" ? cid.rest : "";
+    urls.push(`https://${cid.cid}.ipfs.w3s.link${rest}`);
+    urls.push(`https://${cid.cid}.ipfs.dweb.link${rest}`);
+    for (const g of IPFS_GATEWAYS) urls.push(`${g}${cid.cid}${rest}`);
+  }
+  urls.push(rewriteUrl(urls[0] || resolved));
+  return [...new Set(urls.filter(Boolean))];
 }
 
 export function mediaProxySrc(url: string | null | undefined): string {

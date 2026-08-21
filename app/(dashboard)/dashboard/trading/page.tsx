@@ -3,6 +3,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import TradeManager from "@/components/trading/TradeManager";
 import TradingPlatformsManager from "@/components/trading/TradingPlatformsManager";
+import BrandMark from "@/components/ui/BrandMark";
 import type { Trade, TradingPlatform } from "@/types/database";
 
 export default async function TradingPage() {
@@ -34,14 +35,7 @@ export default async function TradingPage() {
     <div className="min-h-screen">
       <header className="border-b border-border">
         <div className="container-app flex h-14 items-center justify-between">
-          <Link href="/dashboard" className="flex items-center gap-2">
-            <div className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-              <span className="text-xs font-bold">P3</span>
-            </div>
-            <span className="font-semibold">
-              Pow<span className="text-primary">3</span>Folio
-            </span>
-          </Link>
+          <BrandMark />
           <Link href="/dashboard" className="btn-ghost text-sm">
             ← Dashboard
           </Link>
