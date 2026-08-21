@@ -23,10 +23,12 @@ export type OnchainChain = {
   activeWeeks: number;
   activeMonths: number;
   activityDays: string[];
+  activityMethods: Record<string, string[]>;
   firstTx: string | null;
   lastTx: string | null;
   interacted: boolean;
   hasHoldings: boolean;
+  imported: boolean;
 };
 
 export type OnchainToken = {
@@ -60,12 +62,13 @@ export type OnchainFootprint = {
 export type CustomChainInput = {
   id?: string;
   name: string;
-  host: string;
+  host?: string;
   explorer?: string;
   tokenExplorer?: string;
   native?: string;
   slug?: string;
   chainId?: number;
+  rpc?: string;
 };
 
 type ChainDef = {
@@ -77,6 +80,8 @@ type ChainDef = {
   tokenExplorer: string;
   native: string;
   chainId: number;
+  rpc?: string;
+  imported?: boolean;
 };
 
 export const CHAINS: ChainDef[] = [
@@ -91,20 +96,24 @@ export const CHAINS: ChainDef[] = [
 export function mergeChains(extra?: CustomChainInput[] | null): ChainDef[] {
   const out: ChainDef[] = [...CHAINS];
   for (const c of extra || []) {
-    const host = (c.host || "").trim().replace(/\/$/, "");
     const name = (c.name || "").trim();
-    if (!host || !name || !/^https?:\/\//i.test(host)) continue;
+    const rpc = (c.rpc || "").trim().replace(/\/$/, "");
+    const host = (c.host || "").trim().replace(/\/$/, "");
+    if (!name || (!host && !rpc)) continue;
     const id = (c.id || name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
-    if (!id || out.some((b) => b.id === id || b.host === host)) continue;
+    if (!id || out.some((b) => b.id === id || (host && b.host === host) || (rpc && b.rpc === rpc))) continue;
+    const explorerBase = (c.explorer || host || "").replace(/\/$/, "");
     out.push({
       id,
       name,
       slug: (c.slug || id).toLowerCase(),
       host,
-      explorer: c.explorer || `${host}/address/`,
-      tokenExplorer: c.tokenExplorer || `${host}/token/`,
+      explorer: explorerBase ? (explorerBase.includes("/address") ? explorerBase.endsWith("/") ? explorerBase : `${explorerBase}/` : `${explorerBase}/address/`) : "",
+      tokenExplorer: c.tokenExplorer || (explorerBase ? `${explorerBase}/token/` : ""),
       native: c.native || "ETH",
-      chainId: c.chainId || 0,
+      chainId: Number(c.chainId || 0),
+      rpc: rpc || undefined,
+      imported: true,
     });
   }
   return out;
@@ -152,6 +161,26 @@ export async function getJson(url: string, timeoutMs = 9000): Promise<unknown | 
   }
 }
 
+async function rpcCall(rpc: string, method: string, params: unknown[]): Promise<unknown | null> {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), 9000);
+  try {
+    const res = await fetch(rpc, {
+      method: "POST",
+      signal: ctrl.signal,
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+    });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { result?: unknown };
+    return json.result ?? null;
+  } catch {
+    return null;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
 function pageQuery(baseUrl: string, params: Record<string, unknown> | null | undefined) {
   if (!params) return null;
   const qs = new URLSearchParams();
@@ -188,6 +217,7 @@ type TransferItem = {
   token?: { address_hash?: string; type?: string; decimals?: string; exchange_rate?: string | number | null };
   total?: { value?: string };
   type?: string;
+  timestamp?: string;
 };
 
 type TxItem = {
@@ -224,6 +254,7 @@ async function loadPrices(slug: string, contracts: string[]) {
 }
 
 async function loadTokenItems(host: string, address: string): Promise<TokenItem[]> {
+  if (!host) return [];
   const balances = await getJson(`${host}/api/v2/addresses/${address}/token-balances`);
   if (Array.isArray(balances) && balances.length) {
     return (balances as TokenItem[]).filter((item) => {
@@ -260,6 +291,61 @@ function dayKey(iso: string) {
   return iso.slice(0, 10);
 }
 
+function emptyChain(chain: ChainDef, address: string, extra?: Partial<OnchainChain>): { chain: OnchainChain; ens: string | null; tokens: OnchainToken[]; protocols: DefiProtocol[] } {
+  return {
+    chain: {
+      id: chain.id,
+      name: chain.name,
+      explorer: `${chain.explorer}${address}`,
+      balance: extra?.balance || "0",
+      nativeSymbol: chain.native,
+      nativeUsd: extra?.nativeUsd ?? null,
+      txCount: extra?.txCount || 0,
+      transferCount: extra?.transferCount || 0,
+      tokenCount: extra?.tokenCount || 0,
+      valuedTokenCount: extra?.valuedTokenCount || 0,
+      volumeUsd: 0,
+      feesUsd: 0,
+      uniqueContracts: 0,
+      uniqueTokens: 0,
+      tokenTrades: 0,
+      nftMints: 0,
+      contractsDeployed: 0,
+      walletAgeDays: extra?.walletAgeDays || 0,
+      activeDays: extra?.activeDays || 0,
+      activeWeeks: extra?.activeWeeks || 0,
+      activeMonths: extra?.activeMonths || 0,
+      activityDays: extra?.activityDays || [],
+      activityMethods: extra?.activityMethods || {},
+      firstTx: extra?.firstTx || null,
+      lastTx: extra?.lastTx || null,
+      interacted: extra?.interacted || !!chain.imported,
+      hasHoldings: extra?.hasHoldings || false,
+      imported: !!chain.imported,
+    },
+    ens: null,
+    tokens: extra?.tokenCount ? [] : [],
+    protocols: [],
+  };
+}
+
+async function loadFromRpc(chain: ChainDef, address: string) {
+  if (!chain.rpc) return emptyChain(chain, address);
+  const [balanceHex, nonceHex] = await Promise.all([
+    rpcCall(chain.rpc, "eth_getBalance", [address, "latest"]),
+    rpcCall(chain.rpc, "eth_getTransactionCount", [address, "latest"]),
+  ]);
+  const balance = formatUnits(typeof balanceHex === "string" ? BigInt(balanceHex).toString() : "0");
+  const txCount = typeof nonceHex === "string" ? Number(BigInt(nonceHex)) : 0;
+  const nativeQty = Number(balance);
+  return emptyChain(chain, address, {
+    balance,
+    txCount: Number.isFinite(txCount) ? txCount : 0,
+    hasHoldings: Number.isFinite(nativeQty) && nativeQty > 0,
+    interacted: true,
+  });
+}
+
 export async function loadOnchainFootprint(rawAddress: string, extraChains?: CustomChainInput[] | null): Promise<OnchainFootprint | null> {
   const address = rawAddress.trim().toLowerCase();
   if (!isAddress(address)) return null;
@@ -267,13 +353,21 @@ export async function loadOnchainFootprint(rawAddress: string, extraChains?: Cus
   const chainsToLoad = mergeChains(extraChains);
   const chainRows = await Promise.all(
     chainsToLoad.map(async (chain) => {
+      const useRpc = !!chain.rpc && !/blockscout/i.test(chain.host || "");
+      if (useRpc && !chain.host) return loadFromRpc(chain, address);
+
       const [info, counters, tokenItems, txs, transfers] = await Promise.all([
-        getJson(`${chain.host}/api/v2/addresses/${address}`) as Promise<{ coin_balance?: string; ens_domain_name?: string; exchange_rate?: string | number | null } | null>,
-        getJson(`${chain.host}/api/v2/addresses/${address}/counters`) as Promise<{ transactions_count?: string; token_transfers_count?: string } | null>,
+        chain.host ? getJson(`${chain.host}/api/v2/addresses/${address}`) as Promise<{ coin_balance?: string; ens_domain_name?: string; exchange_rate?: string | number | null } | null> : Promise.resolve(null),
+        chain.host ? getJson(`${chain.host}/api/v2/addresses/${address}/counters`) as Promise<{ transactions_count?: string; token_transfers_count?: string } | null> : Promise.resolve(null),
         loadTokenItems(chain.host, address),
-        getPagedItems<TxItem>(`${chain.host}/api/v2/addresses/${address}/transactions`, 10),
-        getPagedItems<TransferItem>(`${chain.host}/api/v2/addresses/${address}/token-transfers`, 8),
+        chain.host ? getPagedItems<TxItem>(`${chain.host}/api/v2/addresses/${address}/transactions`, 10) : Promise.resolve([] as TxItem[]),
+        chain.host ? getPagedItems<TransferItem>(`${chain.host}/api/v2/addresses/${address}/token-transfers`, 8) : Promise.resolve([] as TransferItem[]),
       ]);
+
+      if (!info && !txs.length && !tokenItems.length && chain.rpc) {
+        return loadFromRpc(chain, address);
+      }
+
       const prices = await loadPrices(chain.slug, tokenItems.map((item) => item.token?.address_hash || ""));
       const tokens = tokenItems.map((item) => mapToken(item, chain, prices)).filter((t): t is OnchainToken => !!t);
       const counterparties = [
@@ -309,11 +403,18 @@ export async function loadOnchainFootprint(rawAddress: string, extraChains?: Cus
       }).length;
       const contractsDeployed = txs.filter((tx) => !tx.to?.hash && (tx.from?.hash || "").toLowerCase() === address).length;
       const stamps = txs.map((tx) => tx.timestamp).filter((s): s is string => !!s);
-      const transferStamps = transfers
-        .map((tr) => (tr as TransferItem & { timestamp?: string }).timestamp)
-        .filter((s): s is string => !!s);
+      const transferStamps = transfers.map((tr) => tr.timestamp).filter((s): s is string => !!s);
       const allStamps = [...stamps, ...transferStamps];
-      const days = new Set(allStamps.map(dayKey));
+      const activityDays = allStamps.map(dayKey);
+      const activityMethods: Record<string, string[]> = {};
+      for (const tx of txs) {
+        if (!tx.timestamp) continue;
+        const key = dayKey(tx.timestamp);
+        const label = tx.method || (!tx.to?.hash ? "Contract deploy" : "Transfer");
+        if (!activityMethods[key]) activityMethods[key] = [];
+        if (!activityMethods[key].includes(label)) activityMethods[key].push(label);
+      }
+      const days = new Set(activityDays);
       const weeks = new Set(allStamps.map((s) => s.slice(0, 8)));
       const months = new Set(allStamps.map((s) => s.slice(0, 7)));
       const firstTx = stamps.length ? stamps[stamps.length - 1] : null;
@@ -324,15 +425,15 @@ export async function loadOnchainFootprint(rawAddress: string, extraChains?: Cus
       const txCount = Math.max(counterTx, txs.length);
       const transferCount = Math.max(counterTr, transfers.length);
       const valuedTokenCount = tokens.filter((t) => !t.isDust).length;
-      const hasHoldings = valuedTokenCount > 0 || (nativeUsd != null && nativeUsd >= 0.01);
-      const interacted = txCount > 0 || transferCount > 0 || tokens.length > 0 || nativeQty > 0;
+      const hasHoldings = valuedTokenCount > 0 || (nativeUsd != null && nativeUsd >= 0.01) || nativeQty > 0;
+      const interacted = txCount > 0 || transferCount > 0 || tokens.length > 0 || nativeQty > 0 || !!chain.imported;
       return {
         chain: {
           id: chain.id, name: chain.name, explorer: `${chain.explorer}${address}`, balance: formatUnits(info?.coin_balance || "0"),
           nativeSymbol: chain.native, nativeUsd, txCount, transferCount, tokenCount: tokens.length, valuedTokenCount,
           volumeUsd, feesUsd, uniqueContracts, uniqueTokens: Math.max(uniqueTokens, tokens.length), tokenTrades, nftMints,
           contractsDeployed, walletAgeDays, activeDays: days.size, activeWeeks: weeks.size, activeMonths: months.size,
-          activityDays: [...days], firstTx, lastTx, interacted, hasHoldings,
+          activityDays, activityMethods, firstTx, lastTx, interacted, hasHoldings, imported: !!chain.imported,
         } satisfies OnchainChain,
         ens: info?.ens_domain_name || null,
         tokens,
