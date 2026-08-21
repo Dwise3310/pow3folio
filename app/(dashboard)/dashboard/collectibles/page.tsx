@@ -4,7 +4,8 @@ import { createClient } from "@/lib/supabase/server";
 import CollectibleManager from "@/components/collectibles/CollectibleManager";
 import OnchainFootprint from "@/components/profile/OnchainFootprint";
 import WalletAutoScan from "@/components/collectibles/WalletAutoScan";
-import type { Collectible, CustomChain, ExtraWallet } from "@/types/database";
+import ExtraWallets from "@/components/profile/ExtraWallets";
+import type { Collectible, CustomChain, ExtraWallet, Profile } from "@/types/database";
 
 export default async function CollectiblesPage() {
   const supabase = await createClient();
@@ -23,20 +24,17 @@ export default async function CollectiblesPage() {
       .eq("user_id", user.id)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: false }),
-    supabase
-      .from("profiles")
-      .select("wallet_address, ens_name, show_dust_tokens, extra_wallets, custom_chains, last_wallet_scan_at")
-      .eq("id", user.id)
-      .maybeSingle(),
+    supabase.from("profiles").select("*").eq("id", user.id).maybeSingle(),
   ]);
 
-  const walletAddress = profile?.wallet_address || null;
-  const extra = ((profile?.extra_wallets as ExtraWallet[]) || []).filter((w) => w?.address);
+  const p = (profile || {}) as Partial<Profile>;
+  const walletAddress = p.wallet_address || null;
+  const extra = (p.extra_wallets || []).filter((w) => w?.address);
   const wallets = [
     ...(walletAddress ? [{ address: walletAddress, label: "Primary" }] : []),
     ...extra.map((w) => ({ address: w.address, label: w.label || w.address.slice(0, 6) })),
   ];
-  const ensName = profile?.ens_name || null;
+  const ensName = p.ens_name || null;
   const arkhamUrl = walletAddress ? `https://arkm.com/explorer/address/${walletAddress}` : null;
 
   return (
@@ -65,7 +63,8 @@ export default async function CollectiblesPage() {
           </p>
         </div>
 
-        <WalletAutoScan lastScanAt={profile?.last_wallet_scan_at || null} />
+        <WalletAutoScan lastScanAt={p.last_wallet_scan_at || null} />
+        <ExtraWallets profileId={user.id} initial={extra} />
 
         <div className="mb-8">
           <OnchainFootprint
@@ -74,9 +73,9 @@ export default async function CollectiblesPage() {
             arkhamUrl={arkhamUrl}
             owner
             profileId={user.id}
-            showDustTokens={profile?.show_dust_tokens === true}
+            showDustTokens={p.show_dust_tokens === true}
             wallets={wallets}
-            customChains={(profile?.custom_chains as CustomChain[]) || []}
+            customChains={(p.custom_chains as CustomChain[]) || []}
           />
         </div>
 
