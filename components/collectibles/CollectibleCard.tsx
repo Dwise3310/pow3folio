@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/writing/ShareButton";
 import type { Collectible } from "@/types/database";
 
@@ -9,37 +9,60 @@ type Props = {
   profileUrl: string;
 };
 
-function imageCandidates(raw: string | null): string[] {
-  if (!raw) return [];
-  const value = raw.trim();
-  const urls = [value];
-  const cid = value.match(/(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]+)/i)?.[0];
-  if (cid) {
-    const rest = value.includes(cid) ? value.slice(value.indexOf(cid) + cid.length).replace(/^\/+/, "") : "";
-    const path = rest ? `${cid}/${rest.split("?")[0]}` : cid;
-    urls.push(`https://ipfs.io/ipfs/${path}`, `https://cloudflare-ipfs.com/ipfs/${path}`);
-  }
-  return [...new Set(urls)].map((u) => `/api/media?u=${encodeURIComponent(u)}`);
+function mediaSrc(url: string) {
+  if (url.startsWith("/")) return url;
+  return `/api/media?u=${encodeURIComponent(url)}`;
 }
 
 export default function CollectibleCard({ item, profileUrl }: Props) {
   const shareUrl = item.url || profileUrl;
   const meta = [item.chain, item.collection_name, item.token_id].filter(Boolean).join(" · ");
-  const candidates = useMemo(() => imageCandidates(item.image_url), [item.image_url]);
-  const [idx, setIdx] = useState(0);
-  const src = candidates[idx];
+  const contract = useMemo(() => {
+    const tagged = (item.tags || []).find((t) => t.startsWith("ca:"))?.slice(3) || "";
+    if (tagged) return tagged;
+    const fromUrl = (item.url || "").match(/0x[a-fA-F0-9]{40}/);
+    return fromUrl ? fromUrl[0].toLowerCase() : "";
+  }, [item.tags, item.url]);
+  const [src, setSrc] = useState(item.image_url);
+  const [broken, setBroken] = useState(false);
+
+  useEffect(() => {
+    setSrc(item.image_url);
+    setBroken(false);
+  }, [item.image_url]);
+
+  useEffect(() => {
+    if (src || !contract || !item.token_id) return;
+    let cancelled = false;
+    const qs = new URLSearchParams({
+      contract,
+      tokenId: item.token_id,
+      chain: item.chain || "",
+    });
+    fetch(`/api/onchain/nft-art?${qs.toString()}`)
+      .then((res) => res.json())
+      .then((json: { image_url?: string | null }) => {
+        if (!cancelled && json.image_url) setSrc(json.image_url);
+      })
+      .catch(() => undefined);
+    return () => {
+      cancelled = true;
+    };
+  }, [src, contract, item.token_id, item.chain]);
+
+  const showImage = src && !broken;
 
   const CardInner = (
     <>
       <div className="aspect-square w-full overflow-hidden rounded-lg bg-surface-elevated">
-        {src ? (
+        {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={src}
+            src={mediaSrc(src)}
             alt=""
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
-            onError={() => setIdx((n) => n + 1)}
+            onError={() => setBroken(true)}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs uppercase text-foreground-subtle">
