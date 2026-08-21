@@ -86,28 +86,55 @@ export async function enrichFootprint(
       }
     }
 
-    if (isKii && chain.volumeUsd === 0) {
+    if (isKii) {
       const host = "https://blockscout.kiichain.io";
-      const txs = await getPagedItems<{ value?: string; timestamp?: string; to?: { hash?: string } | null; fee?: { value?: string } }>(
-        `${host}/api/v2/addresses/${data.address}/transactions`,
-        8
-      );
-      if (txs.length) {
-        chain.txCount = Math.max(chain.txCount, txs.length);
-        if (rate) {
-          chain.volumeUsd = txs.reduce((sum, tx) => sum + toNumber(tx.value || "0", 18) * rate, 0);
-          chain.feesUsd = txs.reduce((sum, tx) => sum + toNumber(tx.fee?.value || "0", 18) * rate, 0);
-        }
-        const stamps = txs.map((tx) => tx.timestamp).filter((s): s is string => !!s);
-        if (stamps.length) {
-          chain.lastTx = stamps[0];
-          chain.firstTx = stamps[stamps.length - 1];
+      if (chain.volumeUsd === 0) {
+        const txs = await getPagedItems<{ value?: string; timestamp?: string; to?: { hash?: string } | null; fee?: { value?: string } }>(
+          `${host}/api/v2/addresses/${data.address}/transactions`,
+          8
+        );
+        if (txs.length) {
+          chain.txCount = Math.max(chain.txCount, txs.length);
+          if (rate) {
+            chain.volumeUsd = txs.reduce((sum, tx) => sum + toNumber(tx.value || "0", 18) * rate, 0);
+            chain.feesUsd = txs.reduce((sum, tx) => sum + toNumber(tx.fee?.value || "0", 18) * rate, 0);
+          }
+          const stamps = txs.map((tx) => tx.timestamp).filter((s): s is string => !!s);
+          if (stamps.length) {
+            chain.lastTx = stamps[0];
+            chain.firstTx = stamps[stamps.length - 1];
+          }
         }
       }
-      const tokens = await getJson(`${host}/api/v2/addresses/${data.address}/token-balances`);
-      if (Array.isArray(tokens) && tokens.length) {
-        chain.tokenCount = Math.max(chain.tokenCount, tokens.length);
-        chain.uniqueTokens = Math.max(chain.uniqueTokens, tokens.length);
+      const tokens = (await getJson(`${host}/api/v2/addresses/${data.address}/token-balances`)) as Array<{
+        value?: string;
+        token?: { address_hash?: string; symbol?: string; name?: string; decimals?: string; type?: string };
+      }> | null;
+      if (Array.isArray(tokens)) {
+        for (const item of tokens) {
+          const contract = (item.token?.address_hash || "").toLowerCase();
+          const type = (item.token?.type || "").toUpperCase();
+          if (!contract || contract === "0xeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee") continue;
+          if (type && type !== "ERC-20") continue;
+          if (data.tokens.some((t) => t.chainId === chain.id && t.contract === contract)) continue;
+          const decimals = Number(item.token?.decimals || 18);
+          const held = toNumber(item.value || "0", Number.isFinite(decimals) ? decimals : 18);
+          if (held <= 0) continue;
+          data.tokens.push({
+            symbol: item.token?.symbol || "TOKEN",
+            name: item.token?.name || "",
+            chain: chain.name,
+            chainId: chain.id,
+            balance: String(held),
+            contract,
+            href: `${host}/token/${contract}`,
+            usdValue: null,
+            isDust: true,
+          });
+        }
+        const onChain = data.tokens.filter((t) => t.chainId === chain.id);
+        chain.tokenCount = Math.max(chain.tokenCount, onChain.length);
+        chain.uniqueTokens = Math.max(chain.uniqueTokens, onChain.length);
       }
     }
 
@@ -118,6 +145,7 @@ export async function enrichFootprint(
   }
 
   void imported;
+  data.tokens.sort((a, b) => (b.usdValue ?? -1) - (a.usdValue ?? -1));
   data.totalValueUsd =
     data.tokens.reduce((sum, t) => sum + (t.usdValue && !t.isDust ? t.usdValue : 0), 0) +
     data.chains.reduce((sum, c) => sum + (c.nativeUsd && c.nativeUsd > 0 ? c.nativeUsd : 0), 0);
