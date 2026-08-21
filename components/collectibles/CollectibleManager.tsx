@@ -25,11 +25,17 @@ function nftKey(chain: string | null, contractHint: string | null, tokenId: stri
   return `${(chain || "").toLowerCase()}|${(contractHint || "").toLowerCase()}|${tokenId || ""}`;
 }
 
-function parseAssetQuery(value: string) {
-  const contractMatch = value.trim().match(/0x[a-fA-F0-9]{40}/);
-  const idMatch = value.trim().match(/0x[a-fA-F0-9]{40}\/(\d+)/i);
+export function parseAssetQuery(value: string) {
+  const raw = value.trim();
+  const contractMatch = raw.match(/0x[a-fA-F0-9]{40}/);
+  const contract = contractMatch ? contractMatch[0].toLowerCase() : "";
+  const after = contract ? raw.slice(raw.toLowerCase().indexOf(contract) + 42) : raw;
+  const idMatch =
+    after.match(/(?:[/#]|token[_-]?id=)(\d+)/i) ||
+    raw.match(/token[_-]?id=(\d+)/i) ||
+    after.match(/(\d{1,12})/);
   return {
-    contract: contractMatch ? contractMatch[0].toLowerCase() : "",
+    contract,
     tokenId: idMatch ? idMatch[1] : "",
   };
 }
@@ -45,19 +51,62 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
   const [reordering, setReordering] = useState(false);
 
   async function insertNfts(fresh: WalletNft[], alreadyLabel: string) {
-    const existing = new Set(
+    const existingByKey = new Map(
       items.map((i) => {
         const ca = (i.tags || []).find((t) => t.startsWith("ca:"))?.slice(3) || "";
-        return nftKey(i.chain, ca, i.token_id);
+        return [nftKey(i.chain, ca, i.token_id), i] as const;
       })
     );
-    const unique = fresh.filter((n) => n.token_id && !existing.has(nftKey(n.chain, n.contract, n.token_id)));
+    const unique: WalletNft[] = [];
+    const refresh: Array<{ row: Collectible; nft: WalletNft }> = [];
+    for (const n of fresh) {
+      if (!n.token_id) continue;
+      const found = existingByKey.get(nftKey(n.chain, n.contract, n.token_id));
+      if (!found) unique.push(n);
+      else if ((!found.image_url && n.image_url) || (n.title && n.title !== found.title)) {
+        refresh.push({ row: found, nft: n });
+      }
+    }
+
+    const supabase = createClient();
+    let nextItems = items;
+
+    if (refresh.length) {
+      const results = await Promise.all(
+        refresh.map(({ row, nft }) =>
+          supabase
+            .from("collectibles")
+            .update({
+              image_url: nft.image_url || row.image_url,
+              title: nft.title || row.title,
+              description: nft.description || row.description,
+              url: nft.url || row.url,
+              collection_name: nft.collection_name || row.collection_name,
+            })
+            .eq("id", row.id)
+            .eq("user_id", userId)
+            .select()
+            .single()
+        )
+      );
+      const updated = results.map((r) => r.data as Collectible | null).filter((x): x is Collectible => !!x);
+      if (updated.length) {
+        nextItems = nextItems.map((item) => updated.find((u) => u.id === item.id) || item);
+        setItems(sortItems(nextItems));
+      }
+    }
+
     if (!unique.length) {
-      setHint(alreadyLabel);
+      setHint(
+        refresh.length
+          ? `Updated artwork on ${refresh.length} NFT${refresh.length === 1 ? "" : "s"}.`
+          : alreadyLabel
+      );
+      if (refresh.length) router.refresh();
       return;
     }
-    const supabase = createClient();
-    let maxOrder = items.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
+
+    let maxOrder = nextItems.reduce((m, i) => Math.max(m, i.sort_order ?? 0), -1);
     const rows = unique.map((n) => {
       maxOrder += 1;
       return {
@@ -85,8 +134,9 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       );
       return;
     }
-    setItems((prev) => sortItems([...prev, ...((data as Collectible[]) ?? [])]));
-    setHint(`Imported ${rows.length} NFT${rows.length === 1 ? "" : "s"} held by this wallet.`);
+    setItems(sortItems([...nextItems, ...((data as Collectible[]) ?? [])]));
+    const extra = refresh.length ? ` Updated ${refresh.length} existing image${refresh.length === 1 ? "" : "s"}.` : "";
+    setHint(`Imported ${rows.length} NFT${rows.length === 1 ? "" : "s"} held by this wallet.${extra}`);
     router.refresh();
   }
 
@@ -220,8 +270,8 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       <div className="card space-y-3">
         <h2 className="font-semibold">NFTs held by this wallet</h2>
         <p className="text-sm text-foreground-muted">
-          Import only adds items this wallet actually holds. If a collection is missing, paste the contract or OpenSea
-          link and we will import it only after ownership is confirmed.
+          Import only adds items this wallet actually holds. Artwork is saved with the NFT. Refresh or search again to
+          fill a missing image.
         </p>
         {!walletAddress && (
           <p className="text-sm text-foreground-subtle">
@@ -281,7 +331,12 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
               </div>
               {item.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={item.image_url} alt="" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
+                <img
+                  src={item.image_url}
+                  alt=""
+                  referrerPolicy="no-referrer"
+                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
+                />
               ) : (
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] uppercase text-foreground-subtle">
                   NFT
