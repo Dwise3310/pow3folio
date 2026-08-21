@@ -33,6 +33,19 @@ export type TradingPlatform = {
   logo?: string | null;
 };
 
+export type ExtraWallet = {
+  address: string;
+  label: string;
+};
+
+export type CustomChain = {
+  id?: string;
+  name: string;
+  host: string;
+  explorer?: string;
+  native?: string;
+};
+
 export type Profile = {
   id: string;
   username: string;
@@ -43,6 +56,9 @@ export type Profile = {
   banner_url: string | null;
   open_to_work: boolean;
   wallet_address: string | null;
+  extra_wallets?: ExtraWallet[] | null;
+  custom_chains?: CustomChain[] | null;
+  last_wallet_scan_at?: string | null;
   ens_name: string | null;
   x_url: string | null;
   discord_url: string | null;
