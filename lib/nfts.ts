@@ -40,9 +40,33 @@ export function resolveMediaUrl(raw: string | null | undefined): string | null {
 
 function imageFromUnknown(value: unknown): string | null {
   if (typeof value === "string") return resolveMediaUrl(value);
-  if (value && typeof value === "object" && "url" in value) {
-    return resolveMediaUrl(String((value as { url?: string }).url || ""));
+  if (Array.isArray(value) && value.length) return imageFromUnknown(value[0]);
+  if (value && typeof value === "object") {
+    const rec = value as Record<string, unknown>;
+    return (
+      resolveMediaUrl(typeof rec.url === "string" ? rec.url : null) ||
+      resolveMediaUrl(typeof rec.gateway === "string" ? rec.gateway : null) ||
+      resolveMediaUrl(typeof rec.src === "string" ? rec.src : null)
+    );
   }
+  return null;
+}
+
+function parseMetadata(raw: unknown): Record<string, unknown> | null {
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    const trimmed = raw.trim();
+    if (!trimmed) return null;
+    if (trimmed.startsWith("{")) {
+      try {
+        return JSON.parse(trimmed) as Record<string, unknown>;
+      } catch {
+        return { image: trimmed };
+      }
+    }
+    return { image: trimmed };
+  }
+  if (typeof raw === "object") return raw as Record<string, unknown>;
   return null;
 }
 
@@ -93,13 +117,8 @@ type BlockscoutNft = {
   image_url?: string | null;
   media_url?: string | null;
   animation_url?: string | null;
-  metadata?: {
-    name?: string;
-    description?: string;
-    image?: unknown;
-    image_url?: unknown;
-    animation_url?: unknown;
-  } | null;
+  external_app_url?: string | null;
+  metadata?: unknown;
   token?: { address_hash?: string; name?: string; symbol?: string; icon_url?: string | null };
   owner?: { hash?: string };
   thumbnails?: { url?: string | null } | null;
@@ -110,15 +129,18 @@ function marketplaceUrl(openseaChain: string, contract: string, tokenId: string)
 }
 
 function pickImage(item: BlockscoutNft): string | null {
+  const meta = parseMetadata(item.metadata);
   return (
     resolveMediaUrl(item.image_url) ||
     resolveMediaUrl(item.media_url) ||
-    imageFromUnknown(item.metadata?.image) ||
-    imageFromUnknown(item.metadata?.image_url) ||
+    imageFromUnknown(meta?.image) ||
+    imageFromUnknown(meta?.image_url) ||
+    imageFromUnknown(meta?.imageUrl) ||
+    imageFromUnknown(meta?.animation_url) ||
     resolveMediaUrl(item.token?.icon_url) ||
     resolveMediaUrl(item.thumbnails?.url) ||
     resolveMediaUrl(item.animation_url) ||
-    imageFromUnknown(item.metadata?.animation_url)
+    resolveMediaUrl(item.external_app_url)
   );
 }
 
@@ -126,14 +148,17 @@ function mapNft(item: BlockscoutNft, chainName: string, opensea: string): Wallet
   const tokenId = String(item.id || "").trim();
   const contract = (item.token?.address_hash || "").toLowerCase();
   if (!tokenId) return null;
+  const meta = parseMetadata(item.metadata);
+  const metaName = typeof meta?.name === "string" ? meta.name.trim() : "";
+  const metaDesc = typeof meta?.description === "string" ? meta.description : "";
   const title =
-    item.metadata?.name?.trim() ||
+    metaName ||
     (item.token?.name && tokenId ? `${item.token.name} #${tokenId.slice(0, 10)}` : null) ||
     item.token?.symbol ||
     "NFT";
   return {
     title: title.slice(0, 120),
-    description: item.metadata?.description?.slice(0, 400) || null,
+    description: metaDesc.slice(0, 400) || null,
     url: contract ? marketplaceUrl(opensea, contract, tokenId) : "",
     image_url: pickImage(item),
     chain: chainName,
@@ -141,6 +166,42 @@ function mapNft(item: BlockscoutNft, chainName: string, opensea: string): Wallet
     token_id: tokenId,
     acquired_at: null,
     contract,
+  };
+}
+
+async function hydrateNft(
+  item: BlockscoutNft,
+  chainName: string,
+  opensea: string,
+  host: string,
+  fallbackContract?: string
+): Promise<WalletNft | null> {
+  const withToken: BlockscoutNft = {
+    ...item,
+    token: item.token || (fallbackContract ? { address_hash: fallbackContract } : item.token),
+  };
+  const mapped = mapNft(withToken, chainName, opensea);
+  if (!mapped) return null;
+  if (mapped.image_url) return mapped;
+
+  const contract = mapped.contract || fallbackContract || "";
+  if (!contract || !mapped.token_id) return mapped;
+
+  const fresh = (await getJson(`${host}/api/v2/tokens/${contract}/instances/${mapped.token_id}`)) as BlockscoutNft | null;
+  if (!fresh) return mapped;
+  const richer = mapNft(
+    { ...fresh, id: fresh.id || mapped.token_id, token: fresh.token || { address_hash: contract } },
+    chainName,
+    opensea
+  );
+  if (!richer) return mapped;
+  return {
+    ...mapped,
+    title: richer.title || mapped.title,
+    description: richer.description || mapped.description,
+    image_url: richer.image_url || mapped.image_url,
+    url: richer.url || mapped.url,
+    collection_name: richer.collection_name || mapped.collection_name,
   };
 }
 
@@ -154,7 +215,10 @@ export async function loadWalletNfts(rawAddress: string): Promise<WalletNft[]> {
         `${chain.host}/api/v2/addresses/${address}/nft?type=ERC-721,ERC-1155`,
         8
       );
-      return items.map((item) => mapNft(item, chain.name, chain.opensea)).filter((n): n is WalletNft => !!n);
+      const mapped = await Promise.all(
+        items.slice(0, 80).map((item) => hydrateNft(item, chain.name, chain.opensea, chain.host))
+      );
+      return mapped.filter((n): n is WalletNft => !!n);
     })
   );
 
@@ -187,10 +251,12 @@ export async function lookupWalletNfts(
         if (!item) return [];
         const owner = (item.owner?.hash || "").toLowerCase();
         if (owner && owner !== address) return [];
-        const mapped = mapNft(
+        const mapped = await hydrateNft(
           { ...item, id: item.id || tokenId, token: item.token || { address_hash: contract } },
           chain.name,
-          chain.opensea
+          chain.opensea,
+          chain.host,
+          contract
         );
         return mapped ? [mapped] : [];
       }
@@ -199,9 +265,12 @@ export async function lookupWalletNfts(
         `${chain.host}/api/v2/tokens/${contract}/instances?holder_address_hash=${address}`,
         6
       );
-      return items
-        .map((item) => mapNft({ ...item, token: item.token || { address_hash: contract } }, chain.name, chain.opensea))
-        .filter((n): n is WalletNft => !!n);
+      const mapped = await Promise.all(
+        items.map((item) =>
+          hydrateNft({ ...item, token: item.token || { address_hash: contract } }, chain.name, chain.opensea, chain.host, contract)
+        )
+      );
+      return mapped.filter((n): n is WalletNft => !!n);
     })
   );
 

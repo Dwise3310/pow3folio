@@ -6,13 +6,15 @@
 export const POW3_KNOWLEDGE = `
 # Pow3Folio product knowledge (keep current)
 
-Latest product pass after 0fc8135 (NFT metadata type fix):
-- NFT import now resolves ipfs/arweave artwork and refreshes missing images on re-import.
+Latest product pass after NFT image + heading polish:
+- NFT import stores artwork with the rest of the metadata. Re-import / refresh updates a missing image instead of skipping the record.
+- IPFS and gateway artwork is resolved, then the token instance endpoint is used if the list response had no image.
+- NFT cards use referrer-free image loads so IPFS gateways do not blank the art.
 - Chain cards only show chains where the wallet still holds a token. Transaction, transfer and token totals still count every chain.
-- Stat boxes (Chains, Transactions, Transfers, Tokens) are equal height.
-- Public section headings share one amber style at slightly reduced opacity.
+- Stat boxes (Chains, Transactions, Transfers, Tokens) stay equal height. The tab layout no longer stretches or collapses them.
+- Public section headings share one muted amber style (Skills, About, Work experience, Education, Docs, Wallet, DeFi, Onchain activity, Tokens, NFTs held).
 - Docs and credentials use a document-card placeholder with type tags (CV, Resume, Certificate, Transcript, Award, License, Portfolio, Other). PDF iframe thumbs are not used.
-- Location is GPS detect only. Manual country/state typing was removed.
+- Location is GPS detect only. Manual country/state typing is off.
 
 ## What it is
 Pow3Folio is a public proof of work portfolio for Web3 builders (traders, researchers, community leads, developers). One public URL: https://pow3folio.vercel.app/{username}
@@ -48,7 +50,7 @@ Import and autofill (CV PDF/TXT or public Notion/GitHub/site link) lives on the 
 Skills / service pillars: compact wrap chips. Green outline, readable text in light and dark mode.
 Tap a chip to open a blurred popup with the brief (max 250 characters). Click outside to close.
 Work experience max 5, education, docs/credentials.
-Section headings (Skills, About, Work experience, Education, Docs and credentials, Wallet, Onchain activity, Tokens, NFTs held) use the same bold amber heading, slightly muted in dark mode.
+Section headings use the same bold amber heading, slightly muted in dark mode.
 
 ## Docs and credentials
 Public cards are document placeholders, not live PDF previews. Each card shows a document icon, a type tag, title and issuer. Type is chosen when uploading: CV, Resume, Certificate, Transcript, Award, License, Portfolio or Other.
