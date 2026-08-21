@@ -1,8 +1,8 @@
 "use client";
 
 import CollectibleCard from "@/components/collectibles/CollectibleCard";
-import OnchainFootprint from "@/components/profile/OnchainFootprint";
-import type { Collectible } from "@/types/database";
+import OnchainFootprint, { type NamedWallet } from "@/components/profile/OnchainFootprint";
+import type { Collectible, CustomChain } from "@/types/database";
 
 export default function OnchainSection({
   profileUrl,
@@ -11,6 +11,8 @@ export default function OnchainSection({
   ensName,
   arkhamUrl,
   showDustTokens = false,
+  wallets = [],
+  customChains = [],
 }: {
   profileUrl: string;
   nfts: Collectible[];
@@ -18,6 +20,8 @@ export default function OnchainSection({
   ensName: string | null;
   arkhamUrl: string | null;
   showDustTokens?: boolean;
+  wallets?: NamedWallet[];
+  customChains?: CustomChain[];
 }) {
   return (
     <div className="space-y-6">
@@ -26,11 +30,11 @@ export default function OnchainSection({
         ensName={ensName}
         arkhamUrl={arkhamUrl}
         showDustTokens={showDustTokens}
+        wallets={wallets}
+        customChains={customChains}
       />
       <div>
-        <h3 className="section-heading text-sm font-extrabold tracking-wide text-amber-700/90 dark:text-amber-400/75">
-          NFTs held
-        </h3>
+        <h3 className="section-heading">NFTs held</h3>
         {nfts.length === 0 ? (
           <div className="card text-sm text-foreground-subtle">
             No imported NFTs yet. The talent imports holdings from the connected wallet so only owned items appear.

@@ -3,7 +3,8 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import CollectibleManager from "@/components/collectibles/CollectibleManager";
 import OnchainFootprint from "@/components/profile/OnchainFootprint";
-import type { Collectible } from "@/types/database";
+import WalletAutoScan from "@/components/collectibles/WalletAutoScan";
+import type { Collectible, CustomChain, ExtraWallet } from "@/types/database";
 
 export default async function CollectiblesPage() {
   const supabase = await createClient();
@@ -24,12 +25,17 @@ export default async function CollectiblesPage() {
       .order("created_at", { ascending: false }),
     supabase
       .from("profiles")
-      .select("wallet_address, ens_name, show_dust_tokens")
+      .select("wallet_address, ens_name, show_dust_tokens, extra_wallets, custom_chains, last_wallet_scan_at")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
 
   const walletAddress = profile?.wallet_address || null;
+  const extra = ((profile?.extra_wallets as ExtraWallet[]) || []).filter((w) => w?.address);
+  const wallets = [
+    ...(walletAddress ? [{ address: walletAddress, label: "Primary" }] : []),
+    ...extra.map((w) => ({ address: w.address, label: w.label || w.address.slice(0, 6) })),
+  ];
   const ensName = profile?.ens_name || null;
   const arkhamUrl = walletAddress ? `https://arkm.com/explorer/address/${walletAddress}` : null;
 
@@ -55,9 +61,11 @@ export default async function CollectiblesPage() {
         <div className="mb-8">
           <h1 className="text-2xl font-bold tracking-tight">Onchain</h1>
           <p className="mt-1 text-sm text-foreground-muted">
-            Live footprint from the connected wallet, plus NFTs actually held on that address.
+            Live footprint from connected wallets, plus NFTs actually held on those addresses.
           </p>
         </div>
+
+        <WalletAutoScan lastScanAt={profile?.last_wallet_scan_at || null} />
 
         <div className="mb-8">
           <OnchainFootprint
@@ -67,6 +75,8 @@ export default async function CollectiblesPage() {
             owner
             profileId={user.id}
             showDustTokens={profile?.show_dust_tokens === true}
+            wallets={wallets}
+            customChains={(profile?.custom_chains as CustomChain[]) || []}
           />
         </div>
 
@@ -74,6 +84,7 @@ export default async function CollectiblesPage() {
           userId={user.id}
           initialItems={(items as Collectible[]) ?? []}
           walletAddress={walletAddress}
+          wallets={wallets}
         />
       </main>
     </div>
