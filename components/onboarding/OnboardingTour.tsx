@@ -5,11 +5,12 @@ import Link from "next/link";
 import { createPortal } from "react-dom";
 
 const STORAGE_KEY = "pow3folio-onboarding-done";
+const SIGNUP_KEY = "pow3folio-just-signed-up";
 
 const STEPS = [
   {
     title: "Welcome to Pow3Folio",
-    body: "This short tour shows how to build a public proof of work profile. You can skip anytime and reopen tips from Pow3Bot.",
+    body: "This short tour shows how to build a public proof of work profile. You can skip anytime and reopen tips from the dashboard.",
   },
   {
     title: "1) Claim your public URL",
@@ -40,7 +41,6 @@ const STEPS = [
 ];
 
 type Props = {
-  /** Force show even if completed (e.g. from settings). */
   force?: boolean;
   onClose?: () => void;
 };
@@ -59,15 +59,18 @@ export default function OnboardingTour({ force = false, onClose }: Props) {
     }
     try {
       if (localStorage.getItem(STORAGE_KEY) === "1") return;
+      if (sessionStorage.getItem(SIGNUP_KEY) !== "1") return;
+      sessionStorage.removeItem(SIGNUP_KEY);
       setOpen(true);
     } catch {
-      setOpen(true);
+      /* ignore */
     }
   }, [force]);
 
   function finish() {
     try {
       localStorage.setItem(STORAGE_KEY, "1");
+      sessionStorage.removeItem(SIGNUP_KEY);
     } catch {
       /* ignore */
     }
@@ -105,12 +108,7 @@ export default function OnboardingTour({ force = false, onClose }: Props) {
 
         <div className="mb-4 flex gap-1">
           {STEPS.map((_, i) => (
-            <span
-              key={i}
-              className={`h-1 flex-1 rounded-full ${
-                i <= step ? "bg-primary" : "bg-border"
-              }`}
-            />
+            <span key={i} className={`h-1 flex-1 rounded-full ${i <= step ? "bg-primary" : "bg-border"}`} />
           ))}
         </div>
 
@@ -120,22 +118,13 @@ export default function OnboardingTour({ force = false, onClose }: Props) {
         <p className="mt-2 text-sm text-foreground-muted leading-relaxed">{s.body}</p>
 
         {s.href && (
-          <Link
-            href={s.href}
-            className="mt-3 inline-flex text-sm text-primary hover:underline"
-            onClick={finish}
-          >
+          <Link href={s.href} className="mt-3 inline-flex text-sm text-primary hover:underline" onClick={finish}>
             {s.hrefLabel} →
           </Link>
         )}
 
         <div className="mt-6 flex items-center justify-between gap-2">
-          <button
-            type="button"
-            className="btn-ghost text-sm"
-            disabled={step === 0}
-            onClick={() => setStep((x) => Math.max(0, x - 1))}
-          >
+          <button type="button" className="btn-ghost text-sm" disabled={step === 0} onClick={() => setStep((x) => Math.max(0, x - 1))}>
             Back
           </button>
           <button type="button" className="btn-primary text-sm px-5" onClick={next}>
@@ -151,6 +140,14 @@ export default function OnboardingTour({ force = false, onClose }: Props) {
 export function resetOnboarding() {
   try {
     localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* ignore */
+  }
+}
+
+export function markNewSignup() {
+  try {
+    sessionStorage.setItem(SIGNUP_KEY, "1");
   } catch {
     /* ignore */
   }

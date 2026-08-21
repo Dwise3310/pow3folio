@@ -1,0 +1,8 @@
+{
+  "crons": [
+    {
+      "path": "/api/cron/wallet-scan",
+      "schedule": "0 4 * * *"
+    }
+  ]
+}
