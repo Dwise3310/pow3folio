@@ -23,6 +23,15 @@ type Props = {
 
 const HEADING = "section-heading";
 
+const KII_PRESET: CustomChainInput = {
+  id: "kiichain",
+  name: "KiiChain",
+  chainId: 1783,
+  rpc: "https://json-rpc.kiivalidator.com",
+  explorer: "https://explorer.kiichain.io/address/",
+  native: "KII",
+};
+
 function usd(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value) || value <= 0) return "—";
   if (value < 0.01) return "<$0.01";
@@ -69,8 +78,15 @@ export default function OnchainFootprint({
   const [error, setError] = useState<string | null>(null);
   const [showDust, setShowDust] = useState(showDustTokens);
   const [chainId, setChainId] = useState<string>("");
-  const [chainForm, setChainForm] = useState({ name: "", host: "", native: "ETH" });
+  const [chainForm, setChainForm] = useState({
+    name: "",
+    chainId: "",
+    rpc: "",
+    explorer: "",
+    native: "",
+  });
   const [savingChain, setSavingChain] = useState(false);
+  const [chainMsg, setChainMsg] = useState<string | null>(null);
 
   useEffect(() => {
     setShowDust(showDustTokens);
@@ -95,7 +111,7 @@ export default function OnchainFootprint({
         if (cancelled) return;
         setData(json);
         const preferred = [...json.chains]
-          .filter((c) => c.txCount > 0 || c.transferCount > 0)
+          .filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported)
           .sort((a, b) => b.txCount - a.txCount || b.transferCount - a.transferCount)[0];
         if (preferred) setChainId(preferred.id);
       })
@@ -110,7 +126,10 @@ export default function OnchainFootprint({
     };
   }, [activeWallet, customChains]);
 
-  const interacted = useMemo(() => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0) ?? [], [data]);
+  const interacted = useMemo(
+    () => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported) ?? [],
+    [data]
+  );
   const selected: OnchainChain | null = useMemo(() => {
     if (!data || !chainId) return null;
     return data.chains.find((c) => c.id === chainId) || null;
@@ -133,19 +152,51 @@ export default function OnchainFootprint({
     await supabase.from("profiles").update({ show_dust_tokens: next }).eq("id", profileId);
   }
 
+  async function persistChains(next: CustomChainInput[], okLabel: string) {
+    if (!owner || !profileId) return;
+    setSavingChain(true);
+    setChainMsg(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("profiles").update({ custom_chains: next }).eq("id", profileId);
+    setSavingChain(false);
+    if (err) {
+      setChainMsg(
+        err.message.includes("column") || err.code === "42703"
+          ? "Run the extra_wallets SQL in Supabase so custom networks can be saved."
+          : err.message
+      );
+      return;
+    }
+    setChainMsg(okLabel);
+    window.location.reload();
+  }
+
   async function saveCustomChain(e: React.FormEvent) {
     e.preventDefault();
-    if (!owner || !profileId) return;
     const name = chainForm.name.trim();
-    const host = chainForm.host.trim().replace(/\/$/, "");
-    if (!name || !host) return;
-    setSavingChain(true);
-    const next = [...customChains, { name, host, native: chainForm.native || "ETH" }];
-    const supabase = createClient();
-    await supabase.from("profiles").update({ custom_chains: next }).eq("id", profileId);
-    setChainForm({ name: "", host: "", native: "ETH" });
-    setSavingChain(false);
-    window.location.reload();
+    const rpc = chainForm.rpc.trim().replace(/\/$/, "");
+    const explorer = chainForm.explorer.trim().replace(/\/$/, "");
+    if (!name || !rpc) {
+      setChainMsg("Network name and JSON-RPC URL are required.");
+      return;
+    }
+    if (customChains.some((c) => (c.name || "").toLowerCase() === name.toLowerCase() || c.rpc === rpc)) {
+      setChainMsg("That network is already imported.");
+      return;
+    }
+    await persistChains(
+      [
+        ...customChains,
+        {
+          name,
+          rpc,
+          explorer: explorer || undefined,
+          native: chainForm.native.trim() || "ETH",
+          chainId: Number(chainForm.chainId) || undefined,
+        },
+      ],
+      `${name} added. Native ${chainForm.native || "ETH"} will load from RPC.`
+    );
   }
 
   if (!address && wallets.length === 0) {
@@ -178,7 +229,7 @@ export default function OnchainFootprint({
         { label: "NFT mints", value: selected.nftMints ? selected.nftMints.toLocaleString() : "—" },
         { label: `First txn on ${selected.name}`, value: selected.walletAgeDays ? `${selected.walletAgeDays}d ago` : "—" },
         { label: "Last activity", value: timeAgo(selected.lastTx) },
-        { label: "Contracts deployed", value: selected.contractsDeployed.toLocaleString() },
+        { label: "Contracts deployed", value: (selected.contractsDeployed || 0).toLocaleString() },
         { label: "Active days", value: selected.activeDays.toLocaleString() },
         { label: "Active weeks", value: selected.activeWeeks.toLocaleString() },
         { label: "Active months", value: selected.activeMonths.toLocaleString() },
@@ -263,7 +314,7 @@ export default function OnchainFootprint({
                 </button>
               ))}
             </div>
-            <p className="mt-1.5 text-[11px] text-foreground-subtle">Only chains this wallet has transacted or transferred on. Tap one for the full aggregator.</p>
+            <p className="mt-1.5 text-[11px] text-foreground-subtle">Interacted and imported networks. Tap one for the full aggregator.</p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -353,7 +404,7 @@ export default function OnchainFootprint({
             )}
           </div>
 
-          <ActivityHeatmap days={selected?.activityDays || data.chains.flatMap((c) => c.activityDays || [])} />
+          <ActivityHeatmap days={selected?.activityDays || data.chains.flatMap((c) => c.activityDays || [])} methods={selected?.activityMethods || {}} />
         </>
       )}
 
@@ -361,11 +412,28 @@ export default function OnchainFootprint({
         <form onSubmit={saveCustomChain} className="card space-y-2 p-3">
           <h3 className={HEADING}>Import a network</h3>
           <p className="text-[11px] text-foreground-subtle">
-            Add a Blockscout-compatible explorer to pull tokens, NFTs and stats from a chain that is not listed yet.
+            Use the EVM chain ID and a public JSON-RPC. Explorer is optional. KiiChain is not Blockscout, so RPC is required.
           </p>
-          <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="KiiChain" />
-          <input className="input text-sm" value={chainForm.host} onChange={(e) => setChainForm((s) => ({ ...s, host: e.target.value }))} placeholder="https://explorer.example.com" />
-          <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol" />
+          <button
+            type="button"
+            className="btn-ghost text-xs"
+            onClick={() =>
+              persistChains(
+                customChains.some((c) => (c.name || "").toLowerCase() === "kiichain")
+                  ? customChains
+                  : [...customChains, KII_PRESET],
+                "KiiChain added."
+              )
+            }
+          >
+            Add KiiChain preset
+          </button>
+          <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="Network name (KiiChain)" />
+          <input className="input text-sm" value={chainForm.chainId} onChange={(e) => setChainForm((s) => ({ ...s, chainId: e.target.value }))} placeholder="Chain ID (1783)" />
+          <input className="input text-sm" value={chainForm.rpc} onChange={(e) => setChainForm((s) => ({ ...s, rpc: e.target.value }))} placeholder="https://json-rpc.example.com" />
+          <input className="input text-sm" value={chainForm.explorer} onChange={(e) => setChainForm((s) => ({ ...s, explorer: e.target.value }))} placeholder="https://explorer.example.com" />
+          <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol (KII)" />
+          {chainMsg && <p className="text-xs text-foreground-muted">{chainMsg}</p>}
           <button type="submit" className="btn-secondary text-xs" disabled={savingChain}>
             {savingChain ? "Saving…" : "Add network"}
           </button>
