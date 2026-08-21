@@ -88,19 +88,20 @@ export default function OnchainFootprint({
   ];
   const dustCount = data?.tokens.filter((t) => t.isDust).length ?? 0;
   const valuedCount = data?.tokens.filter((t) => !t.isDust).length ?? 0;
+  const holdingChains = data?.chains.filter((c) => c.tokenCount > 0) ?? [];
 
   return (
     <div className="space-y-4">
       <p className="text-xs sm:text-sm text-foreground-muted leading-relaxed rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5">
-        Live aggregator across Ethereum, Base, Arbitrum, Optimism and Polygon. Counts real transactions and token
-        transfers, lists holdings by contract, and flags popular DeFi protocols this wallet has touched.
+        Live aggregator across Ethereum, Base, Arbitrum, Optimism and Polygon. Totals include every chain. Chain cards
+        only appear where this wallet still holds a token.
       </p>
 
       <div className="card p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-foreground-subtle">Wallet</h3>
-            {ens && <p className="mt-1 text-sm font-semibold">{ens}</p>}
+            <h3 className="section-heading mb-1">Wallet</h3>
+            {ens && <p className="text-sm font-semibold">{ens}</p>}
             <p className="mt-0.5 font-mono text-xs text-foreground-muted break-all">{address}</p>
           </div>
           <button type="button" className="btn-ghost text-xs" onClick={() => navigator.clipboard.writeText(address)}>
@@ -128,29 +129,22 @@ export default function OnchainFootprint({
       {data && (
         <>
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-            <div className="card p-3">
-              <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">Chains</p>
-              <p className="mt-1 text-lg font-semibold">{data.activeChains}</p>
-            </div>
-            <div className="card p-3">
-              <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">Transactions</p>
-              <p className="mt-1 text-lg font-semibold">{data.totalTx.toLocaleString()}</p>
-            </div>
-            <div className="card p-3">
-              <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">Transfers</p>
-              <p className="mt-1 text-lg font-semibold">{data.totalTransfers.toLocaleString()}</p>
-            </div>
-            <div className="card p-3">
-              <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">Tokens</p>
-              <p className="mt-1 text-lg font-semibold">{valuedCount}</p>
-              {dustCount > 0 && <p className="text-[10px] text-foreground-subtle">{dustCount} dust</p>}
-            </div>
+            {[
+              { label: "Chains", value: holdingChains.length.toString() },
+              { label: "Transactions", value: data.totalTx.toLocaleString() },
+              { label: "Transfers", value: data.totalTransfers.toLocaleString() },
+              { label: "Tokens", value: valuedCount.toString(), extra: dustCount > 0 ? `${dustCount} dust` : "" },
+            ].map((stat) => (
+              <div key={stat.label} className="card flex h-[88px] flex-col justify-between p-3">
+                <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">{stat.label}</p>
+                <p className="text-lg font-semibold leading-none">{stat.value}</p>
+                <p className="text-[10px] text-foreground-subtle min-h-[14px]">{stat.extra || "\u00a0"}</p>
+              </div>
+            ))}
           </div>
 
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-foreground-subtle">
-              DeFi protocols
-            </h3>
+            <h3 className="section-heading">DeFi protocols</h3>
             {data.protocols.length === 0 ? (
               <div className="card p-3 text-sm text-foreground-subtle">
                 No popular DeFi routers detected in recent activity on the tracked chains.
@@ -174,34 +168,38 @@ export default function OnchainFootprint({
           </div>
 
           <div>
-            <h3 className="mb-2 text-[10px] font-semibold uppercase tracking-wide text-foreground-subtle">
-              Chain activity
-            </h3>
-            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
-              {data.chains.map((c) => (
-                <a
-                  key={c.id}
-                  href={c.explorer}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="card flex items-center justify-between gap-3 p-3 hover:border-primary/40"
-                >
-                  <div>
-                    <p className="text-sm font-medium">{c.name}</p>
-                    <p className="text-[11px] text-foreground-subtle">
-                      {c.txCount.toLocaleString()} txs · {c.transferCount.toLocaleString()} transfers · {c.tokenCount}{" "}
-                      tokens
-                    </p>
-                  </div>
-                  <p className="text-sm font-semibold tabular-nums">{c.balance}</p>
-                </a>
-              ))}
-            </div>
+            <h3 className="section-heading">Onchain activity</h3>
+            {holdingChains.length === 0 ? (
+              <div className="card p-3 text-sm text-foreground-subtle">
+                No current token holdings on the tracked chains. Totals above still include past txs and transfers.
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+                {holdingChains.map((c) => (
+                  <a
+                    key={c.id}
+                    href={c.explorer}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="card flex items-center justify-between gap-3 p-3 hover:border-primary/40"
+                  >
+                    <div>
+                      <p className="text-sm font-medium">{c.name}</p>
+                      <p className="text-[11px] text-foreground-subtle">
+                        {c.txCount.toLocaleString()} txs · {c.transferCount.toLocaleString()} transfers · {c.tokenCount}{" "}
+                        tokens
+                      </p>
+                    </div>
+                    <p className="text-sm font-semibold tabular-nums">{c.balance}</p>
+                  </a>
+                ))}
+              </div>
+            )}
           </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
-              <h3 className="text-[10px] font-semibold uppercase tracking-wide text-foreground-subtle">Tokens</h3>
+              <h3 className="section-heading mb-0">Tokens</h3>
               {owner && dustCount > 0 && (
                 <button type="button" className="btn-ghost text-[11px]" onClick={toggleDust}>
                   {showDust ? "Hide dust under $1" : `Show dust (${dustCount})`}
