@@ -1,3 +1,6 @@
+export { resolveMediaUrl } from "@/lib/nft-media";
+import { resolveMediaUrl } from "@/lib/nft-media";
+
 export type WalletNft = {
   title: string;
   description: string | null;
@@ -16,26 +19,11 @@ const NFT_CHAINS = [
   { id: "arb", name: "Arbitrum", host: "https://arbitrum.blockscout.com", opensea: "arbitrum" },
   { id: "op", name: "Optimism", host: "https://optimism.blockscout.com", opensea: "optimism" },
   { id: "polygon", name: "Polygon", host: "https://polygon.blockscout.com", opensea: "matic" },
+  { id: "bsc", name: "BNB Chain", host: "https://bsc.blockscout.com", opensea: "bsc" },
 ] as const;
 
 function isAddress(value: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
-}
-
-export function resolveMediaUrl(raw: string | null | undefined): string | null {
-  if (!raw) return null;
-  const value = String(raw).trim().replace(/^"|"$/g, "");
-  if (!value) return null;
-  if (/^ipfs:\/\//i.test(value)) {
-    const path = value.replace(/^ipfs:\/\//i, "").replace(/^ipfs\//i, "");
-    return `https://ipfs.io/ipfs/${path}`;
-  }
-  if (value.startsWith("ar://")) return `https://arweave.net/${value.slice(5)}`;
-  if (/^(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]+)/i.test(value)) {
-    return `https://ipfs.io/ipfs/${value}`;
-  }
-  if (/^https?:\/\//i.test(value)) return value;
-  return null;
 }
 
 function imageFromUnknown(value: unknown): string | null {

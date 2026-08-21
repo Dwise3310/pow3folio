@@ -3,16 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import ShareButton from "@/components/writing/ShareButton";
 import type { Collectible } from "@/types/database";
+import { gatewayUrls, mediaProxySrc } from "@/lib/nft-media";
 
 type Props = {
   item: Collectible;
   profileUrl: string;
 };
-
-function mediaSrc(url: string) {
-  if (url.startsWith("/")) return url;
-  return `/api/media?u=${encodeURIComponent(url)}`;
-}
 
 export default function CollectibleCard({ item, profileUrl }: Props) {
   const shareUrl = item.url || profileUrl;
@@ -23,11 +19,16 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     const fromUrl = (item.url || "").match(/0x[a-fA-F0-9]{40}/);
     return fromUrl ? fromUrl[0].toLowerCase() : "";
   }, [item.tags, item.url]);
-  const [src, setSrc] = useState(item.image_url);
+
+  const candidates = useMemo(() => gatewayUrls(item.image_url), [item.image_url]);
+  const [idx, setIdx] = useState(0);
+  const [src, setSrc] = useState<string | null>(candidates[0] || item.image_url);
   const [broken, setBroken] = useState(false);
 
   useEffect(() => {
-    setSrc(item.image_url);
+    const next = gatewayUrls(item.image_url);
+    setIdx(0);
+    setSrc(next[0] || item.image_url);
     setBroken(false);
   }, [item.image_url]);
 
@@ -42,13 +43,30 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     fetch(`/api/onchain/nft-art?${qs.toString()}`)
       .then((res) => res.json())
       .then((json: { image_url?: string | null }) => {
-        if (!cancelled && json.image_url) setSrc(json.image_url);
+        if (cancelled || !json.image_url) return;
+        const urls = gatewayUrls(json.image_url);
+        setSrc(urls[0] || json.image_url);
+        setBroken(false);
       })
       .catch(() => undefined);
     return () => {
       cancelled = true;
     };
   }, [src, contract, item.token_id, item.chain]);
+
+  function handleError() {
+    const next = candidates[idx + 1];
+    if (next) {
+      setIdx((n) => n + 1);
+      setSrc(next);
+      return;
+    }
+    if (contract && item.token_id && src) {
+      setSrc(null);
+      return;
+    }
+    setBroken(true);
+  }
 
   const showImage = src && !broken;
 
@@ -58,11 +76,11 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={mediaSrc(src)}
+            src={mediaProxySrc(src)}
             alt=""
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
-            onError={() => setBroken(true)}
+            onError={handleError}
           />
         ) : (
           <div className="flex h-full items-center justify-center text-xs uppercase text-foreground-subtle">
