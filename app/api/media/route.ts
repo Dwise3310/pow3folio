@@ -1,42 +1,39 @@
 import { NextResponse } from "next/server";
 
-function gateways(raw: string): string[] {
-  const value = raw.trim();
-  const out = new Set<string>();
-  if (/^https?:\/\//i.test(value)) out.add(value);
-  const ipfs = value.match(/(?:ipfs\/|ipfs:\/\/)([^/?#]+(?:\/[^\s]*)?)/i);
-  const cid = value.match(/(Qm[1-9A-HJ-NP-Za-km-z]{44,}|bafy[a-z0-9]+)/i);
-  const path = ipfs?.[1] || cid?.[0];
-  if (path) {
-    out.add(`https://ipfs.io/ipfs/${path}`);
-    out.add(`https://cloudflare-ipfs.com/ipfs/${path}`);
-    out.add(`https://${path.split("/")[0]}.ipfs.w3s.link/${path.split("/").slice(1).join("/")}`);
-  }
-  return [...out];
-}
+export const revalidate = 86400;
 
 export async function GET(req: Request) {
   const target = new URL(req.url).searchParams.get("u") || "";
-  if (!target) return new NextResponse("missing url", { status: 400 });
-
-  for (const url of gateways(target)) {
-    try {
-      const res = await fetch(url, {
-        headers: { Accept: "image/*,*/*" },
-        redirect: "follow",
-      });
-      if (!res.ok) continue;
-      const type = res.headers.get("content-type") || "image/png";
-      if (!type.startsWith("image") && !type.includes("octet-stream")) continue;
-      return new NextResponse(res.body, {
-        headers: {
-          "Content-Type": type.startsWith("image") ? type : "image/png",
-          "Cache-Control": "public, max-age=86400, immutable",
-        },
-      });
-    } catch {
-      /* try next gateway */
-    }
+  let parsed: URL;
+  try {
+    parsed = new URL(target);
+  } catch {
+    return NextResponse.json({ error: "bad url" }, { status: 400 });
   }
-  return new NextResponse("not found", { status: 404 });
+  if (!/^https?:$/.test(parsed.protocol)) {
+    return NextResponse.json({ error: "protocol" }, { status: 400 });
+  }
+  if (["localhost", "127.0.0.1", "0.0.0.0"].includes(parsed.hostname)) {
+    return NextResponse.json({ error: "host" }, { status: 400 });
+  }
+  try {
+    const res = await fetch(parsed.toString(), {
+      headers: { Accept: "image/*,*/*;q=0.8" },
+      redirect: "follow",
+    });
+    if (!res.ok) return NextResponse.json({ error: "fetch" }, { status: 502 });
+    const buf = await res.arrayBuffer();
+    const type = res.headers.get("content-type") || "image/png";
+    if (!type.startsWith("image/") && type !== "application/octet-stream") {
+      return NextResponse.json({ error: "not image" }, { status: 415 });
+    }
+    return new NextResponse(buf, {
+      headers: {
+        "Content-Type": type.startsWith("image/") ? type : "image/png",
+        "Cache-Control": "public, max-age=86400, immutable",
+      },
+    });
+  } catch {
+    return NextResponse.json({ error: "failed" }, { status: 502 });
+  }
 }

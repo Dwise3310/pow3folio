@@ -1,11 +1,11 @@
 .section-heading {
-  margin-bottom: 0.5rem;
-  font-size: 0.875rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: rgba(180, 83, 9, 0.9);
+  margin-bottom: 0.5rem !important;
+  font-size: 0.875rem !important;
+  font-weight: 800 !important;
+  letter-spacing: 0.04em !important;
+  color: #b45309 !important;
 }
 
 .dark .section-heading {
-  color: rgba(251, 191, 36, 0.75);
+  color: #fbbf24 !important;
 }
