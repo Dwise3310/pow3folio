@@ -17,10 +17,12 @@ export type OnchainChain = {
   uniqueTokens: number;
   tokenTrades: number;
   nftMints: number;
+  contractsDeployed: number;
   walletAgeDays: number;
   activeDays: number;
   activeWeeks: number;
   activeMonths: number;
+  activityDays: string[];
   firstTx: string | null;
   lastTx: string | null;
   interacted: boolean;
@@ -55,14 +57,58 @@ export type OnchainFootprint = {
   explorers: { label: string; href: string }[];
 };
 
-export const CHAINS = [
+export type CustomChainInput = {
+  id?: string;
+  name: string;
+  host: string;
+  explorer?: string;
+  tokenExplorer?: string;
+  native?: string;
+  slug?: string;
+  chainId?: number;
+};
+
+type ChainDef = {
+  id: string;
+  name: string;
+  slug: string;
+  host: string;
+  explorer: string;
+  tokenExplorer: string;
+  native: string;
+  chainId: number;
+};
+
+export const CHAINS: ChainDef[] = [
   { id: "eth", name: "Ethereum", slug: "ethereum", host: "https://eth.blockscout.com", explorer: "https://etherscan.io/address/", tokenExplorer: "https://etherscan.io/token/", native: "ETH", chainId: 1 },
   { id: "base", name: "Base", slug: "base", host: "https://base.blockscout.com", explorer: "https://basescan.org/address/", tokenExplorer: "https://basescan.org/token/", native: "ETH", chainId: 8453 },
   { id: "arb", name: "Arbitrum", slug: "arbitrum", host: "https://arbitrum.blockscout.com", explorer: "https://arbiscan.io/address/", tokenExplorer: "https://arbiscan.io/token/", native: "ETH", chainId: 42161 },
   { id: "op", name: "Optimism", slug: "optimism", host: "https://optimism.blockscout.com", explorer: "https://optimistic.etherscan.io/address/", tokenExplorer: "https://optimistic.etherscan.io/token/", native: "ETH", chainId: 10 },
   { id: "polygon", name: "Polygon", slug: "polygon", host: "https://polygon.blockscout.com", explorer: "https://polygonscan.com/address/", tokenExplorer: "https://polygonscan.com/token/", native: "POL", chainId: 137 },
   { id: "bsc", name: "BNB Chain", slug: "bsc", host: "https://bsc.blockscout.com", explorer: "https://bscscan.com/address/", tokenExplorer: "https://bscscan.com/token/", native: "BNB", chainId: 56 },
-] as const;
+];
+
+export function mergeChains(extra?: CustomChainInput[] | null): ChainDef[] {
+  const out: ChainDef[] = [...CHAINS];
+  for (const c of extra || []) {
+    const host = (c.host || "").trim().replace(/\/$/, "");
+    const name = (c.name || "").trim();
+    if (!host || !name || !/^https?:\/\//i.test(host)) continue;
+    const id = (c.id || name).toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 24);
+    if (!id || out.some((b) => b.id === id || b.host === host)) continue;
+    out.push({
+      id,
+      name,
+      slug: (c.slug || id).toLowerCase(),
+      host,
+      explorer: c.explorer || `${host}/address/`,
+      tokenExplorer: c.tokenExplorer || `${host}/token/`,
+      native: c.native || "ETH",
+      chainId: c.chainId || 0,
+    });
+  }
+  return out;
+}
 
 export function isAddress(value: string) {
   return /^0x[a-fA-F0-9]{40}$/.test(value);
@@ -145,7 +191,7 @@ type TransferItem = {
 };
 
 type TxItem = {
-  to?: { hash?: string };
+  to?: { hash?: string } | null;
   from?: { hash?: string };
   fee?: { value?: string };
   value?: string;
@@ -188,7 +234,7 @@ async function loadTokenItems(host: string, address: string): Promise<TokenItem[
   return getPagedItems<TokenItem>(`${host}/api/v2/addresses/${address}/tokens?type=ERC-20`, 8);
 }
 
-function mapToken(item: TokenItem, chain: (typeof CHAINS)[number], prices: Map<string, number>): OnchainToken | null {
+function mapToken(item: TokenItem, chain: ChainDef, prices: Map<string, number>): OnchainToken | null {
   const contract = (item.token?.address_hash || "").toLowerCase();
   if (!contract) return null;
   const decimals = Number(item.token?.decimals || 18);
@@ -214,12 +260,13 @@ function dayKey(iso: string) {
   return iso.slice(0, 10);
 }
 
-export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainFootprint | null> {
+export async function loadOnchainFootprint(rawAddress: string, extraChains?: CustomChainInput[] | null): Promise<OnchainFootprint | null> {
   const address = rawAddress.trim().toLowerCase();
   if (!isAddress(address)) return null;
   const ensData = (await getJson(`https://api.ensdata.net/${address}`)) as { ens?: string } | null;
+  const chainsToLoad = mergeChains(extraChains);
   const chainRows = await Promise.all(
-    CHAINS.map(async (chain) => {
+    chainsToLoad.map(async (chain) => {
       const [info, counters, tokenItems, txs, transfers] = await Promise.all([
         getJson(`${chain.host}/api/v2/addresses/${address}`) as Promise<{ coin_balance?: string; ens_domain_name?: string; exchange_rate?: string | number | null } | null>,
         getJson(`${chain.host}/api/v2/addresses/${address}/counters`) as Promise<{ transactions_count?: string; token_transfers_count?: string } | null>,
@@ -260,12 +307,17 @@ export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainF
         const type = (tr.token?.type || "").toUpperCase();
         return type.includes("721") || type.includes("1155");
       }).length;
+      const contractsDeployed = txs.filter((tx) => !tx.to?.hash && (tx.from?.hash || "").toLowerCase() === address).length;
       const stamps = txs.map((tx) => tx.timestamp).filter((s): s is string => !!s);
-      const days = new Set(stamps.map(dayKey));
-      const weeks = new Set(stamps.map((s) => s.slice(0, 8)));
-      const months = new Set(stamps.map((s) => s.slice(0, 7)));
+      const transferStamps = transfers
+        .map((tr) => (tr as TransferItem & { timestamp?: string }).timestamp)
+        .filter((s): s is string => !!s);
+      const allStamps = [...stamps, ...transferStamps];
+      const days = new Set(allStamps.map(dayKey));
+      const weeks = new Set(allStamps.map((s) => s.slice(0, 8)));
+      const months = new Set(allStamps.map((s) => s.slice(0, 7)));
       const firstTx = stamps.length ? stamps[stamps.length - 1] : null;
-      const lastTx = stamps.length ? stamps[0] : null;
+      const lastTx = stamps.length ? stamps[0] : transferStamps[0] || null;
       const walletAgeDays = firstTx ? Math.max(1, Math.round((Date.now() - new Date(firstTx).getTime()) / 86400000)) : 0;
       const counterTx = Number(counters?.transactions_count || 0);
       const counterTr = Number(counters?.token_transfers_count || 0);
@@ -279,7 +331,8 @@ export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainF
           id: chain.id, name: chain.name, explorer: `${chain.explorer}${address}`, balance: formatUnits(info?.coin_balance || "0"),
           nativeSymbol: chain.native, nativeUsd, txCount, transferCount, tokenCount: tokens.length, valuedTokenCount,
           volumeUsd, feesUsd, uniqueContracts, uniqueTokens: Math.max(uniqueTokens, tokens.length), tokenTrades, nftMints,
-          walletAgeDays, activeDays: days.size, activeWeeks: weeks.size, activeMonths: months.size, firstTx, lastTx, interacted, hasHoldings,
+          contractsDeployed, walletAgeDays, activeDays: days.size, activeWeeks: weeks.size, activeMonths: months.size,
+          activityDays: [...days], firstTx, lastTx, interacted, hasHoldings,
         } satisfies OnchainChain,
         ens: info?.ens_domain_name || null,
         tokens,
