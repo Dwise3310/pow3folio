@@ -10,20 +10,12 @@ import TradeImageCarousel from "@/components/trading/TradeImageCarousel";
 import CredentialThumb from "@/components/profile/CredentialThumb";
 import OnchainSection from "@/components/profile/OnchainSection";
 import type {
-  Writing,
-  Trade,
-  TradeUpdate,
-  CommunityItem,
-  Airdrop,
-  Collectible,
-  Credential,
-  Skill,
-  WorkExperience,
-  Education,
-  TradingPlatform,
+  Writing, Trade, TradeUpdate, CommunityItem, Airdrop, Collectible, Credential, Skill, WorkExperience, Education, TradingPlatform,
 } from "@/types/database";
 
 type TabId = "about" | "projects" | "writing" | "trading" | "airdrops" | "onchain";
+
+const HEADING = "section-heading text-sm font-extrabold tracking-wide text-amber-700/90 dark:text-amber-400/75";
 
 type Props = {
   profileUrl: string;
@@ -51,28 +43,7 @@ type Props = {
 };
 
 export default function PublicProfileTabs({
-  profileUrl,
-  longBio,
-  skills,
-  workExperience,
-  education,
-  tradingPlatforms,
-  credentials,
-  writings,
-  trades,
-  updatesByTrade,
-  community,
-  airdrops,
-  nfts,
-  walletAddress,
-  ensName,
-  arkhamUrl,
-  showWriting,
-  showTrading,
-  showCommunity,
-  showAirdrops,
-  showOnchain,
-  showDustTokens = false,
+  profileUrl, longBio, skills, workExperience, education, tradingPlatforms, credentials, writings, trades, updatesByTrade, community, airdrops, nfts, walletAddress, ensName, arkhamUrl, showWriting, showTrading, showCommunity, showAirdrops, showOnchain, showDustTokens = false,
 }: Props) {
   const allTabs: { id: TabId; label: string; show: boolean }[] = [
     { id: "about", label: "About", show: true },
@@ -91,9 +62,7 @@ export default function PublicProfileTabs({
     if (!skillPopup) return;
     const prev = document.body.style.overflow;
     document.body.style.overflow = "hidden";
-    return () => {
-      document.body.style.overflow = prev;
-    };
+    return () => { document.body.style.overflow = prev; };
   }, [skillPopup]);
 
   function selectTab(id: TabId) {
@@ -109,16 +78,7 @@ export default function PublicProfileTabs({
           {tabs.map((t) => {
             const isActive = active === t.id;
             return (
-              <button
-                key={t.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                onClick={() => selectTab(t.id)}
-                className={`relative shrink-0 px-3.5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${
-                  isActive ? "text-foreground" : "text-foreground-muted hover:text-foreground"
-                }`}
-              >
+              <button key={t.id} type="button" role="tab" aria-selected={isActive} onClick={() => selectTab(t.id)} className={`relative shrink-0 px-3.5 py-3 text-sm font-medium transition-colors whitespace-nowrap ${isActive ? "text-foreground" : "text-foreground-muted hover:text-foreground"}`}>
                 {t.label}
                 {isActive && <span className="absolute bottom-0 left-2 right-2 h-0.5 rounded-full bg-primary" />}
               </button>
@@ -135,15 +95,10 @@ export default function PublicProfileTabs({
             </p>
             {skills.length > 0 && (
               <div>
-                <h3 className="section-heading">Skills / Service pillars</h3>
+                <h3 className={HEADING}>Skills / Service pillars</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {skills.map((skill) => (
-                    <button
-                      key={skill.name}
-                      type="button"
-                      onClick={() => setSkillPopup(skill)}
-                      className="inline-flex items-center rounded-full border border-primary bg-transparent px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors"
-                    >
+                    <button key={skill.name} type="button" onClick={() => setSkillPopup(skill)} className="inline-flex items-center rounded-full border border-primary bg-transparent px-2.5 py-1 text-[11px] font-semibold text-primary hover:bg-primary/10 transition-colors">
                       {skill.name}
                     </button>
                   ))}
@@ -152,28 +107,20 @@ export default function PublicProfileTabs({
             )}
             {longBio && (
               <div>
-                <h3 className="section-heading">About</h3>
+                <h3 className={HEADING}>About</h3>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed break-words text-foreground">{longBio}</p>
               </div>
             )}
             {workExperience.length > 0 && (
               <div>
-                <h3 className="section-heading">Work experience</h3>
+                <h3 className={HEADING}>Work experience</h3>
                 <div className="space-y-4">
                   {workExperience.map((w, i) => (
                     <div key={w.id} className={i > 0 ? "pt-3 border-t border-border/50" : ""}>
                       <div className="min-w-0">
-                        {w.url ? (
-                          <a href={w.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline">{w.company}</a>
-                        ) : (
-                          <p className="font-medium text-sm">{w.company}</p>
-                        )}
-                        <p className="text-xs text-foreground-muted mt-0.5">
-                          {w.role} · {w.employment_type === "full-time" ? "Full-time" : "Part-time"}
-                        </p>
-                        <p className="text-xs text-foreground-subtle mt-0.5">
-                          {w.start_date}{w.end_date ? ` → ${w.end_date}` : " → Present"}
-                        </p>
+                        {w.url ? <a href={w.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline">{w.company}</a> : <p className="font-medium text-sm">{w.company}</p>}
+                        <p className="text-xs text-foreground-muted mt-0.5">{w.role} · {w.employment_type === "full-time" ? "Full-time" : "Part-time"}</p>
+                        <p className="text-xs text-foreground-subtle mt-0.5">{w.start_date}{w.end_date ? ` → ${w.end_date}` : " → Present"}</p>
                         {w.description && <p className="mt-1 text-xs text-foreground-muted leading-relaxed">{w.description}</p>}
                       </div>
                     </div>
@@ -183,19 +130,13 @@ export default function PublicProfileTabs({
             )}
             {education.length > 0 && (
               <div>
-                <h3 className="section-heading">Education</h3>
+                <h3 className={HEADING}>Education</h3>
                 <div className="space-y-4">
                   {education.map((e, i) => (
                     <div key={e.id} className={i > 0 ? "pt-3 border-t border-border/50" : ""}>
-                      {e.url ? (
-                        <a href={e.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline">{e.institution}</a>
-                      ) : (
-                        <p className="font-medium text-sm">{e.institution}</p>
-                      )}
+                      {e.url ? <a href={e.url} target="_blank" rel="noopener noreferrer" className="font-medium text-sm text-primary hover:underline">{e.institution}</a> : <p className="font-medium text-sm">{e.institution}</p>}
                       <p className="text-xs text-foreground-muted mt-0.5">{[e.degree, e.field_of_study].filter(Boolean).join(" · ")}</p>
-                      <p className="text-xs text-foreground-subtle mt-0.5">
-                        {[e.country, e.start_year && e.end_year ? `${e.start_year} - ${e.end_year}` : e.start_year || e.end_year].filter(Boolean).join(" · ")}
-                      </p>
+                      <p className="text-xs text-foreground-subtle mt-0.5">{[e.country, e.start_year && e.end_year ? `${e.start_year} - ${e.end_year}` : e.start_year || e.end_year].filter(Boolean).join(" · ")}</p>
                       {e.description && <p className="mt-1 text-xs text-foreground-muted">{e.description}</p>}
                     </div>
                   ))}
@@ -204,16 +145,14 @@ export default function PublicProfileTabs({
             )}
             {credentials.length > 0 && (
               <div>
-                <h3 className="section-heading">Docs & credentials</h3>
-                <div className="tight-cards tight-cards-3">
+                <h3 className={HEADING}>Docs & credentials</h3>
+                <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
                   {credentials.map((doc) => (
-                    <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer" className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface/40 transition-all hover:border-primary/40">
-                      <CredentialThumb doc={doc} className="aspect-[4/3] w-full" />
-                      <div className="px-2.5 py-2 border-t border-border/60">
+                    <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer" className="group flex flex-col items-center gap-2">
+                      <CredentialThumb doc={doc} className="h-36 w-full" />
+                      <div className="w-full text-center">
                         <p className="text-xs font-medium text-foreground line-clamp-2 break-words">{doc.title}</p>
-                        {(doc.issuer || doc.file_name) && (
-                          <p className="mt-0.5 text-[10px] text-foreground-subtle line-clamp-1">{[doc.issuer, doc.file_name].filter(Boolean).join(" · ")}</p>
-                        )}
+                        {(doc.issuer || doc.file_name) && <p className="mt-0.5 text-[10px] text-foreground-subtle line-clamp-1">{[doc.issuer, doc.file_name].filter(Boolean).join(" · ")}</p>}
                       </div>
                     </a>
                   ))}
@@ -231,31 +170,21 @@ export default function PublicProfileTabs({
             <p className="text-xs sm:text-sm text-foreground-muted leading-relaxed rounded-lg border border-border/60 bg-surface/40 px-3 py-2.5">
               This section showcases personal builds, partnerships and community work. Every card is something this talent shipped, co-built or ran.
             </p>
-            {community.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No projects or collaborations yet.</div>
-            ) : (
-              <div className="tight-cards tight-cards-4">
-                {community.map((c) => (
-                  <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />
-                ))}
-              </div>
+            {community.length === 0 ? <div className="card text-sm text-foreground-subtle">No projects or collaborations yet.</div> : (
+              <div className="tight-cards tight-cards-4">{community.map((c) => <CommunityCard key={c.id} item={c} profileUrl={profileUrl} />)}</div>
             )}
           </div>
         )}
 
         {active === "writing" && (
           <div>
-            {writings.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No technical writing or research yet.</div>
-            ) : (
+            {writings.length === 0 ? <div className="card text-sm text-foreground-subtle">No technical writing or research yet.</div> : (
               <div className="tight-cards tight-cards-3">
                 {writings.map((w) => {
                   const imgs = [w.thumbnail_url, w.image_url_2].filter((u): u is string => !!u);
                   return (
                     <article key={w.id} className="card flex h-auto w-full flex-col overflow-hidden p-0 transition-all duration-200 hover:border-primary/40 hover:-translate-y-0.5 hover:shadow-md">
-                      {imgs.length > 0 && (
-                        <TradeImageCarousel images={imgs} href={w.url} hideEmpty className="aspect-[16/10] w-full" />
-                      )}
+                      {imgs.length > 0 && <TradeImageCarousel images={imgs} href={w.url} hideEmpty className="aspect-[16/10] w-full" />}
                       <div className="flex flex-col p-2.5 sm:p-3">
                         <a href={w.url} target="_blank" rel="noopener noreferrer" className="font-medium text-primary hover:underline line-clamp-2 text-xs sm:text-sm">{w.title}</a>
                         {w.description && <p className="mt-1 text-[11px] sm:text-xs text-foreground-muted line-clamp-2">{w.description}</p>}
@@ -284,41 +213,22 @@ export default function PublicProfileTabs({
                 ))}
               </div>
             )}
-            {trades.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No trades yet.</div>
-            ) : (
-              <div className="tight-cards tight-cards-3">
-                {trades.map((t) => (
-                  <TradeCard key={t.id} trade={t} updates={updatesByTrade[t.id] ?? []} profileUrl={profileUrl} />
-                ))}
-              </div>
+            {trades.length === 0 ? <div className="card text-sm text-foreground-subtle">No trades yet.</div> : (
+              <div className="tight-cards tight-cards-3">{trades.map((t) => <TradeCard key={t.id} trade={t} updates={updatesByTrade[t.id] ?? []} profileUrl={profileUrl} />)}</div>
             )}
           </div>
         )}
 
         {active === "airdrops" && (
           <div>
-            {airdrops.length === 0 ? (
-              <div className="card text-sm text-foreground-subtle">No airdrops yet.</div>
-            ) : (
-              <div className="tight-cards tight-cards-3">
-                {airdrops.map((a) => (
-                  <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />
-                ))}
-              </div>
+            {airdrops.length === 0 ? <div className="card text-sm text-foreground-subtle">No airdrops yet.</div> : (
+              <div className="tight-cards tight-cards-3">{airdrops.map((a) => <AirdropCard key={a.id} item={a} profileUrl={profileUrl} />)}</div>
             )}
           </div>
         )}
 
         {active === "onchain" && (
-          <OnchainSection
-            profileUrl={profileUrl}
-            nfts={nfts}
-            walletAddress={walletAddress}
-            ensName={ensName}
-            arkhamUrl={arkhamUrl}
-            showDustTokens={showDustTokens}
-          />
+          <OnchainSection profileUrl={profileUrl} nfts={nfts} walletAddress={walletAddress} ensName={ensName} arkhamUrl={arkhamUrl} showDustTokens={showDustTokens} />
         )}
       </div>
 
@@ -330,7 +240,6 @@ export default function PublicProfileTabs({
               <button type="button" className="btn-ghost text-sm px-2" onClick={() => setSkillPopup(null)} aria-label="Close">×</button>
             </div>
             <p className="mt-3 text-sm leading-relaxed text-foreground-muted whitespace-pre-wrap">{skillPopup.description?.trim() || "No description added for this skill yet."}</p>
-            <p className="mt-3 text-[10px] text-foreground-subtle">Tap outside to close</p>
           </div>
         </div>
       )}
