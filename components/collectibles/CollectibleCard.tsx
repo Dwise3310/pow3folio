@@ -24,16 +24,19 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
   const [idx, setIdx] = useState(0);
   const [src, setSrc] = useState<string | null>(candidates[0] || item.image_url);
   const [broken, setBroken] = useState(false);
+  const [lookedUp, setLookedUp] = useState(false);
 
   useEffect(() => {
     const next = gatewayUrls(item.image_url);
     setIdx(0);
     setSrc(next[0] || item.image_url);
     setBroken(false);
+    setLookedUp(false);
   }, [item.image_url]);
 
   useEffect(() => {
-    if (src || !contract || !item.token_id) return;
+    if (lookedUp || !contract || !item.token_id) return;
+    if (src && !broken) return;
     let cancelled = false;
     const qs = new URLSearchParams({
       contract,
@@ -43,16 +46,20 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     fetch(`/api/onchain/nft-art?${qs.toString()}`)
       .then((res) => res.json())
       .then((json: { image_url?: string | null }) => {
-        if (cancelled || !json.image_url) return;
+        if (cancelled || !json.image_url) {
+          setLookedUp(true);
+          return;
+        }
         const urls = gatewayUrls(json.image_url);
         setSrc(urls[0] || json.image_url);
         setBroken(false);
+        setLookedUp(true);
       })
-      .catch(() => undefined);
+      .catch(() => setLookedUp(true));
     return () => {
       cancelled = true;
     };
-  }, [src, contract, item.token_id, item.chain]);
+  }, [src, broken, contract, item.token_id, item.chain, lookedUp]);
 
   function handleError() {
     const next = candidates[idx + 1];
@@ -61,8 +68,9 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
       setSrc(next);
       return;
     }
-    if (contract && item.token_id && src) {
+    if (contract && item.token_id && !lookedUp) {
       setSrc(null);
+      setBroken(true);
       return;
     }
     setBroken(true);
