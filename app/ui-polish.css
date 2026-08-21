@@ -1,22 +1,11 @@
-@layer components {
-  .section-heading {
-    @apply mb-2 text-sm font-extrabold tracking-wide text-amber-800/80 dark:text-amber-400/70;
-  }
+.section-heading {
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  color: rgba(180, 83, 9, 0.9);
+}
 
-  .stat-grid {
-    align-items: stretch;
-    grid-auto-rows: 88px;
-  }
-
-  .stat-grid > * {
-    height: 88px !important;
-    min-height: 88px !important;
-  }
-
-  .tab-panel-enter .stat-grid,
-  .tab-panel-enter .stat-grid > * {
-    height: 88px !important;
-    min-height: 88px !important;
-    align-self: stretch;
-  }
+.dark .section-heading {
+  color: rgba(251, 191, 36, 0.75);
 }
