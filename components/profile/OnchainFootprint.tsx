@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { CustomChainInput, OnchainChain, OnchainFootprint as Footprint, OnchainToken } from "@/lib/onchain";
+import type { CustomChainInput, ImportedTokenRef, OnchainChain, OnchainFootprint as Footprint, OnchainToken } from "@/lib/onchain";
 import ActivityHeatmap from "@/components/profile/ActivityHeatmap";
 
 export type NamedWallet = {
@@ -19,6 +19,8 @@ type Props = {
   showDustTokens?: boolean;
   wallets?: NamedWallet[];
   customChains?: CustomChainInput[];
+  publicChainIds?: string[] | null;
+  importedTokens?: ImportedTokenRef[];
 };
 
 const HEADING = "section-heading";
@@ -71,6 +73,8 @@ export default function OnchainFootprint({
   showDustTokens = false,
   wallets = [],
   customChains = [],
+  publicChainIds = null,
+  importedTokens = [],
 }: Props) {
   const [activeWallet, setActiveWallet] = useState(address || "");
   const [data, setData] = useState<Footprint | null>(null);
@@ -78,6 +82,11 @@ export default function OnchainFootprint({
   const [error, setError] = useState<string | null>(null);
   const [showDust, setShowDust] = useState(showDustTokens);
   const [chainId, setChainId] = useState<string>("");
+  const [visibleIds, setVisibleIds] = useState<string[] | null>(publicChainIds);
+  const [savedTokens, setSavedTokens] = useState<ImportedTokenRef[]>(importedTokens);
+  const [tokenCa, setTokenCa] = useState("");
+  const [tokenMsg, setTokenMsg] = useState<string | null>(null);
+  const [importingToken, setImportingToken] = useState(false);
   const [chainForm, setChainForm] = useState({
     name: "",
     chainId: "",
@@ -93,6 +102,14 @@ export default function OnchainFootprint({
   }, [showDustTokens]);
 
   useEffect(() => {
+    setVisibleIds(publicChainIds);
+  }, [publicChainIds]);
+
+  useEffect(() => {
+    setSavedTokens(importedTokens);
+  }, [importedTokens]);
+
+  useEffect(() => {
     if (address && !activeWallet) setActiveWallet(address);
   }, [address, activeWallet]);
 
@@ -101,7 +118,10 @@ export default function OnchainFootprint({
     let cancelled = false;
     setLoading(true);
     setError(null);
-    const qs = customChains.length ? `?chains=${encodeURIComponent(JSON.stringify(customChains))}` : "";
+    const params = new URLSearchParams();
+    if (customChains.length) params.set("chains", JSON.stringify(customChains));
+    if (savedTokens.length) params.set("tokens", JSON.stringify(savedTokens));
+    const qs = params.toString() ? `?${params.toString()}` : "";
     fetch(`/api/onchain/${activeWallet}${qs}`)
       .then(async (res) => {
         if (!res.ok) throw new Error("Could not load onchain data");
@@ -111,7 +131,7 @@ export default function OnchainFootprint({
         if (cancelled) return;
         setData(json);
         const preferred = [...json.chains]
-          .filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported)
+          .filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported || Number(c.balance) > 0)
           .sort((a, b) => b.txCount - a.txCount || b.transferCount - a.transferCount)[0];
         if (preferred) setChainId(preferred.id);
       })
@@ -124,16 +144,28 @@ export default function OnchainFootprint({
     return () => {
       cancelled = true;
     };
-  }, [activeWallet, customChains]);
+  }, [activeWallet, customChains, savedTokens]);
 
   const interacted = useMemo(
-    () => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported) ?? [],
+    () => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported || Number(c.balance) > 0) ?? [],
     [data]
   );
+
+  const publicList = useMemo(() => {
+    if (!visibleIds || visibleIds.length === 0) return interacted;
+    const filtered = interacted.filter((c) => visibleIds.includes(c.id));
+    return filtered.length ? filtered : interacted.slice(0, 1);
+  }, [interacted, visibleIds]);
+
   const selected: OnchainChain | null = useMemo(() => {
     if (!data || !chainId) return null;
     return data.chains.find((c) => c.id === chainId) || null;
   }, [data, chainId]);
+
+  useEffect(() => {
+    if (!publicList.length) return;
+    if (!publicList.some((c) => c.id === chainId)) setChainId(publicList[0].id);
+  }, [publicList, chainId]);
 
   const visibleTokens = useMemo(() => {
     if (!data) return [] as OnchainToken[];
@@ -144,6 +176,25 @@ export default function OnchainFootprint({
     });
   }, [data, selected, showDust]);
 
+  async function persistProfile(patch: Record<string, unknown>, okLabel: string) {
+    if (!owner || !profileId) return false;
+    setSavingChain(true);
+    setChainMsg(null);
+    const supabase = createClient();
+    const { error: err } = await supabase.from("profiles").update(patch).eq("id", profileId);
+    setSavingChain(false);
+    if (err) {
+      setChainMsg(
+        err.message.includes("column") || err.code === "42703"
+          ? "Run extra_wallets.sql in Supabase so chain visibility and imported tokens can save."
+          : err.message
+      );
+      return false;
+    }
+    setChainMsg(okLabel);
+    return true;
+  }
+
   async function toggleDust() {
     const next = !showDust;
     setShowDust(next);
@@ -152,23 +203,23 @@ export default function OnchainFootprint({
     await supabase.from("profiles").update({ show_dust_tokens: next }).eq("id", profileId);
   }
 
-  async function persistChains(next: CustomChainInput[], okLabel: string) {
-    if (!owner || !profileId) return;
-    setSavingChain(true);
-    setChainMsg(null);
-    const supabase = createClient();
-    const { error: err } = await supabase.from("profiles").update({ custom_chains: next }).eq("id", profileId);
-    setSavingChain(false);
-    if (err) {
-      setChainMsg(
-        err.message.includes("column") || err.code === "42703"
-          ? "Run the extra_wallets SQL in Supabase so custom networks can be saved."
-          : err.message
-      );
+  async function togglePublicChain(id: string) {
+    if (!owner) return;
+    const current = visibleIds && visibleIds.length ? visibleIds : interacted.map((c) => c.id);
+    const on = current.includes(id);
+    const next = on ? current.filter((x) => x !== id) : [...current, id];
+    if (next.length < 1) {
+      setChainMsg("At least one chain must stay visible on the public page.");
       return;
     }
-    setChainMsg(okLabel);
-    window.location.reload();
+    setVisibleIds(next);
+    const ok = await persistProfile({ public_chain_ids: next }, on ? `${id} hidden on public page.` : `${id} visible on public page.`);
+    if (!ok) setVisibleIds(current);
+  }
+
+  async function persistChains(next: CustomChainInput[], okLabel: string) {
+    const ok = await persistProfile({ custom_chains: next }, okLabel);
+    if (ok) window.location.reload();
   }
 
   async function saveCustomChain(e: React.FormEvent) {
@@ -199,10 +250,54 @@ export default function OnchainFootprint({
     );
   }
 
+  async function importTokenByCa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeWallet || !chainId) {
+      setTokenMsg("Select a chain first.");
+      return;
+    }
+    const contract = tokenCa.trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(contract)) {
+      setTokenMsg("Paste a valid contract address.");
+      return;
+    }
+    if (savedTokens.some((t) => t.chainId === chainId && t.contract === contract)) {
+      setTokenMsg("That token is already imported on this chain.");
+      return;
+    }
+    setImportingToken(true);
+    setTokenMsg("Checking if this wallet holds it…");
+    try {
+      const qs = new URLSearchParams({
+        contract,
+        chain: chainId,
+        chains: JSON.stringify(customChains),
+      });
+      const res = await fetch(`/api/onchain/${activeWallet}/lookup?${qs.toString()}`);
+      const json = (await res.json()) as { tokens?: Array<{ symbol: string; balance: string; chain: string }> };
+      const hit = json.tokens?.[0];
+      if (!hit) {
+        setTokenMsg("This wallet does not hold that contract on the selected chain.");
+        setImportingToken(false);
+        return;
+      }
+      const next = [...savedTokens, { chainId, contract }];
+      const ok = await persistProfile({ imported_tokens: next }, `${hit.symbol} imported (${hit.balance} on ${hit.chain}).`);
+      if (ok) {
+        setSavedTokens(next);
+        setTokenCa("");
+        setTokenMsg(`${hit.symbol} added. ${hit.balance} held on ${hit.chain}.`);
+      }
+    } catch {
+      setTokenMsg("Lookup failed.");
+    }
+    setImportingToken(false);
+  }
+
   if (!address && wallets.length === 0) {
     return (
       <div className="card p-3 sm:p-4 text-sm text-foreground-subtle">
-        No wallet connected. Connect a wallet in Profile to aggregate this talent&apos;s onchain footprint.
+        No wallet connected. Connect a wallet in Profile to aggregate this talent's onchain footprint.
       </div>
     );
   }
@@ -240,11 +335,12 @@ export default function OnchainFootprint({
         { label: "Volume", value: usd(data?.totalVolumeUsd) },
         { label: "Fees", value: usd(data?.totalFeesUsd) },
         { label: "Transfers", value: (data?.totalTransfers || 0).toLocaleString() },
-        { label: "Chains used", value: interacted.length.toString() },
+        { label: "Chains used", value: publicList.length.toString() },
         { label: "Portfolio", value: usd(data?.totalValueUsd) },
       ];
 
   const protocolList = (data?.protocols || []).filter((p) => !selected || p.chain === selected.name);
+  const shownChains = owner ? interacted : publicList;
 
   return (
     <div className="space-y-4">
@@ -301,20 +397,39 @@ export default function OnchainFootprint({
           <div>
             <h3 className={HEADING}>Chain</h3>
             <div className="flex flex-wrap gap-1.5">
-              {interacted.map((c) => (
-                <button
-                  key={c.id}
-                  type="button"
-                  onClick={() => setChainId(c.id)}
-                  className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
-                    chainId === c.id ? "border-primary text-primary bg-primary/10" : "border-border bg-surface-elevated"
-                  }`}
-                >
-                  {c.name}
-                </button>
-              ))}
+              {shownChains.map((c) => {
+                const publiclyOn = !visibleIds || visibleIds.length === 0 || visibleIds.includes(c.id);
+                return (
+                  <span key={c.id} className="inline-flex items-center gap-1">
+                    <button
+                      type="button"
+                      onClick={() => setChainId(c.id)}
+                      className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                        chainId === c.id ? "border-primary text-primary bg-primary/10" : "border-border bg-surface-elevated"
+                      }`}
+                    >
+                      {c.name}
+                    </button>
+                    {owner && (
+                      <button
+                        type="button"
+                        className={`rounded-full border px-2 py-1 text-[10px] ${
+                          publiclyOn ? "border-primary/40 text-primary" : "border-border text-foreground-subtle"
+                        }`}
+                        onClick={() => togglePublicChain(c.id)}
+                      >
+                        {publiclyOn ? "Public" : "Hidden"}
+                      </button>
+                    )}
+                  </span>
+                );
+              })}
             </div>
-            <p className="mt-1.5 text-[11px] text-foreground-subtle">Interacted and imported networks. Tap one for the full aggregator.</p>
+            <p className="mt-1.5 text-[11px] text-foreground-subtle">
+              {owner
+                ? "Tap a chain for stats. Public/Hidden controls what visitors see. At least one chain must stay public."
+                : "Interacted and imported networks. Tap one for the full aggregator."}
+            </p>
           </div>
 
           <div className="grid grid-cols-3 gap-2">
@@ -409,35 +524,50 @@ export default function OnchainFootprint({
       )}
 
       {owner && profileId && (
-        <form onSubmit={saveCustomChain} className="card space-y-2 p-3">
-          <h3 className={HEADING}>Import a network</h3>
-          <p className="text-[11px] text-foreground-subtle">
-            Use the EVM chain ID and a public JSON-RPC. Explorer is optional. KiiChain is not Blockscout, so RPC is required.
-          </p>
-          <button
-            type="button"
-            className="btn-ghost text-xs"
-            onClick={() =>
-              persistChains(
-                customChains.some((c) => (c.name || "").toLowerCase() === "kiichain")
-                  ? customChains
-                  : [...customChains, KII_PRESET],
-                "KiiChain added."
-              )
-            }
-          >
-            Add KiiChain preset
-          </button>
-          <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="Network name (KiiChain)" />
-          <input className="input text-sm" value={chainForm.chainId} onChange={(e) => setChainForm((s) => ({ ...s, chainId: e.target.value }))} placeholder="Chain ID (1783)" />
-          <input className="input text-sm" value={chainForm.rpc} onChange={(e) => setChainForm((s) => ({ ...s, rpc: e.target.value }))} placeholder="https://json-rpc.example.com" />
-          <input className="input text-sm" value={chainForm.explorer} onChange={(e) => setChainForm((s) => ({ ...s, explorer: e.target.value }))} placeholder="https://explorer.example.com" />
-          <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol (KII)" />
-          {chainMsg && <p className="text-xs text-foreground-muted">{chainMsg}</p>}
-          <button type="submit" className="btn-secondary text-xs" disabled={savingChain}>
-            {savingChain ? "Saving…" : "Add network"}
-          </button>
-        </form>
+        <>
+          <form onSubmit={importTokenByCa} className="card space-y-2 p-3">
+            <h3 className={HEADING}>Import a token by CA</h3>
+            <p className="text-[11px] text-foreground-subtle">
+              Select the chain above, paste the contract, and import only if this wallet currently holds it.
+            </p>
+            <p className="text-[11px] text-foreground-muted">Selected chain: {selected?.name || "none"}</p>
+            <input className="input text-sm" value={tokenCa} onChange={(e) => setTokenCa(e.target.value)} placeholder="0x…" />
+            {tokenMsg && <p className="text-xs text-foreground-muted">{tokenMsg}</p>}
+            <button type="submit" className="btn-secondary text-xs" disabled={importingToken || !chainId}>
+              {importingToken ? "Checking…" : "Import if held"}
+            </button>
+          </form>
+
+          <form onSubmit={saveCustomChain} className="card space-y-2 p-3">
+            <h3 className={HEADING}>Import a network</h3>
+            <p className="text-[11px] text-foreground-subtle">
+              Use the EVM chain ID and a public JSON-RPC. Explorer is optional. KiiChain is not Blockscout, so RPC is required.
+            </p>
+            <button
+              type="button"
+              className="btn-ghost text-xs"
+              onClick={() =>
+                persistChains(
+                  customChains.some((c) => (c.name || "").toLowerCase() === "kiichain")
+                    ? customChains
+                    : [...customChains, KII_PRESET],
+                  "KiiChain added."
+                )
+              }
+            >
+              Add KiiChain preset
+            </button>
+            <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="Network name (KiiChain)" />
+            <input className="input text-sm" value={chainForm.chainId} onChange={(e) => setChainForm((s) => ({ ...s, chainId: e.target.value }))} placeholder="Chain ID (1783)" />
+            <input className="input text-sm" value={chainForm.rpc} onChange={(e) => setChainForm((s) => ({ ...s, rpc: e.target.value }))} placeholder="https://json-rpc.example.com" />
+            <input className="input text-sm" value={chainForm.explorer} onChange={(e) => setChainForm((s) => ({ ...s, explorer: e.target.value }))} placeholder="https://explorer.example.com" />
+            <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol (KII)" />
+            {chainMsg && <p className="text-xs text-foreground-muted">{chainMsg}</p>}
+            <button type="submit" className="btn-secondary text-xs" disabled={savingChain}>
+              {savingChain ? "Saving…" : "Add network"}
+            </button>
+          </form>
+        </>
       )}
     </div>
   );
