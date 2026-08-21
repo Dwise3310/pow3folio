@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
+import "./ui-polish.css";
 import Pow3Bot from "@/components/ai/Pow3Bot";
 
 const geistSans = Geist({

@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import ShareButton from "@/components/writing/ShareButton";
 import type { Collectible } from "@/types/database";
 
@@ -11,13 +12,21 @@ type Props = {
 export default function CollectibleCard({ item, profileUrl }: Props) {
   const shareUrl = item.url || profileUrl;
   const meta = [item.chain, item.collection_name, item.token_id].filter(Boolean).join(" · ");
+  const [broken, setBroken] = useState(false);
+  const showImage = item.image_url && !broken;
 
   const CardInner = (
     <>
       <div className="aspect-square w-full overflow-hidden rounded-lg bg-surface-elevated">
-        {item.image_url ? (
+        {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
-          <img src={item.image_url} alt="" className="h-full w-full object-cover" />
+          <img
+            src={item.image_url || ""}
+            alt=""
+            referrerPolicy="no-referrer"
+            className="h-full w-full object-cover"
+            onError={() => setBroken(true)}
+          />
         ) : (
           <div className="flex h-full items-center justify-center text-xs uppercase text-foreground-subtle">
             NFT
