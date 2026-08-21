@@ -19,7 +19,7 @@ function sniffType(buf: ArrayBuffer, headerType: string) {
 
 async function fetchImage(url: string) {
   const ctrl = new AbortController();
-  const t = setTimeout(() => ctrl.abort(), 8000);
+  const t = setTimeout(() => ctrl.abort(), 10000);
   try {
     const res = await fetch(url, {
       headers: {
@@ -59,12 +59,12 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "host" }, { status: 400 });
   }
 
-  const candidates = [...gatewayUrls(parsed.toString()), rewriteUrl(parsed.toString())].filter(
+  const candidates = [parsed.toString(), ...gatewayUrls(parsed.toString()), rewriteUrl(parsed.toString())].filter(
     (u, i, arr) => arr.indexOf(u) === i
   );
 
   try {
-    for (const url of candidates.slice(0, 8)) {
+    for (const url of candidates.slice(0, 10)) {
       const hit = await fetchImage(url);
       if (!hit) continue;
       return new NextResponse(hit.buf, {
