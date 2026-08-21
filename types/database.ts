@@ -201,6 +201,7 @@ export type Credential = {
   file_url: string;
   file_name: string | null;
   file_type: string | null;
+  kind?: string | null;
   issuer: string | null;
   issued_at: string | null;
   is_visible: boolean;
