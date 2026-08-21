@@ -128,7 +128,7 @@ export default function OnchainFootprint({
 
       {data && (
         <>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          <div className="stat-grid grid grid-cols-2 gap-2 sm:grid-cols-4">
             {[
               { label: "Chains", value: holdingChains.length.toString() },
               { label: "Transactions", value: data.totalTx.toLocaleString() },
