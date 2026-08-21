@@ -21,7 +21,13 @@ function daysInMonth(year: number, month: number) {
   return new Date(year, month + 1, 0).getDate();
 }
 
-export default function ActivityHeatmap({ days }: { days: string[] }) {
+export default function ActivityHeatmap({
+  days,
+  methods = {},
+}: {
+  days: string[];
+  methods?: Record<string, string[]>;
+}) {
   const counts = useMemo(() => {
     const map = new Map<string, number>();
     for (const day of days) {
@@ -32,6 +38,7 @@ export default function ActivityHeatmap({ days }: { days: string[] }) {
   }, [days]);
   const slides = useMemo(() => monthsBack(36), []);
   const [idx, setIdx] = useState(0);
+  const [open, setOpen] = useState<string | null>(null);
   const slide = slides[idx];
   const totalDays = daysInMonth(slide.year, slide.month);
   const startWeekday = new Date(slide.year, slide.month, 1).getDay();
@@ -46,11 +53,17 @@ export default function ActivityHeatmap({ days }: { days: string[] }) {
   function tone(key: string | null) {
     if (!key) return "bg-transparent";
     const n = counts.get(key) || 0;
-    if (n === 0) return "bg-surface-elevated";
-    if (n === 1) return "bg-primary/25";
-    if (n < 4) return "bg-primary/50";
+    if (n === 0) return "bg-zinc-800 border border-border/80";
+    if (n === 1) return "bg-primary/30";
+    if (n < 4) return "bg-primary/60";
     return "bg-primary";
   }
+
+  const selected = open ? {
+    date: open,
+    count: counts.get(open) || 0,
+    methods: methods[open] || [],
+  } : null;
 
   return (
     <div className="card p-3 sm:p-4 space-y-3">
@@ -75,14 +88,39 @@ export default function ActivityHeatmap({ days }: { days: string[] }) {
           </div>
         ))}
         {cells.map((key, i) => (
-          <div
+          <button
             key={key || `empty-${i}`}
-            title={key ? `${key} · ${counts.get(key) || 0} txs` : undefined}
-            className={`h-3.5 rounded-[3px] ${tone(key)}`}
+            type="button"
+            disabled={!key}
+            onClick={() => key && setOpen(open === key ? null : key)}
+            className={`heat-cell ${tone(key)} ${key && (counts.get(key) || 0) > 0 ? "cursor-pointer" : "cursor-default"}`}
+            aria-label={key || undefined}
           />
         ))}
       </div>
-      <p className="text-[10px] text-foreground-subtle">Darker cells mean more transactions that day. Swipe months with the arrows.</p>
+      {selected && (
+        <div className="rounded-lg border border-border bg-surface-elevated px-3 py-2 text-xs">
+          <p className="font-medium">
+            {new Date(`${selected.date}T12:00:00`).toLocaleDateString(undefined, {
+              weekday: "short",
+              month: "short",
+              day: "numeric",
+              year: "numeric",
+            })}
+          </p>
+          <p className="mt-0.5 text-foreground-muted">
+            {selected.count === 0
+              ? "No onchain activity this day."
+              : `${selected.count} interaction${selected.count === 1 ? "" : "s"} on this chain.`}
+          </p>
+          {selected.methods.length > 0 && (
+            <p className="mt-1 text-foreground-subtle">
+              {selected.methods.slice(0, 6).join(" · ")}
+            </p>
+          )}
+        </div>
+      )}
+      <p className="text-[10px] text-foreground-subtle">Tap a day to see activity. Darker cells mean more transactions. Arrow through months.</p>
     </div>
   );
 }
