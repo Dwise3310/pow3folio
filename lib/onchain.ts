@@ -5,9 +5,26 @@ export type OnchainChain = {
   name: string;
   explorer: string;
   balance: string;
+  nativeSymbol: string;
+  nativeUsd: number | null;
   txCount: number;
   transferCount: number;
   tokenCount: number;
+  valuedTokenCount: number;
+  volumeUsd: number;
+  feesUsd: number;
+  uniqueContracts: number;
+  uniqueTokens: number;
+  tokenTrades: number;
+  nftMints: number;
+  walletAgeDays: number;
+  activeDays: number;
+  activeWeeks: number;
+  activeMonths: number;
+  firstTx: string | null;
+  lastTx: string | null;
+  interacted: boolean;
+  hasHoldings: boolean;
 };
 
 export type OnchainToken = {
@@ -31,50 +48,20 @@ export type OnchainFootprint = {
   totalTx: number;
   totalTransfers: number;
   activeChains: number;
+  holdingChains: number;
+  totalVolumeUsd: number;
+  totalFeesUsd: number;
+  totalValueUsd: number;
   explorers: { label: string; href: string }[];
 };
 
 export const CHAINS = [
-  {
-    id: "eth",
-    name: "Ethereum",
-    slug: "ethereum",
-    host: "https://eth.blockscout.com",
-    explorer: "https://etherscan.io/address/",
-    tokenExplorer: "https://etherscan.io/token/",
-  },
-  {
-    id: "base",
-    name: "Base",
-    slug: "base",
-    host: "https://base.blockscout.com",
-    explorer: "https://basescan.org/address/",
-    tokenExplorer: "https://basescan.org/token/",
-  },
-  {
-    id: "arb",
-    name: "Arbitrum",
-    slug: "arbitrum",
-    host: "https://arbitrum.blockscout.com",
-    explorer: "https://arbiscan.io/address/",
-    tokenExplorer: "https://arbiscan.io/token/",
-  },
-  {
-    id: "op",
-    name: "Optimism",
-    slug: "optimism",
-    host: "https://optimism.blockscout.com",
-    explorer: "https://optimistic.etherscan.io/address/",
-    tokenExplorer: "https://optimistic.etherscan.io/token/",
-  },
-  {
-    id: "polygon",
-    name: "Polygon",
-    slug: "polygon",
-    host: "https://polygon.blockscout.com",
-    explorer: "https://polygonscan.com/address/",
-    tokenExplorer: "https://polygonscan.com/token/",
-  },
+  { id: "eth", name: "Ethereum", slug: "ethereum", host: "https://eth.blockscout.com", explorer: "https://etherscan.io/address/", tokenExplorer: "https://etherscan.io/token/", native: "ETH", chainId: 1 },
+  { id: "base", name: "Base", slug: "base", host: "https://base.blockscout.com", explorer: "https://basescan.org/address/", tokenExplorer: "https://basescan.org/token/", native: "ETH", chainId: 8453 },
+  { id: "arb", name: "Arbitrum", slug: "arbitrum", host: "https://arbitrum.blockscout.com", explorer: "https://arbiscan.io/address/", tokenExplorer: "https://arbiscan.io/token/", native: "ETH", chainId: 42161 },
+  { id: "op", name: "Optimism", slug: "optimism", host: "https://optimism.blockscout.com", explorer: "https://optimistic.etherscan.io/address/", tokenExplorer: "https://optimistic.etherscan.io/token/", native: "ETH", chainId: 10 },
+  { id: "polygon", name: "Polygon", slug: "polygon", host: "https://polygon.blockscout.com", explorer: "https://polygonscan.com/address/", tokenExplorer: "https://polygonscan.com/token/", native: "POL", chainId: 137 },
+  { id: "bsc", name: "BNB Chain", slug: "bsc", host: "https://bsc.blockscout.com", explorer: "https://bscscan.com/address/", tokenExplorer: "https://bscscan.com/token/", native: "BNB", chainId: 56 },
 ] as const;
 
 export function isAddress(value: string) {
@@ -146,25 +133,24 @@ export async function getPagedItems<T>(url: string, maxPages = 8): Promise<T[]> 
 
 type TokenItem = {
   value?: string;
-  token?: {
-    address_hash?: string;
-    symbol?: string;
-    name?: string;
-    decimals?: string;
-    exchange_rate?: string | number | null;
-    type?: string;
-  };
+  token?: { address_hash?: string; symbol?: string; name?: string; decimals?: string; exchange_rate?: string | number | null; type?: string };
 };
 
 type TransferItem = {
   to?: { hash?: string };
   from?: { hash?: string };
-  token?: { address_hash?: string };
+  token?: { address_hash?: string; type?: string; decimals?: string; exchange_rate?: string | number | null };
+  total?: { value?: string };
+  type?: string;
 };
 
 type TxItem = {
   to?: { hash?: string };
   from?: { hash?: string };
+  fee?: { value?: string };
+  value?: string;
+  timestamp?: string;
+  method?: string | null;
 };
 
 function pickProtocols(chainName: string, addresses: string[]) {
@@ -178,9 +164,7 @@ async function loadPrices(slug: string, contracts: string[]) {
   const unique = [...new Set(contracts.filter((c) => isAddress(c)))];
   for (let i = 0; i < unique.length; i += 25) {
     const chunk = unique.slice(i, i + 25);
-    const json = (await getJson(`https://api.dexscreener.com/tokens/v1/${slug}/${chunk.join(",")}`)) as
-      | Array<{ priceUsd?: string; baseToken?: { address?: string } }>
-      | null;
+    const json = (await getJson(`https://api.dexscreener.com/tokens/v1/${slug}/${chunk.join(",")}`)) as Array<{ priceUsd?: string; baseToken?: { address?: string } }> | null;
     if (!Array.isArray(json)) continue;
     for (const pair of json) {
       const addr = (pair.baseToken?.address || "").toLowerCase();
@@ -226,52 +210,76 @@ function mapToken(item: TokenItem, chain: (typeof CHAINS)[number], prices: Map<s
   };
 }
 
+function dayKey(iso: string) {
+  return iso.slice(0, 10);
+}
+
 export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainFootprint | null> {
   const address = rawAddress.trim().toLowerCase();
   if (!isAddress(address)) return null;
-
   const ensData = (await getJson(`https://api.ensdata.net/${address}`)) as { ens?: string } | null;
-
   const chainRows = await Promise.all(
     CHAINS.map(async (chain) => {
       const [info, counters, tokenItems, txs, transfers] = await Promise.all([
-        getJson(`${chain.host}/api/v2/addresses/${address}`) as Promise<{
-          coin_balance?: string;
-          ens_domain_name?: string;
-        } | null>,
-        getJson(`${chain.host}/api/v2/addresses/${address}/counters`) as Promise<{
-          transactions_count?: string;
-          token_transfers_count?: string;
-        } | null>,
+        getJson(`${chain.host}/api/v2/addresses/${address}`) as Promise<{ coin_balance?: string; ens_domain_name?: string; exchange_rate?: string | number | null } | null>,
+        getJson(`${chain.host}/api/v2/addresses/${address}/counters`) as Promise<{ transactions_count?: string; token_transfers_count?: string } | null>,
         loadTokenItems(chain.host, address),
         getPagedItems<TxItem>(`${chain.host}/api/v2/addresses/${address}/transactions`, 10),
-        getPagedItems<TransferItem>(`${chain.host}/api/v2/addresses/${address}/token-transfers`, 6),
+        getPagedItems<TransferItem>(`${chain.host}/api/v2/addresses/${address}/token-transfers`, 8),
       ]);
-
-      const prices = await loadPrices(
-        chain.slug,
-        tokenItems.map((item) => item.token?.address_hash || "")
-      );
+      const prices = await loadPrices(chain.slug, tokenItems.map((item) => item.token?.address_hash || ""));
       const tokens = tokenItems.map((item) => mapToken(item, chain, prices)).filter((t): t is OnchainToken => !!t);
-
       const counterparties = [
         ...txs.flatMap((tx) => [tx.to?.hash || "", tx.from?.hash || ""]),
         ...transfers.flatMap((tr) => [tr.to?.hash || "", tr.from?.hash || "", tr.token?.address_hash || ""]),
       ];
       const protocols = pickProtocols(chain.name, counterparties);
-
+      const nativeRate = info?.exchange_rate == null ? null : Number(info.exchange_rate);
+      const nativeQty = toNumber(info?.coin_balance || "0", 18);
+      const nativeUsd = nativeRate != null && Number.isFinite(nativeRate) ? nativeQty * nativeRate : null;
+      const feeWei = txs.reduce((sum, tx) => sum + toNumber(tx.fee?.value || "0", 18), 0);
+      const feesUsd = nativeRate != null && Number.isFinite(nativeRate) ? feeWei * nativeRate : 0;
+      let volumeUsd = 0;
+      if (nativeRate != null && Number.isFinite(nativeRate)) {
+        volumeUsd += txs.reduce((sum, tx) => sum + toNumber(tx.value || "0", 18) * nativeRate, 0);
+      }
+      for (const tr of transfers) {
+        const decimals = Number(tr.token?.decimals || 18);
+        const qty = toNumber(tr.total?.value || "0", decimals);
+        const rate = tr.token?.exchange_rate == null ? null : Number(tr.token.exchange_rate);
+        const priced = rate != null && Number.isFinite(rate) ? qty * rate : prices.get((tr.token?.address_hash || "").toLowerCase());
+        if (priced != null && Number.isFinite(priced)) volumeUsd += priced;
+      }
+      const uniqueContracts = new Set(txs.map((tx) => (tx.to?.hash || "").toLowerCase()).filter((h) => h && h !== address)).size;
+      const uniqueTokens = new Set(transfers.map((tr) => (tr.token?.address_hash || "").toLowerCase()).filter(Boolean)).size;
+      const tokenTrades = transfers.filter((tr) => {
+        const type = (tr.token?.type || tr.type || "").toUpperCase();
+        return type.includes("ERC-20") || type === "token_transfer" || !type;
+      }).length;
+      const nftMints = transfers.filter((tr) => {
+        const type = (tr.token?.type || "").toUpperCase();
+        return type.includes("721") || type.includes("1155");
+      }).length;
+      const stamps = txs.map((tx) => tx.timestamp).filter((s): s is string => !!s);
+      const days = new Set(stamps.map(dayKey));
+      const weeks = new Set(stamps.map((s) => s.slice(0, 8)));
+      const months = new Set(stamps.map((s) => s.slice(0, 7)));
+      const firstTx = stamps.length ? stamps[stamps.length - 1] : null;
+      const lastTx = stamps.length ? stamps[0] : null;
+      const walletAgeDays = firstTx ? Math.max(1, Math.round((Date.now() - new Date(firstTx).getTime()) / 86400000)) : 0;
       const counterTx = Number(counters?.transactions_count || 0);
       const counterTr = Number(counters?.token_transfers_count || 0);
-
+      const txCount = Math.max(counterTx, txs.length);
+      const transferCount = Math.max(counterTr, transfers.length);
+      const valuedTokenCount = tokens.filter((t) => !t.isDust).length;
+      const hasHoldings = valuedTokenCount > 0 || (nativeUsd != null && nativeUsd >= 0.01);
+      const interacted = txCount > 0 || transferCount > 0 || tokens.length > 0 || nativeQty > 0;
       return {
         chain: {
-          id: chain.id,
-          name: chain.name,
-          explorer: `${chain.explorer}${address}`,
-          balance: formatUnits(info?.coin_balance || "0"),
-          txCount: Math.max(counterTx, txs.length),
-          transferCount: Math.max(counterTr, transfers.length),
-          tokenCount: tokens.length,
+          id: chain.id, name: chain.name, explorer: `${chain.explorer}${address}`, balance: formatUnits(info?.coin_balance || "0"),
+          nativeSymbol: chain.native, nativeUsd, txCount, transferCount, tokenCount: tokens.length, valuedTokenCount,
+          volumeUsd, feesUsd, uniqueContracts, uniqueTokens: Math.max(uniqueTokens, tokens.length), tokenTrades, nftMints,
+          walletAgeDays, activeDays: days.size, activeWeeks: weeks.size, activeMonths: months.size, firstTx, lastTx, interacted, hasHoldings,
         } satisfies OnchainChain,
         ens: info?.ens_domain_name || null,
         tokens,
@@ -279,7 +287,6 @@ export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainF
       };
     })
   );
-
   const seenProto = new Set<string>();
   const protocols: DefiProtocol[] = [];
   for (const row of chainRows) {
@@ -290,20 +297,19 @@ export async function loadOnchainFootprint(rawAddress: string): Promise<OnchainF
       protocols.push(proto);
     }
   }
-
   const chains = chainRows.map((r) => r.chain);
   const tokens = chainRows.flatMap((r) => r.tokens).sort((a, b) => (b.usdValue ?? -1) - (a.usdValue ?? -1));
   const ens = ensData?.ens || chainRows.find((r) => r.ens)?.ens || null;
-
+  const totalValueUsd = tokens.reduce((sum, t) => sum + (t.usdValue && !t.isDust ? t.usdValue : 0), 0) + chains.reduce((sum, c) => sum + (c.nativeUsd && c.nativeUsd >= 0.01 ? c.nativeUsd : 0), 0);
   return {
-    address,
-    ens,
-    chains,
-    tokens,
-    protocols,
+    address, ens, chains, tokens, protocols,
     totalTx: chains.reduce((sum, c) => sum + c.txCount, 0),
     totalTransfers: chains.reduce((sum, c) => sum + c.transferCount, 0),
-    activeChains: chains.filter((c) => c.txCount > 0 || Number(c.balance) > 0 || c.tokenCount > 0).length,
+    activeChains: chains.filter((c) => c.interacted).length,
+    holdingChains: chains.filter((c) => c.hasHoldings).length,
+    totalVolumeUsd: chains.reduce((sum, c) => sum + c.volumeUsd, 0),
+    totalFeesUsd: chains.reduce((sum, c) => sum + c.feesUsd, 0),
+    totalValueUsd,
     explorers: [
       { label: "Etherscan", href: `https://etherscan.io/address/${address}` },
       { label: "Arkham", href: `https://arkm.com/explorer/address/${address}` },
@@ -316,33 +322,18 @@ export async function lookupWalletToken(rawAddress: string, rawContract: string)
   const address = rawAddress.trim().toLowerCase();
   const contract = rawContract.trim().toLowerCase();
   if (!isAddress(address) || !isAddress(contract)) return [];
-
   const hits = await Promise.all(
     CHAINS.map(async (chain) => {
       const [info, items] = await Promise.all([
-        getJson(`${chain.host}/api/v2/tokens/${contract}`) as Promise<{
-          type?: string;
-          symbol?: string;
-          name?: string;
-          decimals?: string;
-        } | null>,
+        getJson(`${chain.host}/api/v2/tokens/${contract}`) as Promise<{ type?: string; symbol?: string; name?: string; decimals?: string } | null>,
         loadTokenItems(chain.host, address),
       ]);
       if (!info) return null;
       const held = items.find((t) => (t.token?.address_hash || "").toLowerCase() === contract);
       if (!held) return null;
       const decimals = Number(held.token?.decimals || info.decimals || 18);
-      return {
-        kind: "token" as const,
-        symbol: held.token?.symbol || info.symbol || "TOKEN",
-        name: held.token?.name || info.name || "",
-        chain: chain.name,
-        balance: formatUnits(held.value || "0", decimals),
-        contract,
-        href: `${chain.tokenExplorer}${contract}`,
-      };
+      return { kind: "token" as const, symbol: held.token?.symbol || info.symbol || "TOKEN", name: held.token?.name || info.name || "", chain: chain.name, balance: formatUnits(held.value || "0", decimals), contract, href: `${chain.tokenExplorer}${contract}` };
     })
   );
-
   return hits.filter(Boolean);
 }
