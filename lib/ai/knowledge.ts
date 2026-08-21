@@ -5,17 +5,17 @@ export const POW3_KNOWLEDGE = `
 # Pow3Folio product knowledge (keep current)
 
 Latest product pass:
-- Section headings use the site primary green as a left rule plus uppercase tracking. They are not gold or amber.
-- NFT import is marketplace-agnostic. Paste an OpenSea, Magic Eden, Blur, Rarible or contract URL. POST /api/nft/import verifies ownership onchain, then resolves artwork through Blockscout, Reservoir, Alchemy (if keyed), token metadata and IPFS gateways.
-- Images go through /api/media which retries IPFS gateways (ipfs.io, Cloudflare, dweb, nft.storage, w3s, Pinata) so w3s.link hotlink blocks do not hide art.
-- Collectible cards cycle gateways on error and live-fetch artwork if the stored URL is empty or broken.
-- Onchain Stats is zkCodex-style. Interacted chains only. Metrics include last activity, contracts deployed on the active chain, and First txn on X (not wallet creation).
-- A 3-year monthly activity heatmap sits at the bottom of Onchain Stats.
-- DeFi pools and protocols (Aave, Hyperlane, Uniswap, etc.) show when the wallet has interacted with known contracts.
-- Talents can import extra Blockscout-compatible networks (name + explorer host) and extra named wallets. Public Onchain Stats has mini wallet tabs.
-- Wallet holdings auto-refresh about every 24 hours when the talent opens the dashboard Onchain page, and via /api/cron/wallet-scan.
-- The setup tour auto-opens only after a new signup, never after a normal login. Replay is still available on the dashboard.
-- Docs and credentials use a document-shaped icon with a type tag. No square thumbnail frame.
+- Public activity heatmap now renders the same calendar as the dashboard. Tab CSS no longer collapses the cells. Viewers tap a day for a popup with interaction count and method names.
+- Chain import uses name, EVM chain ID, JSON-RPC, explorer and native symbol. Blockscout is optional. KiiChain preset: chain 1783, rpc https://json-rpc.kiivalidator.com, explorer https://explorer.kiichain.io, native KII.
+- Imported networks stay in the chain chip list even with zero Blockscout history. Native balance and nonce come from RPC.
+- NFT cards sit in an independent nft-grid. Each card keeps its own height.
+- KiiChain Genesis art is a PNG on w3s/IPFS. The media proxy now sniffs PNG/JPEG/GIF/WEBP bytes and retries extra gateways plus wsrv.nl.
+- Logo in headers goes to the landing page.
+- Landing slider tags are STATS, COLLECT, WALLETS, not NEW. Hover slightly zooms the card image.
+- Section headings use the site primary green as a left rule plus uppercase tracking.
+- NFT import is marketplace-agnostic via POST /api/nft/import.
+- Onchain Stats is zkCodex-style. First txn on X, last activity, contracts deployed.
+- Tour auto-opens only after a new signup.
 
 ## What it is
 Pow3Folio is a public proof of work portfolio for Web3 builders. URL: https://pow3folio.vercel.app/{username}
@@ -23,9 +23,6 @@ Call people builders or talents. Never say users in product copy.
 
 ## Public profile tabs
 About, Projects / Collab, Technical Writing / Research, Trading Record, Onchain Stats, Airdrops.
-
-## Onchain Stats
-Chain-first. Default chain is the one with the most transactions. Selected chain shows native balance plus every token still held on that chain.
 
 ## Pow3Bot
 Site-wide assistant for Pow3Folio only. Never investment advice. Never ask for seed phrases.

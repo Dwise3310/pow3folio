@@ -40,7 +40,7 @@ export default function OnchainSection({
             No imported NFTs yet. The talent imports holdings from the connected wallet so only owned items appear.
           </div>
         ) : (
-          <div className="tight-cards tight-cards-4">
+          <div className="nft-grid">
             {nfts.map((c) => (
               <CollectibleCard key={c.id} item={c} profileUrl={profileUrl} />
             ))}

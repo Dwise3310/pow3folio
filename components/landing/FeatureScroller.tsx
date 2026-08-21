@@ -20,24 +20,24 @@ const DEFAULT: FeatureCard[] = [
   },
   {
     title: "Onchain Stats",
-    tag: "NEW",
-    desc: "zkCodex-style chain stats, last activity, contracts deployed, DeFi protocols and a 3-year heatmap.",
-    image: "https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&w=900&q=80",
-    imageAlt: "Abstract blockchain network visualization",
+    tag: "STATS",
+    desc: "Chain-by-chain value, fees, last activity, contracts deployed and a 3-year heatmap viewers can tap.",
+    image: "https://images.unsplash.com/photo-1642790106117-e829e14aa782?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Onchain analytics dashboard",
   },
   {
     title: "NFT import",
-    tag: "NEW",
+    tag: "COLLECT",
     desc: "Paste any marketplace URL. Ownership is checked onchain. Artwork is resolved through IPFS gateways.",
-    image: "https://images.unsplash.com/photo-1640161704729-cbe006cb0d56?auto=format&fit=crop&w=900&q=80",
-    imageAlt: "Digital collectible artwork",
+    image: "https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Colorful digital collectible art",
   },
   {
     title: "Multi-wallet",
-    tag: "NEW",
+    tag: "WALLETS",
     desc: "Connect extra wallets, name them, and let viewers switch tabs on the public onchain section.",
-    image: "https://images.unsplash.com/photo-1621761191319-c6fb62004040?auto=format&fit=crop&w=900&q=80",
-    imageAlt: "Hardware wallet and crypto keys",
+    image: "https://images.unsplash.com/photo-1622630998477-20aa696ecb05?auto=format&fit=crop&w=900&q=80",
+    imageAlt: "Crypto wallets and keys",
   },
   {
     title: "Technical Writing",
@@ -108,10 +108,10 @@ export default function FeatureScroller({ items = DEFAULT }: { items?: FeatureCa
         {items.map((card) => (
           <article key={card.title} className="group relative h-64 w-[min(85vw,19rem)] shrink-0 snap-start overflow-hidden rounded-2xl border border-border/70 bg-zinc-900 shadow-sm transition duration-500 hover:border-primary/50 hover:shadow-xl hover:shadow-primary/20 hover:-translate-y-1.5">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={card.image} alt={card.imageAlt} className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-110" loading="lazy" decoding="async" />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20 transition duration-500 group-hover:from-black/90" />
+            <img src={card.image} alt={card.imageAlt} className="absolute inset-0 h-full w-full object-cover transition duration-700 ease-out group-hover:scale-110" loading="lazy" decoding="async" />
+            <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/60 to-black/20 transition duration-500 group-hover:from-black/80" />
             <div className="relative flex h-full flex-col justify-end p-4">
-              <span className={`mb-2 w-fit rounded-full border px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm transition group-hover:border-primary/50 group-hover:bg-primary/20 ${card.tag === "NEW" ? "border-primary/60 bg-primary/25 animate-pulse" : "border-white/25 bg-black/45"}`}>{card.tag}</span>
+              <span className="mb-2 w-fit rounded-full border border-white/25 bg-black/45 px-2.5 py-0.5 text-[10px] font-semibold tracking-wide text-white/95 backdrop-blur-sm transition group-hover:border-primary/50 group-hover:bg-primary/20">{card.tag}</span>
               <h3 className="text-lg font-bold text-white drop-shadow-md">{card.title}</h3>
               <p className="mt-1.5 text-xs leading-relaxed text-white/85">{card.desc}</p>
             </div>
