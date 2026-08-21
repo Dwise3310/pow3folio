@@ -20,9 +20,11 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     return fromUrl ? fromUrl[0].toLowerCase() : "";
   }, [item.tags, item.url]);
 
+  const tokenId = item.token_id == null ? "" : String(item.token_id);
   const candidates = useMemo(() => gatewayUrls(item.image_url), [item.image_url]);
   const [idx, setIdx] = useState(0);
   const [src, setSrc] = useState<string | null>(candidates[0] || item.image_url);
+  const [useProxy, setUseProxy] = useState(true);
   const [broken, setBroken] = useState(false);
   const [lookedUp, setLookedUp] = useState(false);
 
@@ -30,28 +32,31 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     const next = gatewayUrls(item.image_url);
     setIdx(0);
     setSrc(next[0] || item.image_url);
+    setUseProxy(true);
     setBroken(false);
     setLookedUp(false);
   }, [item.image_url]);
 
   useEffect(() => {
-    if (lookedUp || !contract || !item.token_id) return;
+    if (lookedUp || !contract || tokenId === "") return;
     if (src && !broken) return;
     let cancelled = false;
     const qs = new URLSearchParams({
       contract,
-      tokenId: item.token_id,
+      tokenId,
       chain: item.chain || "",
     });
     fetch(`/api/onchain/nft-art?${qs.toString()}`)
       .then((res) => res.json())
       .then((json: { image_url?: string | null }) => {
-        if (cancelled || !json.image_url) {
+        if (cancelled) return;
+        if (!json.image_url) {
           setLookedUp(true);
           return;
         }
         const urls = gatewayUrls(json.image_url);
         setSrc(urls[0] || json.image_url);
+        setUseProxy(true);
         setBroken(false);
         setLookedUp(true);
       })
@@ -59,16 +64,21 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
     return () => {
       cancelled = true;
     };
-  }, [src, broken, contract, item.token_id, item.chain, lookedUp]);
+  }, [src, broken, contract, tokenId, item.chain, lookedUp]);
 
   function handleError() {
+    if (useProxy && src) {
+      setUseProxy(false);
+      return;
+    }
     const next = candidates[idx + 1];
     if (next) {
       setIdx((n) => n + 1);
       setSrc(next);
+      setUseProxy(true);
       return;
     }
-    if (contract && item.token_id && !lookedUp) {
+    if (contract && tokenId !== "" && !lookedUp) {
       setSrc(null);
       setBroken(true);
       return;
@@ -77,6 +87,7 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
   }
 
   const showImage = src && !broken;
+  const imgSrc = src ? (useProxy ? mediaProxySrc(src) : src) : "";
 
   const CardInner = (
     <>
@@ -84,7 +95,7 @@ export default function CollectibleCard({ item, profileUrl }: Props) {
         {showImage ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={mediaProxySrc(src)}
+            src={imgSrc}
             alt=""
             referrerPolicy="no-referrer"
             className="h-full w-full object-cover"
