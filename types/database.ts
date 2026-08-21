@@ -41,9 +41,11 @@ export type ExtraWallet = {
 export type CustomChain = {
   id?: string;
   name: string;
-  host: string;
+  host?: string;
   explorer?: string;
   native?: string;
+  rpc?: string;
+  chainId?: number;
 };
 
 export type Profile = {
