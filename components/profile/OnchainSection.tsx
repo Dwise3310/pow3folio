@@ -28,7 +28,7 @@ export default function OnchainSection({
         showDustTokens={showDustTokens}
       />
       <div>
-        <h3 className="mb-2 text-xs font-semibold uppercase tracking-wide text-foreground-subtle">NFTs held</h3>
+        <h3 className="section-heading">NFTs held</h3>
         {nfts.length === 0 ? (
           <div className="card text-sm text-foreground-subtle">
             No imported NFTs yet. The talent imports holdings from the connected wallet so only owned items appear.
