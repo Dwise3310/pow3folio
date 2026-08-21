@@ -45,6 +45,7 @@ export type CustomChain = {
   explorer?: string;
   native?: string;
   rpc?: string;
+  lcd?: string;
   chainId?: number;
 };
 
@@ -60,6 +61,8 @@ export type Profile = {
   wallet_address: string | null;
   extra_wallets?: ExtraWallet[] | null;
   custom_chains?: CustomChain[] | null;
+  public_chain_ids?: string[] | null;
+  imported_tokens?: { chainId: string; contract: string }[] | null;
   last_wallet_scan_at?: string | null;
   ens_name: string | null;
   x_url: string | null;
