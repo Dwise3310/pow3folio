@@ -5,11 +5,14 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import type { Collectible } from "@/types/database";
 import type { WalletNft } from "@/lib/nfts";
+import type { NamedWallet } from "@/components/profile/OnchainFootprint";
+import { parseNftQuery } from "@/lib/nft-url";
 
 type Props = {
   userId: string;
   initialItems: Collectible[];
   walletAddress: string | null;
+  wallets?: NamedWallet[];
 };
 
 function sortItems(list: Collectible[]) {
@@ -25,22 +28,7 @@ function nftKey(chain: string | null, contractHint: string | null, tokenId: stri
   return `${(chain || "").toLowerCase()}|${(contractHint || "").toLowerCase()}|${tokenId || ""}`;
 }
 
-export function parseAssetQuery(value: string) {
-  const raw = value.trim();
-  const contractMatch = raw.match(/0x[a-fA-F0-9]{40}/);
-  const contract = contractMatch ? contractMatch[0].toLowerCase() : "";
-  const after = contract ? raw.slice(raw.toLowerCase().indexOf(contract) + 42) : raw;
-  const idMatch =
-    after.match(/(?:[/#]|token[_-]?id=)(\d+)/i) ||
-    raw.match(/token[_-]?id=(\d+)/i) ||
-    after.match(/(\d{1,12})/);
-  return {
-    contract,
-    tokenId: idMatch ? idMatch[1] : "",
-  };
-}
-
-export default function CollectibleManager({ userId, initialItems, walletAddress }: Props) {
+export default function CollectibleManager({ userId, initialItems, walletAddress, wallets = [] }: Props) {
   const router = useRouter();
   const [items, setItems] = useState<Collectible[]>(() => sortItems(initialItems));
   const [loading, setLoading] = useState(false);
@@ -49,6 +37,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
   const [hint, setHint] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [reordering, setReordering] = useState(false);
+  const [targetWallet, setTargetWallet] = useState(walletAddress || wallets[0]?.address || "");
 
   async function insertNfts(fresh: WalletNft[], alreadyLabel: string) {
     const existingByKey = new Map(
@@ -120,7 +109,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
         collection_name: n.collection_name,
         token_id: n.token_id,
         acquired_at: n.acquired_at,
-        tags: ["imported", n.contract ? `ca:${n.contract}` : ""].filter(Boolean),
+        tags: ["imported", n.contract ? `ca:${n.contract}` : "", targetWallet ? `wallet:${targetWallet}` : ""].filter(Boolean),
         is_visible: true,
         sort_order: maxOrder,
       };
@@ -141,7 +130,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
   }
 
   async function importFromWallet() {
-    if (!walletAddress) {
+    if (!targetWallet) {
       setError("Connect a wallet in Profile first. Import only reads NFTs that address actually holds.");
       return;
     }
@@ -149,12 +138,12 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
     setError(null);
     setHint(null);
     try {
-      const res = await fetch(`/api/onchain/${walletAddress}/nfts`);
+      const res = await fetch(`/api/onchain/${targetWallet}/nfts`);
       if (!res.ok) throw new Error("Could not read NFTs for this wallet");
       const json = (await res.json()) as { nfts?: WalletNft[] };
       const found = json.nfts ?? [];
       if (!found.length) {
-        setHint("No ERC-721 / ERC-1155 tokens found on Ethereum, Base, Arbitrum, Optimism or Polygon.");
+        setHint("No ERC-721 / ERC-1155 tokens found on the indexed chains.");
       } else {
         await insertNfts(
           found,
@@ -169,22 +158,68 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
 
   async function searchByContract(e: React.FormEvent) {
     e.preventDefault();
-    if (!walletAddress) {
+    if (!targetWallet) {
       setError("Connect a wallet in Profile first.");
-      return;
-    }
-    const { contract, tokenId } = parseAssetQuery(query);
-    if (!contract) {
-      setError("Paste a contract address or an OpenSea / Magic Eden link that contains one.");
       return;
     }
     setSearching(true);
     setError(null);
-    setHint(null);
+    setHint("Checking NFT…");
     try {
+      const importRes = await fetch("/api/nft/import", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url: query, walletAddress: targetWallet }),
+      });
+      const imported = (await importRes.json()) as {
+        verified?: boolean;
+        name?: string;
+        collection?: string | null;
+        chain?: string;
+        contractAddress?: string;
+        tokenId?: string;
+        image?: string | null;
+        description?: string | null;
+        marketplaceUrl?: string;
+        error?: string;
+      };
+      if (imported.verified && imported.contractAddress && imported.tokenId) {
+        await insertNfts(
+          [
+            {
+              title: imported.name || "NFT",
+              description: imported.description || null,
+              url: imported.marketplaceUrl || "",
+              image_url: imported.image || null,
+              chain: imported.chain || "",
+              collection_name: imported.collection || null,
+              token_id: imported.tokenId,
+              acquired_at: null,
+              contract: imported.contractAddress,
+            },
+          ],
+          "That NFT is already on the profile."
+        );
+        setSearching(false);
+        return;
+      }
+      if (imported.error && imported.contractAddress) {
+        setHint(imported.error);
+        setSearching(false);
+        return;
+      }
+
+      const parsed = parseNftQuery(query);
+      const contract = "contract" in parsed ? parsed.contract : "";
+      const tokenId = "tokenId" in parsed ? parsed.tokenId : "";
+      if (!contract) {
+        setError(imported.error || "Paste a marketplace URL or a contract address.");
+        setSearching(false);
+        return;
+      }
       const qs = new URLSearchParams({ contract });
       if (tokenId) qs.set("tokenId", tokenId);
-      const res = await fetch(`/api/onchain/${walletAddress}/lookup?${qs.toString()}`);
+      const res = await fetch(`/api/onchain/${targetWallet}/lookup?${qs.toString()}`);
       if (!res.ok) throw new Error("Lookup failed");
       const json = (await res.json()) as {
         nfts?: WalletNft[];
@@ -193,7 +228,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       const nfts = json.nfts ?? [];
       const tokens = json.tokens ?? [];
       if (!nfts.length && !tokens.length) {
-        setHint("This wallet does not hold that contract on Ethereum, Base, Arbitrum, Optimism or Polygon.");
+        setHint(imported.error || "This wallet does not hold that contract on the indexed chains.");
       } else {
         if (nfts.length) await insertNfts(nfts, "That NFT is already on the profile.");
         if (tokens.length) {
@@ -270,10 +305,21 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
       <div className="card space-y-3">
         <h2 className="font-semibold">NFTs held by this wallet</h2>
         <p className="text-sm text-foreground-muted">
-          Import only adds items this wallet actually holds. Artwork is saved with the NFT. Refresh or search again to
-          fill a missing image.
+          Paste any marketplace URL. Pow3Folio extracts the contract, verifies this wallet owns it, then resolves artwork.
         </p>
-        {!walletAddress && (
+        {wallets.length > 1 && (
+          <label className="block text-xs">
+            Import into
+            <select className="input mt-1 text-sm" value={targetWallet} onChange={(e) => setTargetWallet(e.target.value)}>
+              {wallets.map((w) => (
+                <option key={w.address} value={w.address}>
+                  {w.label} · {w.address.slice(0, 6)}...{w.address.slice(-4)}
+                </option>
+              ))}
+            </select>
+          </label>
+        )}
+        {!targetWallet && (
           <p className="text-sm text-foreground-subtle">
             Connect a wallet in Profile first.{" "}
             <a href="/dashboard/profile" className="text-primary hover:underline">
@@ -285,20 +331,20 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
           <div className="rounded-lg border border-danger/30 bg-danger/10 px-3 py-2 text-sm text-danger">{error}</div>
         )}
         {hint && <p className="text-sm text-foreground-muted">{hint}</p>}
-        <button type="button" className="btn-primary" disabled={loading || !walletAddress} onClick={importFromWallet}>
+        <button type="button" className="btn-primary" disabled={loading || !targetWallet} onClick={importFromWallet}>
           {loading ? "Reading wallet…" : items.length ? "Refresh from wallet" : "Import NFTs from wallet"}
         </button>
         <form onSubmit={searchByContract} className="space-y-2 border-t border-border pt-3">
-          <label className="label">Find by contract</label>
+          <label className="label">Paste NFT URL</label>
           <div className="flex flex-col gap-2 sm:flex-row">
             <input
               className="input text-sm"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              placeholder="0x… or https://opensea.io/item/polygon/0x…/854"
+              placeholder="https://opensea.io/item/polygon/0x…/854"
             />
-            <button type="submit" className="btn-secondary shrink-0" disabled={searching || !walletAddress}>
-              {searching ? "Checking…" : "Import if held"}
+            <button type="submit" className="btn-secondary shrink-0" disabled={searching || !targetWallet}>
+              {searching ? "Importing…" : "Import if held"}
             </button>
           </div>
         </form>
@@ -312,31 +358,16 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
           <div key={item.id} className="card flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex min-w-0 gap-3">
               <div className="flex flex-col gap-1 shrink-0">
-                <button
-                  type="button"
-                  disabled={reordering || index === 0}
-                  onClick={() => moveItem(index, "up")}
-                  className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
-                >
+                <button type="button" disabled={reordering || index === 0} onClick={() => moveItem(index, "up")} className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30">
                   ↑
                 </button>
-                <button
-                  type="button"
-                  disabled={reordering || index === items.length - 1}
-                  onClick={() => moveItem(index, "down")}
-                  className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30"
-                >
+                <button type="button" disabled={reordering || index === items.length - 1} onClick={() => moveItem(index, "down")} className="btn-ghost h-8 w-8 p-0 text-sm disabled:opacity-30">
                   ↓
                 </button>
               </div>
               {item.image_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img
-                  src={item.image_url}
-                  alt=""
-                  referrerPolicy="no-referrer"
-                  className="h-12 w-12 shrink-0 rounded-lg object-cover"
-                />
+                <img src={`/api/media?u=${encodeURIComponent(item.image_url)}`} alt="" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
               ) : (
                 <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] uppercase text-foreground-subtle">
                   NFT
@@ -345,9 +376,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
               <div className="min-w-0">
                 <p className="font-medium break-words">{item.title}</p>
                 <p className="mt-0.5 text-xs text-foreground-muted">
-                  {[item.chain, item.collection_name, item.token_id ? `#${item.token_id}` : null]
-                    .filter(Boolean)
-                    .join(" · ")}
+                  {[item.chain, item.collection_name, item.token_id ? `#${item.token_id}` : null].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-0.5 text-xs text-foreground-subtle">{item.is_visible ? "Public" : "Hidden"}</p>
               </div>
@@ -355,7 +384,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
             <div className="flex shrink-0 flex-wrap gap-2">
               {item.url && (
                 <a href={item.url} target="_blank" rel="noopener noreferrer" className="btn-ghost text-xs">
-                  OpenSea
+                  Open
                 </a>
               )}
               <button type="button" onClick={() => toggleVisible(item)} className="btn-ghost text-xs">
