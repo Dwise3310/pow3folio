@@ -2,7 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
-import type { OnchainChain, OnchainFootprint as Footprint, OnchainToken } from "@/lib/onchain";
+import type { CustomChainInput, OnchainChain, OnchainFootprint as Footprint, OnchainToken } from "@/lib/onchain";
+import ActivityHeatmap from "@/components/profile/ActivityHeatmap";
+
+export type NamedWallet = {
+  address: string;
+  label: string;
+};
 
 type Props = {
   address: string | null;
@@ -11,6 +17,8 @@ type Props = {
   owner?: boolean;
   profileId?: string | null;
   showDustTokens?: boolean;
+  wallets?: NamedWallet[];
+  customChains?: CustomChainInput[];
 };
 
 const HEADING = "section-heading";
@@ -19,6 +27,21 @@ function usd(value: number | null | undefined) {
   if (value == null || !Number.isFinite(value) || value <= 0) return "—";
   if (value < 0.01) return "<$0.01";
   return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function timeAgo(iso: string | null) {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "—";
+  const delta = Date.now() - then;
+  const mins = Math.floor(delta / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 45) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
 }
 
 function Metric({ label, value }: { label: string; value: string }) {
@@ -37,23 +60,33 @@ export default function OnchainFootprint({
   owner = false,
   profileId = null,
   showDustTokens = false,
+  wallets = [],
+  customChains = [],
 }: Props) {
+  const [activeWallet, setActiveWallet] = useState(address || "");
   const [data, setData] = useState<Footprint | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [showDust, setShowDust] = useState(showDustTokens);
   const [chainId, setChainId] = useState<string>("");
+  const [chainForm, setChainForm] = useState({ name: "", host: "", native: "ETH" });
+  const [savingChain, setSavingChain] = useState(false);
 
   useEffect(() => {
     setShowDust(showDustTokens);
   }, [showDustTokens]);
 
   useEffect(() => {
-    if (!address) return;
+    if (address && !activeWallet) setActiveWallet(address);
+  }, [address, activeWallet]);
+
+  useEffect(() => {
+    if (!activeWallet) return;
     let cancelled = false;
     setLoading(true);
     setError(null);
-    fetch(`/api/onchain/${address}`)
+    const qs = customChains.length ? `?chains=${encodeURIComponent(JSON.stringify(customChains))}` : "";
+    fetch(`/api/onchain/${activeWallet}${qs}`)
       .then(async (res) => {
         if (!res.ok) throw new Error("Could not load onchain data");
         return (await res.json()) as Footprint;
@@ -75,7 +108,7 @@ export default function OnchainFootprint({
     return () => {
       cancelled = true;
     };
-  }, [address]);
+  }, [activeWallet, customChains]);
 
   const interacted = useMemo(() => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0) ?? [], [data]);
   const selected: OnchainChain | null = useMemo(() => {
@@ -100,7 +133,22 @@ export default function OnchainFootprint({
     await supabase.from("profiles").update({ show_dust_tokens: next }).eq("id", profileId);
   }
 
-  if (!address) {
+  async function saveCustomChain(e: React.FormEvent) {
+    e.preventDefault();
+    if (!owner || !profileId) return;
+    const name = chainForm.name.trim();
+    const host = chainForm.host.trim().replace(/\/$/, "");
+    if (!name || !host) return;
+    setSavingChain(true);
+    const next = [...customChains, { name, host, native: chainForm.native || "ETH" }];
+    const supabase = createClient();
+    await supabase.from("profiles").update({ custom_chains: next }).eq("id", profileId);
+    setChainForm({ name: "", host: "", native: "ETH" });
+    setSavingChain(false);
+    window.location.reload();
+  }
+
+  if (!address && wallets.length === 0) {
     return (
       <div className="card p-3 sm:p-4 text-sm text-foreground-subtle">
         No wallet connected. Connect a wallet in Profile to aggregate this talent&apos;s onchain footprint.
@@ -110,7 +158,7 @@ export default function OnchainFootprint({
 
   const ens = data?.ens || ensName;
   const explorers = data?.explorers ?? [
-    { label: "Etherscan", href: `https://etherscan.io/address/${address}` },
+    { label: "Etherscan", href: `https://etherscan.io/address/${activeWallet}` },
     ...(arkhamUrl ? [{ label: "Arkham", href: arkhamUrl }] : []),
   ];
   const dustCount = (data?.tokens || []).filter((t) => t.isDust && (!selected || t.chainId === selected.id)).length;
@@ -128,7 +176,9 @@ export default function OnchainFootprint({
         { label: "Unique tokens", value: selected.uniqueTokens.toLocaleString() },
         { label: "Token trades", value: selected.tokenTrades.toLocaleString() },
         { label: "NFT mints", value: selected.nftMints ? selected.nftMints.toLocaleString() : "—" },
-        { label: "Wallet age", value: selected.walletAgeDays ? `${selected.walletAgeDays}d` : "—" },
+        { label: `First txn on ${selected.name}`, value: selected.walletAgeDays ? `${selected.walletAgeDays}d ago` : "—" },
+        { label: "Last activity", value: timeAgo(selected.lastTx) },
+        { label: "Contracts deployed", value: selected.contractsDeployed.toLocaleString() },
         { label: "Active days", value: selected.activeDays.toLocaleString() },
         { label: "Active weeks", value: selected.activeWeeks.toLocaleString() },
         { label: "Active months", value: selected.activeMonths.toLocaleString() },
@@ -143,16 +193,40 @@ export default function OnchainFootprint({
         { label: "Portfolio", value: usd(data?.totalValueUsd) },
       ];
 
+  const protocolList = (data?.protocols || []).filter((p) => !selected || p.chain === selected.name);
+
   return (
     <div className="space-y-4">
+      {wallets.length > 1 && (
+        <div>
+          <h3 className={HEADING}>Wallets</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {wallets.map((w) => (
+              <button
+                key={w.address}
+                type="button"
+                onClick={() => setActiveWallet(w.address)}
+                className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${
+                  activeWallet.toLowerCase() === w.address.toLowerCase()
+                    ? "border-primary text-primary bg-primary/10"
+                    : "border-border bg-surface-elevated"
+                }`}
+              >
+                {w.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
       <div className="card p-3 sm:p-4 space-y-3">
         <div className="flex flex-wrap items-start justify-between gap-2">
           <div className="min-w-0">
             <h3 className={HEADING}>Wallet</h3>
             {ens && <p className="text-sm font-semibold">{ens}</p>}
-            <p className="mt-0.5 font-mono text-xs text-foreground-muted break-all">{address}</p>
+            <p className="mt-0.5 font-mono text-xs text-foreground-muted break-all">{activeWallet}</p>
           </div>
-          <button type="button" className="btn-ghost text-xs" onClick={() => navigator.clipboard.writeText(address)}>
+          <button type="button" className="btn-ghost text-xs" onClick={() => navigator.clipboard.writeText(activeWallet)}>
             Copy
           </button>
         </div>
@@ -162,7 +236,7 @@ export default function OnchainFootprint({
               {x.label}
             </a>
           ))}
-          <a href={`https://zkcodex.com/polygon/${address}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary">
+          <a href={`https://zkcodex.com/id/${activeWallet}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary">
             zkCodex
           </a>
         </div>
@@ -207,27 +281,27 @@ export default function OnchainFootprint({
             </div>
           </div>
 
-          {data.protocols.filter((p) => !selected || p.chain === selected.name).length > 0 && (
-            <div>
-              <h3 className={HEADING}>DeFi protocols</h3>
+          <div>
+            <h3 className={HEADING}>DeFi pools & protocols</h3>
+            {protocolList.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No known protocol interactions on this chain yet.</div>
+            ) : (
               <div className="flex flex-wrap gap-1.5">
-                {data.protocols
-                  .filter((p) => !selected || p.chain === selected.name)
-                  .map((p) => (
-                    <a
-                      key={`${p.chain}-${p.name}-${p.address}`}
-                      href={p.href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary"
-                    >
-                      {p.name}
-                      <span className="ml-1 text-foreground-subtle">{p.chain}</span>
-                    </a>
-                  ))}
+                {protocolList.map((p) => (
+                  <a
+                    key={`${p.chain}-${p.name}-${p.address}`}
+                    href={p.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary"
+                  >
+                    {p.name}
+                    <span className="ml-1 text-foreground-subtle">{p.chain}</span>
+                  </a>
+                ))}
               </div>
-            </div>
-          )}
+            )}
+          </div>
 
           <div>
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -278,7 +352,24 @@ export default function OnchainFootprint({
               </div>
             )}
           </div>
+
+          <ActivityHeatmap days={selected?.activityDays || data.chains.flatMap((c) => c.activityDays || [])} />
         </>
+      )}
+
+      {owner && profileId && (
+        <form onSubmit={saveCustomChain} className="card space-y-2 p-3">
+          <h3 className={HEADING}>Import a network</h3>
+          <p className="text-[11px] text-foreground-subtle">
+            Add a Blockscout-compatible explorer to pull tokens, NFTs and stats from a chain that is not listed yet.
+          </p>
+          <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="KiiChain" />
+          <input className="input text-sm" value={chainForm.host} onChange={(e) => setChainForm((s) => ({ ...s, host: e.target.value }))} placeholder="https://explorer.example.com" />
+          <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol" />
+          <button type="submit" className="btn-secondary text-xs" disabled={savingChain}>
+            {savingChain ? "Saving…" : "Add network"}
+          </button>
+        </form>
       )}
     </div>
   );
