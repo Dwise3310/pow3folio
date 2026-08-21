@@ -3,6 +3,7 @@
 import CollectibleCard from "@/components/collectibles/CollectibleCard";
 import OnchainFootprint, { type NamedWallet } from "@/components/profile/OnchainFootprint";
 import type { Collectible, CustomChain } from "@/types/database";
+import type { ImportedTokenRef } from "@/lib/onchain";
 
 export default function OnchainSection({
   profileUrl,
@@ -13,6 +14,10 @@ export default function OnchainSection({
   showDustTokens = false,
   wallets = [],
   customChains = [],
+  publicChainIds = null,
+  importedTokens = [],
+  owner = false,
+  profileId = null,
 }: {
   profileUrl: string;
   nfts: Collectible[];
@@ -22,6 +27,10 @@ export default function OnchainSection({
   showDustTokens?: boolean;
   wallets?: NamedWallet[];
   customChains?: CustomChain[];
+  publicChainIds?: string[] | null;
+  importedTokens?: ImportedTokenRef[];
+  owner?: boolean;
+  profileId?: string | null;
 }) {
   return (
     <div className="space-y-6">
@@ -32,6 +41,10 @@ export default function OnchainSection({
         showDustTokens={showDustTokens}
         wallets={wallets}
         customChains={customChains}
+        publicChainIds={publicChainIds}
+        importedTokens={importedTokens}
+        owner={owner}
+        profileId={profileId}
       />
       <div>
         <h3 className="section-heading">NFTs held</h3>

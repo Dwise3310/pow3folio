@@ -5,17 +5,15 @@ export const POW3_KNOWLEDGE = `
 # Pow3Folio product knowledge (keep current)
 
 Latest product pass:
-- Public activity heatmap now renders the same calendar as the dashboard. Tab CSS no longer collapses the cells. Viewers tap a day for a popup with interaction count and method names.
-- Chain import uses name, EVM chain ID, JSON-RPC, explorer and native symbol. Blockscout is optional. KiiChain preset: chain 1783, rpc https://json-rpc.kiivalidator.com, explorer https://explorer.kiichain.io, native KII.
-- Imported networks stay in the chain chip list even with zero Blockscout history. Native balance and nonce come from RPC.
-- NFT cards sit in an independent nft-grid. Each card keeps its own height.
-- KiiChain Genesis art is a PNG on w3s/IPFS. The media proxy now sniffs PNG/JPEG/GIF/WEBP bytes and retries extra gateways plus wsrv.nl.
-- Logo in headers goes to the landing page.
-- Landing slider tags are STATS, COLLECT, WALLETS, not NEW. Hover slightly zooms the card image.
-- Section headings use the site primary green as a left rule plus uppercase tracking.
-- NFT import is marketplace-agnostic via POST /api/nft/import.
-- Onchain Stats is zkCodex-style. First txn on X, last activity, contracts deployed.
-- Tour auto-opens only after a new signup.
+- Talents can toggle each chain Public/Hidden on the public Onchain tab. At least one chain must stay visible.
+- Token import by CA: pick the chain, paste the contract, save only if the connected wallet holds it. Works on built-in chains and imported RPC chains.
+- Imported chains such as KiiChain now read native KII from EVM RPC plus Cosmos LCD bank balances, then price KII from DexScreener. Volume uses LCD tx history when the explorer has no Blockscout API.
+- Run extra_wallets.sql so public_chain_ids and imported_tokens columns exist.
+- Logo (Pow3Folio) always goes to the landing page in one click, including from dashboard sections.
+- Landing slider images for Onchain Stats, NFT import and Multi-wallet are context photos, not random shots.
+- NFT artwork: Blockscout is queried in parallel across chains. KiiChain Genesis is on Polygon (w3s/IPFS). Base ERC-1155 tokens such as tokenId 0 are allowed even when owner.hash is missing. Cards retry nft-art after a broken image.
+- Media proxy sniffs PNG/JPEG/GIF/WEBP and retries IPFS gateways.
+- Onchain Stats stays zkCodex-style: first txn, last activity, contracts deployed, heatmap.
 
 ## What it is
 Pow3Folio is a public proof of work portfolio for Web3 builders. URL: https://pow3folio.vercel.app/{username}
