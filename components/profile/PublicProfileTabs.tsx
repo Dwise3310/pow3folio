@@ -135,7 +135,7 @@ export default function PublicProfileTabs({
             </p>
             {skills.length > 0 && (
               <div>
-                <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">Skills / Service pillars</h3>
+                <h3 className="section-heading">Skills / Service pillars</h3>
                 <div className="flex flex-wrap gap-1.5">
                   {skills.map((skill) => (
                     <button
@@ -152,13 +152,13 @@ export default function PublicProfileTabs({
             )}
             {longBio && (
               <div>
-                <h3 className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">About</h3>
+                <h3 className="section-heading">About</h3>
                 <p className="whitespace-pre-wrap text-sm leading-relaxed break-words text-foreground">{longBio}</p>
               </div>
             )}
             {workExperience.length > 0 && (
               <div>
-                <h3 className="mb-2 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">Work experience</h3>
+                <h3 className="section-heading">Work experience</h3>
                 <div className="space-y-4">
                   {workExperience.map((w, i) => (
                     <div key={w.id} className={i > 0 ? "pt-3 border-t border-border/50" : ""}>
@@ -183,7 +183,7 @@ export default function PublicProfileTabs({
             )}
             {education.length > 0 && (
               <div>
-                <h3 className="mb-2 text-sm font-extrabold tracking-wide text-amber-700 dark:text-amber-400">Education</h3>
+                <h3 className="section-heading">Education</h3>
                 <div className="space-y-4">
                   {education.map((e, i) => (
                     <div key={e.id} className={i > 0 ? "pt-3 border-t border-border/50" : ""}>
@@ -204,8 +204,8 @@ export default function PublicProfileTabs({
             )}
             {credentials.length > 0 && (
               <div>
-                <h3 className="mb-2 text-[10px] font-medium uppercase tracking-wide text-foreground-subtle">Docs & credentials</h3>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                <h3 className="section-heading">Docs & credentials</h3>
+                <div className="tight-cards tight-cards-3">
                   {credentials.map((doc) => (
                     <a key={doc.id} href={doc.file_url} target="_blank" rel="noopener noreferrer" className="group flex flex-col overflow-hidden rounded-xl border border-border bg-surface/40 transition-all hover:border-primary/40">
                       <CredentialThumb doc={doc} className="aspect-[4/3] w-full" />
