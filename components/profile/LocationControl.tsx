@@ -59,15 +59,14 @@ function stateFromCity(city: string): string | null {
   return null;
 }
 
-/** GPS beats geocoder labels. Calabar (~4.96N, 8.33E) is east of Rivers (~PH 4.82N, 7.05E). */
 function stateFromCoords(lat: number, lon: number): string | null {
   if (Number.isNaN(lat) || Number.isNaN(lon)) return null;
   if (lat < 4.0 || lat > 14.0 || lon < 2.6 || lon > 15.0) return null;
   if (lat >= 4.82 && lat <= 5.16 && lon >= 8.15 && lon <= 8.52) return "Cross River";
   if (lat >= 4.65 && lat <= 6.95 && lon >= 8.00 && lon <= 9.55) return "Cross River";
-  if (lat >= 4.30 && lat <= 5.75 && lon >= 6.35 && lon <= 7.55) return "Rivers";
-  if (lat >= 4.45 && lat <= 5.55 && lon >= 7.45 && lon < 8.00) return "Akwa Ibom";
-  if (lat >= 4.55 && lat <= 5.55 && lon >= 5.70 && lon < 6.45) return "Bayelsa";
+  if (lat >= 4.3 && lat <= 5.75 && lon >= 6.35 && lon <= 7.55) return "Rivers";
+  if (lat >= 4.45 && lat <= 5.55 && lon >= 7.45 && lon < 8.0) return "Akwa Ibom";
+  if (lat >= 4.55 && lat <= 5.55 && lon >= 5.7 && lon < 6.45) return "Bayelsa";
   return null;
 }
 
@@ -158,19 +157,12 @@ export default function LocationControl({ country, region, onChange }: Props) {
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
 
-  function commitRegion(nextCountry: string, nextRegion: string) {
-    const mapped =
-      normalizeName(nextCountry) === "nigeria" ? pickState(nextCountry, nextRegion, nextRegion) : nextRegion;
-    onChange(nextCountry, mapped);
-    if (mapped && mapped !== nextRegion) setHint(`Mapped ${nextRegion} to ${mapped}`);
-  }
-
   async function detect() {
     setError(null);
     setHint(null);
 
     if (!navigator.geolocation) {
-      setError("Allow location on this device, or type country and state. Network detect often picks the wrong Nigerian state.");
+      setError("This browser cannot share GPS. Allow location in your device settings and try again.");
       return;
     }
 
@@ -183,16 +175,16 @@ export default function LocationControl({ country, region, onChange }: Props) {
           if (result.city) setHint(`Detected ${result.city}, ${result.region}`);
           else setHint(`Detected ${result.region}, ${result.country}`);
         } catch {
-          setError("Could not resolve GPS. Type your state below.");
+          setError("Could not resolve GPS. Allow precise location and tap Detect again.");
         }
         setLoading(false);
       },
       (err) => {
         setLoading(false);
         if (err.code === err.PERMISSION_DENIED) {
-          setError("Location permission was blocked. Type country and state. IP lookup is skipped because it often reports Rivers instead of Cross River.");
+          setError("Location permission was blocked. Enable it for this site, then tap Detect.");
         } else {
-          setError("GPS timed out. Type your state below.");
+          setError("GPS timed out. Move somewhere with a clearer signal and tap Detect again.");
         }
       },
       { enableHighAccuracy: true, timeout: 20000, maximumAge: 0 }
@@ -210,7 +202,7 @@ export default function LocationControl({ country, region, onChange }: Props) {
             Location
           </p>
           <p className="text-xs text-foreground-muted truncate">
-            {label || "Country and state only. Uses GPS, not your network."}
+            {label || "Uses device GPS only. Manual typing is off so the state stays accurate."}
           </p>
         </div>
         <div className="flex shrink-0 gap-1.5">
@@ -224,29 +216,6 @@ export default function LocationControl({ country, region, onChange }: Props) {
           )}
         </div>
       </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-        <div>
-          <label className="label">Country</label>
-          <input
-            className="input"
-            value={country}
-            onChange={(e) => onChange(e.target.value, region)}
-            placeholder="Nigeria"
-          />
-        </div>
-        <div>
-          <label className="label">State / region</label>
-          <input
-            className="input"
-            value={region}
-            onChange={(e) => onChange(country, e.target.value)}
-            onBlur={(e) => commitRegion(country, e.target.value)}
-            placeholder="Cross River"
-          />
-        </div>
-      </div>
-
       {hint && <p className="text-xs text-foreground-muted">{hint}</p>}
       {error && <p className="text-xs text-danger animate-fade-in">{error}</p>}
     </div>
