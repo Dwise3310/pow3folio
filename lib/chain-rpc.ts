@@ -131,13 +131,13 @@ export async function readErc20(
     rpcCall(rpc, "eth_call", [{ to: contract, data: `0x${NAME}` }, "latest"]),
   ]);
   if (typeof balHex !== "string") return null;
-  let qty = 0n;
+  let qty = BigInt(0);
   try {
     qty = BigInt(balHex);
   } catch {
     return null;
   }
-  if (qty <= 0n) return null;
+  if (qty <= BigInt(0)) return null;
   const decimals = typeof decHex === "string" ? Number(BigInt(decHex)) : 18;
   return {
     balance: formatUnits(qty.toString(), Number.isFinite(decimals) ? decimals : 18),
