@@ -1,1 +1,463 @@
-PLACEHOLDER
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { createClient } from "@/lib/supabase/client";
+import type { CustomChainInput, ImportedTokenRef, OnchainChain, OnchainFootprint as Footprint, OnchainToken } from "@/lib/onchain";
+import ActivityHeatmap from "@/components/profile/ActivityHeatmap";
+
+export type NamedWallet = {
+  address: string;
+  label: string;
+};
+
+type Props = {
+  address: string | null;
+  ensName: string | null;
+  arkhamUrl: string | null;
+  owner?: boolean;
+  profileId?: string | null;
+  showDustTokens?: boolean;
+  wallets?: NamedWallet[];
+  customChains?: CustomChainInput[];
+  publicChainIds?: string[] | null;
+  importedTokens?: ImportedTokenRef[];
+};
+
+const HEADING = "section-heading";
+
+const KII_PRESET: CustomChainInput = {
+  id: "kiichain",
+  name: "KiiChain",
+  chainId: 1783,
+  rpc: "https://json-rpc.kiivalidator.com",
+  explorer: "https://explorer.kiichain.io/address/",
+  native: "KII",
+};
+
+function usd(value: number | null | undefined) {
+  if (value == null || !Number.isFinite(value) || value <= 0) return "—";
+  if (value < 0.01) return "<$0.01";
+  return `$${value.toLocaleString(undefined, { maximumFractionDigits: 2 })}`;
+}
+
+function timeAgo(iso: string | null) {
+  if (!iso) return "—";
+  const then = new Date(iso).getTime();
+  if (!Number.isFinite(then)) return "—";
+  const delta = Date.now() - then;
+  const mins = Math.floor(delta / 60000);
+  if (mins < 1) return "just now";
+  if (mins < 60) return `${mins}m ago`;
+  const hours = Math.floor(mins / 60);
+  if (hours < 24) return `${hours}h ago`;
+  const days = Math.floor(hours / 24);
+  if (days < 45) return `${days}d ago`;
+  return new Date(iso).toLocaleDateString();
+}
+
+function Metric({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex h-[72px] flex-col justify-between rounded-xl border border-border bg-surface p-3">
+      <p className="text-[10px] uppercase tracking-wide text-foreground-subtle">{label}</p>
+      <p className="text-base font-semibold tabular-nums leading-none">{value}</p>
+    </div>
+  );
+}
+
+export default function OnchainFootprint({
+  address,
+  ensName,
+  arkhamUrl,
+  owner = false,
+  profileId = null,
+  showDustTokens = false,
+  wallets = [],
+  customChains = [],
+  publicChainIds = null,
+  importedTokens = [],
+}: Props) {
+  const [activeWallet, setActiveWallet] = useState(address || "");
+  const [data, setData] = useState<Footprint | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [showDust, setShowDust] = useState(showDustTokens);
+  const [chainId, setChainId] = useState<string>("");
+  const [visibleIds, setVisibleIds] = useState<string[] | null>(publicChainIds);
+  const [savedTokens, setSavedTokens] = useState<ImportedTokenRef[]>(importedTokens);
+  const [tokenCa, setTokenCa] = useState("");
+  const [tokenMsg, setTokenMsg] = useState<string | null>(null);
+  const [importingToken, setImportingToken] = useState(false);
+  const [chainForm, setChainForm] = useState({ name: "", chainId: "", rpc: "", explorer: "", native: "" });
+  const [savingChain, setSavingChain] = useState(false);
+  const [chainMsg, setChainMsg] = useState<string | null>(null);
+  const [chainOpen, setChainOpen] = useState(false);
+
+  useEffect(() => { setShowDust(showDustTokens); }, [showDustTokens]);
+  useEffect(() => { setVisibleIds(publicChainIds); }, [publicChainIds]);
+  useEffect(() => { setSavedTokens(importedTokens); }, [importedTokens]);
+  useEffect(() => { if (address && !activeWallet) setActiveWallet(address); }, [address, activeWallet]);
+
+  useEffect(() => {
+    if (!activeWallet) return;
+    let cancelled = false;
+    const ctrl = new AbortController();
+    const timeout = setTimeout(() => ctrl.abort(), 15000);
+    setLoading(true);
+    setError(null);
+    const params = new URLSearchParams();
+    if (customChains.length) params.set("chains", JSON.stringify(customChains));
+    if (savedTokens.length) params.set("tokens", JSON.stringify(savedTokens));
+    const qs = params.toString() ? `?${params.toString()}` : "";
+    fetch(`/api/onchain/${activeWallet}${qs}`, { signal: ctrl.signal })
+      .then(async (res) => {
+        if (!res.ok) throw new Error("Could not load onchain data");
+        return (await res.json()) as Footprint;
+      })
+      .then((json) => {
+        if (cancelled) return;
+        setData(json);
+        const preferred = [...json.chains]
+          .filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported || Number(c.balance) > 0)
+          .sort((a, b) => b.txCount - a.txCount || b.transferCount - a.transferCount)[0];
+        if (preferred) setChainId(preferred.id);
+      })
+      .catch((e) => {
+        if (cancelled) return;
+        if (e instanceof DOMException && e.name === "AbortError") {
+          setError("Onchain lookup hit the 15s cap. Refresh — healthy chains still load on their own.");
+        } else {
+          setError(e instanceof Error ? e.message : "Lookup failed");
+        }
+      })
+      .finally(() => {
+        clearTimeout(timeout);
+        if (!cancelled) setLoading(false);
+      });
+    return () => { cancelled = true; clearTimeout(timeout); ctrl.abort(); };
+  }, [activeWallet, customChains, savedTokens]);
+
+  const interacted = useMemo(
+    () => data?.chains.filter((c) => c.txCount > 0 || c.transferCount > 0 || c.imported || Number(c.balance) > 0) ?? [],
+    [data]
+  );
+  const publicList = useMemo(() => {
+    if (!visibleIds || visibleIds.length === 0) return interacted;
+    const filtered = interacted.filter((c) => visibleIds.includes(c.id));
+    return filtered.length ? filtered : interacted.slice(0, 1);
+  }, [interacted, visibleIds]);
+  const selected: OnchainChain | null = useMemo(() => {
+    if (!data || !chainId) return null;
+    return data.chains.find((c) => c.id === chainId) || null;
+  }, [data, chainId]);
+  useEffect(() => {
+    if (!publicList.length) return;
+    if (!publicList.some((c) => c.id === chainId)) setChainId(publicList[0].id);
+  }, [publicList, chainId]);
+  const visibleTokens = useMemo(() => {
+    if (!data) return [] as OnchainToken[];
+    return data.tokens.filter((t) => {
+      if (selected && t.chainId !== selected.id) return false;
+      if (selected) return true;
+      return !t.isDust || showDust;
+    });
+  }, [data, selected, showDust]);
+
+  async function persistProfile(patch: Record<string, unknown>, okLabel: string) {
+    if (!owner || !profileId) return false;
+    setSavingChain(true);
+    setChainMsg(null);
+    try {
+      const prefsKeys = ["public_chain_ids", "imported_tokens"];
+      const prefsPatch: Record<string, unknown> = {};
+      const otherPatch: Record<string, unknown> = {};
+      for (const [key, value] of Object.entries(patch)) {
+        if (prefsKeys.includes(key)) prefsPatch[key] = value;
+        else otherPatch[key] = value;
+      }
+      if (Object.keys(prefsPatch).length) {
+        const res = await fetch("/api/profile/onchain-prefs", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(prefsPatch),
+        });
+        const json = (await res.json()) as { error?: string };
+        if (!res.ok) {
+          setSavingChain(false);
+          setChainMsg(json.error || "Could not save chain visibility.");
+          return false;
+        }
+      }
+      if (Object.keys(otherPatch).length) {
+        const supabase = createClient();
+        const { error: err } = await supabase.from("profiles").update(otherPatch).eq("id", profileId);
+        if (err) {
+          setSavingChain(false);
+          setChainMsg(err.message);
+          return false;
+        }
+      }
+      setSavingChain(false);
+      setChainMsg(okLabel);
+      return true;
+    } catch {
+      setSavingChain(false);
+      setChainMsg("Could not save. Check your connection and try again.");
+      return false;
+    }
+  }
+
+  async function toggleDust() {
+    const next = !showDust;
+    setShowDust(next);
+    if (!owner || !profileId) return;
+    const supabase = createClient();
+    await supabase.from("profiles").update({ show_dust_tokens: next }).eq("id", profileId);
+  }
+
+  async function togglePublicChain(id: string) {
+    if (!owner) return;
+    const current = visibleIds && visibleIds.length ? visibleIds : interacted.map((c) => c.id);
+    const on = current.includes(id);
+    const next = on ? current.filter((x) => x !== id) : [...current, id];
+    if (next.length < 1) {
+      setChainMsg("At least one chain must stay visible on the public page.");
+      return;
+    }
+    setVisibleIds(next);
+    const ok = await persistProfile({ public_chain_ids: next }, on ? `${id} hidden on public page.` : `${id} visible on public page.`);
+    if (!ok) setVisibleIds(current);
+  }
+
+  async function persistChains(next: CustomChainInput[], okLabel: string) {
+    const ok = await persistProfile({ custom_chains: next }, okLabel);
+    if (ok) window.location.reload();
+  }
+
+  async function saveCustomChain(e: React.FormEvent) {
+    e.preventDefault();
+    const name = chainForm.name.trim();
+    const rpc = chainForm.rpc.trim().replace(/\/$/, "");
+    const explorer = chainForm.explorer.trim().replace(/\/$/, "");
+    if (!name || !rpc) { setChainMsg("Network name and JSON-RPC URL are required."); return; }
+    if (customChains.some((c) => (c.name || "").toLowerCase() === name.toLowerCase() || c.rpc === rpc)) {
+      setChainMsg("That network is already imported.");
+      return;
+    }
+    await persistChains(
+      [...customChains, { name, rpc, explorer: explorer || undefined, native: chainForm.native.trim() || "ETH", chainId: Number(chainForm.chainId) || undefined }],
+      `${name} added. Native ${chainForm.native || "ETH"} will load from RPC.`
+    );
+  }
+
+  async function importTokenByCa(e: React.FormEvent) {
+    e.preventDefault();
+    if (!activeWallet || !chainId) { setTokenMsg("Select a chain first."); return; }
+    const contract = tokenCa.trim().toLowerCase();
+    if (!/^0x[a-f0-9]{40}$/.test(contract)) { setTokenMsg("Paste a valid contract address."); return; }
+    if (savedTokens.some((t) => t.chainId === chainId && t.contract === contract)) {
+      setTokenMsg("That token is already imported on this chain.");
+      return;
+    }
+    setImportingToken(true);
+    setTokenMsg("Checking if this wallet holds it…");
+    try {
+      const qs = new URLSearchParams({ contract, chain: chainId, chains: JSON.stringify(customChains) });
+      const res = await fetch(`/api/onchain/${activeWallet}/lookup?${qs.toString()}`);
+      const json = (await res.json()) as { tokens?: Array<{ symbol: string; balance: string; chain: string }> };
+      const hit = json.tokens?.[0];
+      if (!hit) { setTokenMsg("This wallet does not hold that contract on the selected chain."); setImportingToken(false); return; }
+      const next = [...savedTokens, { chainId, contract }];
+      const ok = await persistProfile({ imported_tokens: next }, `${hit.symbol} imported (${hit.balance} on ${hit.chain}).`);
+      if (ok) { setSavedTokens(next); setTokenCa(""); setTokenMsg(`${hit.symbol} added. ${hit.balance} held on ${hit.chain}.`); }
+    } catch { setTokenMsg("Lookup failed."); }
+    setImportingToken(false);
+  }
+
+  if (!address && wallets.length === 0) {
+    return (
+      <div className="card p-3 sm:p-4 text-sm text-foreground-subtle">
+        No wallet connected. Connect a wallet in Profile to aggregate this talent&apos;s onchain footprint.
+      </div>
+    );
+  }
+
+  const ens = data?.ens || ensName;
+  const explorers = data?.explorers ?? [
+    { label: "Etherscan", href: `https://etherscan.io/address/${activeWallet}` },
+    ...(arkhamUrl ? [{ label: "Arkham", href: arkhamUrl }] : []),
+  ];
+  const dustCount = (data?.tokens || []).filter((t) => t.isDust && (!selected || t.chainId === selected.id)).length;
+  const portfolioValue = selected
+    ? (selected.nativeUsd || 0) + (data?.tokens || []).filter((t) => t.chainId === selected.id).reduce((sum, t) => sum + (t.usdValue || 0), 0)
+    : data?.totalValueUsd || 0;
+  const metrics = selected
+    ? [
+        { label: "Interactions", value: selected.txCount.toLocaleString() },
+        { label: "Volume", value: usd(selected.volumeUsd) },
+        { label: "Contracts", value: selected.uniqueContracts.toLocaleString() },
+        { label: "Fees", value: usd(selected.feesUsd) },
+        { label: "Unique tokens", value: selected.uniqueTokens.toLocaleString() },
+        { label: "Token trades", value: selected.tokenTrades.toLocaleString() },
+        { label: "NFT mints", value: selected.nftMints ? selected.nftMints.toLocaleString() : "—" },
+        { label: `First txn on ${selected.name}`, value: selected.walletAgeDays ? `${selected.walletAgeDays}d ago` : "—" },
+        { label: "Last activity", value: timeAgo(selected.lastTx) },
+        { label: "Contracts deployed", value: (selected.contractsDeployed || 0).toLocaleString() },
+        { label: "Active days", value: selected.activeDays.toLocaleString() },
+        { label: "Active weeks", value: selected.activeWeeks.toLocaleString() },
+        { label: "Active months", value: selected.activeMonths.toLocaleString() },
+        { label: "Transfers", value: selected.transferCount.toLocaleString() },
+      ]
+    : [
+        { label: "Interactions", value: (data?.totalTx || 0).toLocaleString() },
+        { label: "Volume", value: usd(data?.totalVolumeUsd) },
+        { label: "Fees", value: usd(data?.totalFeesUsd) },
+        { label: "Transfers", value: (data?.totalTransfers || 0).toLocaleString() },
+        { label: "Chains used", value: publicList.length.toString() },
+        { label: "Portfolio", value: usd(data?.totalValueUsd) },
+      ];
+  const protocolList = (data?.protocols || []).filter((p) => !selected || p.chain === selected.name);
+  const shownChains = owner ? interacted : publicList;
+
+  return (
+    <div className="space-y-4">
+      {wallets.length > 1 && (
+        <div>
+          <h3 className={HEADING}>Wallets</h3>
+          <div className="flex flex-wrap gap-1.5">
+            {wallets.map((w) => (
+              <button key={w.address} type="button" onClick={() => setActiveWallet(w.address)} className={`rounded-full border px-2.5 py-1 text-[11px] font-medium ${activeWallet.toLowerCase() === w.address.toLowerCase() ? "border-primary text-primary bg-primary/10" : "border-border bg-surface-elevated"}`}>
+                {w.label}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+      <div className="card p-3 sm:p-4 space-y-3">
+        <div className="flex flex-wrap items-start justify-between gap-2">
+          <div className="min-w-0">
+            <h3 className={HEADING}>Wallet</h3>
+            {ens && <p className="text-sm font-semibold">{ens}</p>}
+            <p className="mt-0.5 font-mono text-xs text-foreground-muted break-all">{activeWallet}</p>
+          </div>
+          <button type="button" className="btn-ghost text-xs" onClick={() => navigator.clipboard.writeText(activeWallet)}>Copy</button>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {explorers.map((x) => (
+            <a key={x.label} href={x.href} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary">{x.label}</a>
+          ))}
+          <a href={`https://zkcodex.com/id/${activeWallet}`} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary">zkCodex</a>
+        </div>
+      </div>
+      {loading && <div className="card p-3 text-sm text-foreground-muted">Reading onchain footprint…</div>}
+      {error && <div className="card p-3 text-sm text-danger">{error}</div>}
+      {data && (
+        <>
+          <div className="relative">
+            <h3 className={HEADING}>Chain</h3>
+            <button type="button" onClick={() => setChainOpen((o) => !o)} className="flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface-elevated px-3 py-2.5 text-left text-sm font-medium transition-colors hover:border-primary/40" aria-expanded={chainOpen}>
+              <span className="truncate">{selected?.name || "Select chain"}</span>
+              <svg className={`h-4 w-4 shrink-0 text-foreground-muted transition-transform duration-200 ${chainOpen ? "rotate-180" : ""}`} viewBox="0 0 20 20" fill="currentColor" aria-hidden>
+                <path fillRule="evenodd" d="M5.23 7.21a.75.75 0 011.06.02L10 11.168l3.71-3.938a.75.75 0 111.08 1.04l-4.25 4.5a.75.75 0 01-1.08 0l-4.25-4.5a.75.75 0 01.02-1.06z" clipRule="evenodd" />
+              </svg>
+            </button>
+            <div className={`overflow-hidden transition-all duration-200 ease-out ${chainOpen ? "mt-1.5 max-h-72 opacity-100" : "max-h-0 opacity-0"}`}>
+              <div className="rounded-xl border border-border bg-surface shadow-lg divide-y divide-border/60 overflow-y-auto max-h-72">
+                {shownChains.map((c) => {
+                  const publiclyOn = !visibleIds || visibleIds.length === 0 || visibleIds.includes(c.id);
+                  const isActive = chainId === c.id;
+                  return (
+                    <div key={c.id} className={`flex items-center gap-2 px-3 py-2.5 ${isActive ? "bg-primary/5" : "hover:bg-surface-hover"}`}>
+                      <button type="button" onClick={() => { setChainId(c.id); setChainOpen(false); }} className="min-w-0 flex-1 text-left">
+                        <span className={`block truncate text-sm font-medium ${isActive ? "text-primary" : ""}`}>{c.name}</span>
+                        <span className="block text-[10px] text-foreground-subtle tabular-nums">{c.txCount > 0 ? `${c.txCount.toLocaleString()} tx` : c.imported ? "Imported" : "—"}{Number(c.balance) > 0 ? ` · ${c.balance} ${c.nativeSymbol}` : ""}</span>
+                      </button>
+                      {owner && (
+                        <button type="button" role="switch" aria-checked={publiclyOn} onClick={(e) => { e.stopPropagation(); togglePublicChain(c.id); }} className={`relative h-5 w-9 shrink-0 rounded-full transition-colors ${publiclyOn ? "bg-primary" : "bg-border"}`} title={publiclyOn ? "Visible on public page" : "Hidden on public page"}>
+                          <span className={`absolute top-0.5 left-0.5 h-4 w-4 rounded-full bg-white shadow transition-transform ${publiclyOn ? "translate-x-4" : "translate-x-0"}`} />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            <p className="mt-1.5 text-[11px] text-foreground-subtle">{owner ? "Pick a chain to view stats. Toggle on the right controls public visibility. At least one chain must stay public." : "Interacted and imported networks. Open the menu to switch chains."}</p>
+            {chainMsg && <p className="mt-1 text-xs text-foreground-muted">{chainMsg}</p>}
+          </div>
+          <div className="grid grid-cols-3 gap-2">
+            <Metric label="Value" value={usd(portfolioValue)} />
+            <Metric label="Tokens" value={String(visibleTokens.length + (selected && Number(selected.balance) > 0 ? 1 : 0))} />
+            <Metric label="Native" value={selected ? `${selected.balance} ${selected.nativeSymbol}` : "—"} />
+          </div>
+          <div>
+            <h3 className={HEADING}>{selected ? `${selected.name} stats` : "Portfolio stats"}</h3>
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">{metrics.map((m) => <Metric key={m.label} label={m.label} value={m.value} />)}</div>
+          </div>
+          <div>
+            <h3 className={HEADING}>DeFi pools & protocols</h3>
+            {protocolList.length === 0 ? (
+              <div className="card text-sm text-foreground-subtle">No known protocol interactions on this chain yet.</div>
+            ) : (
+              <div className="flex flex-wrap gap-1.5">
+                {protocolList.map((p) => (
+                  <a key={`${p.chain}-${p.name}-${p.address}`} href={p.href} target="_blank" rel="noopener noreferrer" className="rounded-full border border-border bg-surface-elevated px-2.5 py-1 text-[11px] font-medium hover:border-primary/40 hover:text-primary">{p.name}<span className="ml-1 text-foreground-subtle">{p.chain}</span></a>
+                ))}
+              </div>
+            )}
+          </div>
+          <div>
+            <div className="mb-2 flex items-center justify-between gap-2">
+              <h3 className={`${HEADING} mb-0`}>Tokens</h3>
+              {owner && !selected && dustCount > 0 && (
+                <button type="button" className="btn-ghost text-[11px]" onClick={toggleDust}>{showDust ? "Hide dust under $1" : `Show dust (${dustCount})`}</button>
+              )}
+            </div>
+            {visibleTokens.length === 0 && !(selected && Number(selected.balance) > 0) ? (
+              <div className="card text-sm text-foreground-subtle">No tokens on this chain.</div>
+            ) : (
+              <div className="card divide-y divide-border/70 overflow-hidden p-0">
+                {selected && Number(selected.balance) > 0 && (
+                  <div className="flex items-center justify-between gap-3 px-3 py-2">
+                    <div><p className="text-sm font-medium">{selected.nativeSymbol}</p><p className="text-[11px] text-foreground-subtle">{selected.name} · native</p></div>
+                    <div className="text-right"><p className="text-xs tabular-nums text-foreground-muted">{selected.balance}</p><p className="text-[10px] text-foreground-subtle">{usd(selected.nativeUsd)}</p></div>
+                  </div>
+                )}
+                {visibleTokens.map((t) => (
+                  <a key={`${t.chain}-${t.contract}`} href={t.href} target="_blank" rel="noopener noreferrer" className="flex items-center justify-between gap-3 px-3 py-2 hover:bg-surface-hover">
+                    <div className="min-w-0"><p className="text-sm font-medium truncate">{t.symbol}</p><p className="text-[11px] text-foreground-subtle truncate">{t.chain}{t.name ? ` · ${t.name}` : ""}</p></div>
+                    <div className="text-right shrink-0"><p className="text-xs tabular-nums text-foreground-muted">{t.balance}</p>{t.usdValue != null && <p className="text-[10px] text-foreground-subtle">{usd(t.usdValue)}</p>}</div>
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+          <ActivityHeatmap days={selected?.activityDays || data.chains.flatMap((c) => c.activityDays || [])} methods={selected?.activityMethods || {}} />
+        </>
+      )}
+      {owner && profileId && (
+        <>
+          <form onSubmit={importTokenByCa} className="card space-y-2 p-3">
+            <h3 className={HEADING}>Import a token by CA</h3>
+            <p className="text-[11px] text-foreground-subtle">Select the chain above, paste the contract, and import only if this wallet currently holds it.</p>
+            <p className="text-[11px] text-foreground-muted">Selected chain: {selected?.name || "none"}</p>
+            <input className="input text-sm" value={tokenCa} onChange={(e) => setTokenCa(e.target.value)} placeholder="0x…" />
+            {tokenMsg && <p className="text-xs text-foreground-muted">{tokenMsg}</p>}
+            <button type="submit" className="btn-secondary text-xs" disabled={importingToken || !chainId}>{importingToken ? "Checking…" : "Import if held"}</button>
+          </form>
+          <form onSubmit={saveCustomChain} className="card space-y-2 p-3">
+            <h3 className={HEADING}>Import a network</h3>
+            <p className="text-[11px] text-foreground-subtle">Use the EVM chain ID and a public JSON-RPC. Explorer is optional.</p>
+            <button type="button" className="btn-ghost text-xs" onClick={() => persistChains(customChains.some((c) => (c.name || "").toLowerCase() === "kiichain") ? customChains : [...customChains, KII_PRESET], "KiiChain added.")}>Add KiiChain preset</button>
+            <input className="input text-sm" value={chainForm.name} onChange={(e) => setChainForm((s) => ({ ...s, name: e.target.value }))} placeholder="Network name (KiiChain)" />
+            <input className="input text-sm" value={chainForm.chainId} onChange={(e) => setChainForm((s) => ({ ...s, chainId: e.target.value }))} placeholder="Chain ID (1783)" />
+            <input className="input text-sm" value={chainForm.rpc} onChange={(e) => setChainForm((s) => ({ ...s, rpc: e.target.value }))} placeholder="https://json-rpc.example.com" />
+            <input className="input text-sm" value={chainForm.explorer} onChange={(e) => setChainForm((s) => ({ ...s, explorer: e.target.value }))} placeholder="https://explorer.example.com" />
+            <input className="input text-sm" value={chainForm.native} onChange={(e) => setChainForm((s) => ({ ...s, native: e.target.value }))} placeholder="Native symbol (KII)" />
+            {chainMsg && <p className="text-xs text-foreground-muted">{chainMsg}</p>}
+            <button type="submit" className="btn-secondary text-xs" disabled={savingChain}>{savingChain ? "Saving…" : "Add network"}</button>
+          </form>
+        </>
+      )}
+    </div>
+  );
+}
