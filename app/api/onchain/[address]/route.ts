@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
-import { loadOnchainFootprint, type CustomChainInput, type ImportedTokenRef } from "@/lib/onchain";
+import { type CustomChainInput, type ImportedTokenRef } from "@/lib/onchain";
+import { loadOnchainFootprintFast } from "@/lib/onchain-fast";
 import { enrichFootprint, normalizeExtraChains } from "@/lib/chain-enrich";
 
 export const revalidate = 120;
-export const maxDuration = 60;
+export const maxDuration = 20;
 
 function parseJson<T>(raw: string | null): T[] {
   if (!raw) return [];
@@ -23,7 +24,7 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
 
   let data;
   try {
-    data = await loadOnchainFootprint(address, extra, imported);
+    data = await loadOnchainFootprintFast(address, extra, imported);
   } catch (err) {
     console.error("[onchain] loadOnchainFootprint failed:", err);
     return NextResponse.json({ error: "Onchain lookup failed" }, { status: 502 });
@@ -33,9 +34,11 @@ export async function GET(req: Request, { params }: { params: Promise<{ address:
     return NextResponse.json({ error: "Invalid address" }, { status: 400 });
   }
 
-  // Enrichment is already per-chain isolated; never let it blank the response.
   try {
-    await enrichFootprint(data, extra, imported);
+    await Promise.race([
+      enrichFootprint(data, extra, imported),
+      new Promise((resolve) => setTimeout(resolve, 4000)),
+    ]);
   } catch (err) {
     console.error("[onchain] enrichFootprint failed:", err);
   }
