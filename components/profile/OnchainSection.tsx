@@ -14,6 +14,21 @@ type Meta = {
   show_dust_tokens?: boolean | null;
 };
 
+function withoutPrefs(chains: CustomChain[] | null | undefined): CustomChain[] {
+  return (chains || []).filter((c) => c.id !== "__pow3_prefs" && c.name !== "__pow3_prefs");
+}
+
+function prefsFromChains(chains: CustomChain[] | null | undefined) {
+  const row = (chains || []).find((c) => c.id === "__pow3_prefs" || c.name === "__pow3_prefs") as
+    | (CustomChain & { public_chain_ids?: string[]; imported_tokens?: ImportedTokenRef[] })
+    | undefined;
+  if (!row) return {};
+  return {
+    public_chain_ids: row.public_chain_ids,
+    imported_tokens: row.imported_tokens,
+  };
+}
+
 export default function OnchainSection({
   profileUrl,
   nfts,
@@ -45,7 +60,6 @@ export default function OnchainSection({
 
   useEffect(() => {
     if (!walletAddress) return;
-    if (customChains.length || importedTokens.length || (wallets && wallets.length > 1)) return;
     let cancelled = false;
     fetch(`/api/onchain/meta/${walletAddress}`)
       .then((res) => (res.ok ? res.json() : null))
@@ -56,8 +70,10 @@ export default function OnchainSection({
     return () => {
       cancelled = true;
     };
-  }, [walletAddress, customChains.length, importedTokens.length, wallets]);
+  }, [walletAddress]);
 
+  const rawChains = customChains.length ? customChains : meta?.custom_chains || [];
+  const hiddenPrefs = prefsFromChains(rawChains);
   const extraWallets = (meta?.extra_wallets || []).filter((w) => w?.address);
   const mergedWallets =
     wallets.length > 0
@@ -75,9 +91,11 @@ export default function OnchainSection({
         arkhamUrl={arkhamUrl}
         showDustTokens={meta?.show_dust_tokens ?? showDustTokens}
         wallets={mergedWallets}
-        customChains={customChains.length ? customChains : meta?.custom_chains || []}
-        publicChainIds={publicChainIds ?? meta?.public_chain_ids ?? null}
-        importedTokens={importedTokens.length ? importedTokens : meta?.imported_tokens || []}
+        customChains={withoutPrefs(rawChains)}
+        publicChainIds={publicChainIds ?? meta?.public_chain_ids ?? hiddenPrefs.public_chain_ids ?? null}
+        importedTokens={
+          importedTokens.length ? importedTokens : meta?.imported_tokens || hiddenPrefs.imported_tokens || []
+        }
         owner={owner}
         profileId={profileId}
       />
