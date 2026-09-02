@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { gatewayUrls, rewriteUrl } from "@/lib/nft-media";
+import { gatewayUrls, rewriteUrl, sniffMediaType } from "@/lib/nft-media";
 
 export const revalidate = 86400;
 export const maxDuration = 20;
@@ -7,23 +7,15 @@ export const maxDuration = 20;
 const UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36";
 
-function sniffType(buf: ArrayBuffer, headerType: string) {
-  const bytes = new Uint8Array(buf.slice(0, 12));
-  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return "image/png";
-  if (bytes[0] === 0xff && bytes[1] === 0xd8) return "image/jpeg";
-  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return "image/gif";
-  if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[8] === 0x57 && bytes[9] === 0x45) return "image/webp";
-  if (headerType.startsWith("image/")) return headerType;
-  return null;
-}
+const MAX_BYTES = 12 * 1024 * 1024;
 
-async function fetchImage(url: string) {
+async function fetchMedia(url: string) {
   const ctrl = new AbortController();
   const t = setTimeout(() => ctrl.abort(), 10000);
   try {
     const res = await fetch(url, {
       headers: {
-        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        Accept: "image/avif,image/webp,image/apng,image/gif,image/*,video/mp4,video/webm,*/*;q=0.8",
         "User-Agent": UA,
       },
       redirect: "follow",
@@ -33,10 +25,10 @@ async function fetchImage(url: string) {
     const type = (res.headers.get("content-type") || "").toLowerCase();
     if (type.includes("text/html") || type.includes("application/json")) return null;
     const buf = await res.arrayBuffer();
-    if (!buf.byteLength) return null;
-    const sniffed = sniffType(buf, type);
+    if (!buf.byteLength || buf.byteLength > MAX_BYTES) return null;
+    const sniffed = sniffMediaType(buf, type);
     if (!sniffed) return null;
-    return { buf, type: sniffed };
+    return { buf, type: sniffed.contentType };
   } catch {
     return null;
   } finally {
@@ -64,8 +56,8 @@ export async function GET(req: Request) {
   );
 
   try {
-    for (const url of candidates.slice(0, 10)) {
-      const hit = await fetchImage(url);
+    for (const url of candidates.slice(0, 8)) {
+      const hit = await fetchMedia(url);
       if (!hit) continue;
       return new NextResponse(hit.buf, {
         headers: {
@@ -74,8 +66,8 @@ export async function GET(req: Request) {
         },
       });
     }
-    return NextResponse.json({ error: "fetch" }, { status: 502 });
+    return NextResponse.json({ error: "fetch", code: "GATEWAY_BLOCKED" }, { status: 502 });
   } catch {
-    return NextResponse.json({ error: "failed" }, { status: 502 });
+    return NextResponse.json({ error: "failed", code: "MEDIA_TEMPORARILY_UNAVAILABLE" }, { status: 502 });
   }
 }

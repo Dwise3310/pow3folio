@@ -11,7 +11,7 @@ Latest product pass:
 - Run extra_wallets.sql so public_chain_ids, custom_chains and imported_tokens columns exist.
 - Logo always goes to the landing page in one click from any dashboard section.
 - Landing slider images for Onchain Stats, NFT import and Multi-wallet match those features.
-- NFT artwork: keep original w3s/IPFS URLs. ipfs.io often 403s. Cards try the media proxy, then the raw URL, then extra gateways, then nft-art. ERC-1155 tokenId 0 is valid. KiiChain Genesis lives on Polygon.
+- NFT media engine: an NFT is metadata plus a media manifest, not a single image_url. Resolution order is Alchemy cached/CDN media, Reservoir, OpenSea CDN, on-chain tokenURI()/uri() with ERC-1155 {id} substitution, then IPFS/Arweave gateways. Cards render image, GIF or video. ERC-1155 tokenId 0 is valid. KiiChain Genesis is Polygon 0x729053e4e0f3603ca17fa3cc6cbab16b7489395f. Public IPFS gateways are a fallback, not the source of truth.
 - Onchain Stats stays zkCodex-style: first txn, last activity, contracts deployed, heatmap.
 
 ## What it is
