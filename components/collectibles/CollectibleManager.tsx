@@ -7,6 +7,7 @@ import type { Collectible } from "@/types/database";
 import type { WalletNft } from "@/lib/nfts";
 import type { NamedWallet } from "@/components/profile/OnchainFootprint";
 import { parseNftQuery } from "@/lib/nft-url";
+import CollectibleThumb from "@/components/collectibles/CollectibleThumb";
 
 type Props = {
   userId: string;
@@ -25,7 +26,7 @@ function sortItems(list: Collectible[]) {
 }
 
 function nftKey(chain: string | null, contractHint: string | null, tokenId: string | null) {
-  return `${(chain || "").toLowerCase()}|${(contractHint || "").toLowerCase()}|${tokenId || ""}`;
+  return `${(chain || "").toLowerCase()}|${(contractHint || "").toLowerCase()}|${tokenId == null ? "" : String(tokenId)}`;
 }
 
 export default function CollectibleManager({ userId, initialItems, walletAddress, wallets = [] }: Props) {
@@ -39,6 +40,21 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
   const [reordering, setReordering] = useState(false);
   const [targetWallet, setTargetWallet] = useState(walletAddress || wallets[0]?.address || "");
 
+  async function persistArtwork(item: Collectible, imageUrl: string) {
+    if (!imageUrl || imageUrl === item.image_url) return;
+    const supabase = createClient();
+    const { data } = await supabase
+      .from("collectibles")
+      .update({ image_url: imageUrl })
+      .eq("id", item.id)
+      .eq("user_id", userId)
+      .select()
+      .single();
+    if (data) {
+      setItems((prev) => prev.map((row) => (row.id === item.id ? (data as Collectible) : row)));
+    }
+  }
+
   async function insertNfts(fresh: WalletNft[], alreadyLabel: string) {
     const existingByKey = new Map(
       items.map((i) => {
@@ -49,10 +65,10 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
     const unique: WalletNft[] = [];
     const refresh: Array<{ row: Collectible; nft: WalletNft }> = [];
     for (const n of fresh) {
-      if (!n.token_id) continue;
+      if (n.token_id == null || String(n.token_id).trim() === "") continue;
       const found = existingByKey.get(nftKey(n.chain, n.contract, n.token_id));
       if (!found) unique.push(n);
-      else if ((!found.image_url && n.image_url) || (n.title && n.title !== found.title)) {
+      else if ((!found.image_url && n.image_url) || (n.image_url && n.image_url !== found.image_url) || (n.title && n.title !== found.title)) {
         refresh.push({ row: found, nft: n });
       }
     }
@@ -183,7 +199,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
         marketplaceUrl?: string;
         error?: string;
       };
-      if (imported.verified && imported.contractAddress && imported.tokenId) {
+      if (imported.verified && imported.contractAddress && imported.tokenId != null && imported.tokenId !== "") {
         await insertNfts(
           [
             {
@@ -218,7 +234,7 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
         return;
       }
       const qs = new URLSearchParams({ contract });
-      if (tokenId) qs.set("tokenId", tokenId);
+      if (tokenId !== "") qs.set("tokenId", tokenId);
       const res = await fetch(`/api/onchain/${targetWallet}/lookup?${qs.toString()}`);
       if (!res.ok) throw new Error("Lookup failed");
       const json = (await res.json()) as {
@@ -365,18 +381,15 @@ export default function CollectibleManager({ userId, initialItems, walletAddress
                   ↓
                 </button>
               </div>
-              {item.image_url ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={`/api/media?u=${encodeURIComponent(item.image_url)}`} alt="" referrerPolicy="no-referrer" className="h-12 w-12 shrink-0 rounded-lg object-cover" />
-              ) : (
-                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-lg bg-surface-elevated text-[10px] uppercase text-foreground-subtle">
-                  NFT
-                </div>
-              )}
+              <CollectibleThumb
+                item={item}
+                className="h-12 w-12 shrink-0 overflow-hidden rounded-lg bg-surface-elevated"
+                onResolved={(url) => persistArtwork(item, url)}
+              />
               <div className="min-w-0">
                 <p className="font-medium break-words">{item.title}</p>
                 <p className="mt-0.5 text-xs text-foreground-muted">
-                  {[item.chain, item.collection_name, item.token_id ? `#${item.token_id}` : null].filter(Boolean).join(" · ")}
+                  {[item.chain, item.collection_name, item.token_id != null && String(item.token_id) !== "" ? `#${item.token_id}` : null].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-0.5 text-xs text-foreground-subtle">{item.is_visible ? "Public" : "Hidden"}</p>
               </div>
