@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { createClient } from "@/lib/supabase/server";
 
-export const PREFS_MARKER = "__pow3_prefs";
+const PREFS_MARKER = "__pow3_prefs";
 
 type PrefsPatch = {
   public_chain_ids?: string[] | null;
@@ -17,10 +17,10 @@ function asChains(raw: unknown): Record<string, unknown>[] {
   return Array.isArray(raw) ? raw.filter((x) => x && typeof x === "object") : [];
 }
 
-export function extractPrefs(customChains: unknown): PrefsPatch {
+function extractPrefs(customChains: unknown): PrefsPatch {
   const row = asChains(customChains).find(
     (c) => c.id === PREFS_MARKER || c.name === PREFS_MARKER
-  ) as PrefsPatch & Record<string, unknown> | undefined;
+  ) as (PrefsPatch & Record<string, unknown>) | undefined;
   if (!row) return {};
   return {
     public_chain_ids: Array.isArray(row.public_chain_ids) ? row.public_chain_ids : undefined,
@@ -28,7 +28,7 @@ export function extractPrefs(customChains: unknown): PrefsPatch {
   };
 }
 
-export function stripPrefs(customChains: unknown): Record<string, unknown>[] {
+function stripPrefs(customChains: unknown): Record<string, unknown>[] {
   return asChains(customChains).filter((c) => c.id !== PREFS_MARKER && c.name !== PREFS_MARKER);
 }
 
