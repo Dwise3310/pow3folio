@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import type { Collectible } from "@/types/database";
 import { isTrustedMediaHost, type NftMediaKind } from "@/lib/nft-media";
 import NFTMediaRenderer from "@/components/collectibles/NFTMediaRenderer";
@@ -23,9 +23,10 @@ function contractFrom(item: Collectible) {
 }
 
 function pickMedia(json: ResolvePayload) {
+  const animation = json.media?.animation;
   const primary =
-    json.media?.animation?.url && (json.media.animation.type === "video" || json.media.animation.type === "gif")
-      ? json.media.animation
+    animation?.url && (animation.type === "video" || animation.type === "gif")
+      ? animation
       : json.media?.primary;
   return {
     url: primary?.url || json.image || json.image_url || null,
@@ -48,13 +49,13 @@ export default function CollectibleThumb({
   const [src, setSrc] = useState<string | null>(item.image_url);
   const [kind, setKind] = useState<NftMediaKind | null>(null);
   const [posterUrl, setPosterUrl] = useState<string | null>(null);
-  const [lookedUp, setLookedUp] = useState(false);
+  const persisted = useRef<string | null>(null);
 
   useEffect(() => {
     setSrc(item.image_url);
     setKind(null);
     setPosterUrl(null);
-    setLookedUp(false);
+    persisted.current = null;
   }, [item.image_url, item.id]);
 
   function apply(url: string | null, type: NftMediaKind | null, poster: string | null) {
@@ -62,49 +63,49 @@ export default function CollectibleThumb({
     setSrc(url);
     setKind(type);
     setPosterUrl(poster);
-    if (url !== item.image_url && isTrustedMediaHost(url)) onResolved?.(url);
+    if (url !== item.image_url && isTrustedMediaHost(url) && persisted.current !== url) {
+      persisted.current = url;
+      onResolved?.(url);
+    }
     return true;
   }
 
-  function resolve() {
+  useEffect(() => {
     if (!contract || tokenId === "") return;
-    const qs = new URLSearchParams({ contract, tokenId, chain: item.chain || "" });
+    if (item.image_url && isTrustedMediaHost(item.image_url)) {
+      setSrc(item.image_url);
+      return;
+    }
+    let cancelled = false;
+    const qs = new URLSearchParams({
+      contract,
+      tokenId,
+      chain: item.chain || "",
+    });
     fetch(`/api/onchain/nft-art?${qs.toString()}`)
       .then((res) => res.json())
       .then((json: ResolvePayload) => {
+        if (cancelled) return;
         const next = pickMedia(json);
-        if (!apply(next.url, next.type, next.posterUrl)) setSrc(null);
-        setLookedUp(true);
+        apply(next.url, next.type, next.posterUrl);
       })
       .catch(() => {
-        setLookedUp(true);
-        setSrc(null);
+        /* keep stored url */
       });
-  }
-
-  useEffect(() => {
-    if (lookedUp || !contract || tokenId === "") return;
-    if (src && isTrustedMediaHost(src)) return;
-    if (src && !src.includes("ipfs") && !src.includes("w3s.link") && !src.includes("nftstorage")) return;
-    resolve();
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [src, contract, tokenId, item.chain, lookedUp]);
+  }, [contract, tokenId, item.chain, item.id, item.image_url]);
 
   return (
     <div className={className}>
       <NFTMediaRenderer
+        key={`${item.id}:${src || "none"}`}
         src={src}
         type={kind}
         posterUrl={posterUrl}
         className="h-full w-full object-cover"
-        onExhausted={() => {
-          if (lookedUp || !contract || tokenId === "") {
-            setSrc(null);
-            return;
-          }
-          setLookedUp(true);
-          resolve();
-        }}
       />
     </div>
   );
