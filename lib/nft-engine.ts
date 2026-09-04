@@ -146,7 +146,7 @@ async function fromAlchemy(contract: string, tokenId: string, chain: string | nu
   const key = process.env.ALCHEMY_API_KEY || "demo";
   const net = ALCHEMY_NET[normalizeChainKey(chain) || "ethereum"] || "eth-mainnet";
   const url = `https://${net}.g.alchemy.com/nft/v3/${key}/getNFTMetadata?contractAddress=${contract}&tokenId=${encodeURIComponent(tokenId)}`;
-  const json = (await getJson(url, 10000)) as {
+  const json = (await getJson(url, 8000)) as {
     name?: string;
     description?: string;
     tokenUri?: string;
@@ -342,9 +342,46 @@ export async function resolveNftMedia(input: {
     return hit.value;
   }
 
-  const [owned, alchemy, reservoir, opensea, onchain, art] = await Promise.all([
+  const chainName = chainKey ? titleCase(chainKey === "bsc" ? "BNB Chain" : chainKey) : "Unknown";
+  const marketplaceUrl = `https://opensea.io/item/${chainKey === "polygon" ? "polygon" : chainKey || "ethereum"}/${contract}/${tokenId}`;
+
+  // Display path: Alchemy CDN first. Do not wait on Reservoir / OpenSea / RPC.
+  const alchemy = await fromAlchemy(contract, tokenId, chainKey);
+  const alchemyPrimary =
+    alchemy?.animation && (alchemy.animation.type === "video" || alchemy.animation.type === "gif")
+      ? alchemy.animation
+      : pickBest(alchemy?.images || []) || alchemy?.animation || null;
+  if (alchemyPrimary && isTrustedMediaHost(alchemyPrimary.url) && input.verifyOwnership === false) {
+    const poster = pickBest(alchemy?.images || []);
+    const result: ResolvedNft = {
+      verified: false,
+      name: alchemy?.name || `NFT #${tokenId}`,
+      collection: alchemy?.collection || null,
+      chain: chainName,
+      contractAddress: contract,
+      tokenId,
+      standard: alchemy?.standard || "unknown",
+      description: alchemy?.description || null,
+      attributes: [],
+      marketplaceUrl,
+      owner: null,
+      image: alchemyPrimary.url,
+      imageCandidates: [alchemyPrimary.url, poster?.url].filter(Boolean) as string[],
+      media: {
+        primary: alchemyPrimary,
+        animation: alchemy?.animation || null,
+        posterUrl: poster?.url || alchemyPrimary.url,
+        failure: null,
+      },
+      tokenUri: alchemy?.tokenUri || null,
+      failure: null,
+    };
+    cache.set(key, { at: Date.now(), value: result });
+    return result;
+  }
+
+  const [owned, reservoir, opensea, onchain, art] = await Promise.all([
     wallet && isAddress(wallet) ? lookupWalletNfts(wallet, contract, tokenId) : Promise.resolve([]),
-    fromAlchemy(contract, tokenId, chainKey),
     fromReservoir(contract, tokenId, chainKey),
     fromOpenSea(contract, tokenId, chainKey),
     readOnchainMetadataUri({ contract, tokenId, chain: chainKey }),
@@ -375,15 +412,6 @@ export async function resolveNftMedia(input: {
   }
 
   const verified = owned.length > 0;
-  const chainName =
-    owned[0]?.chain || art?.chain || (chainKey ? titleCase(chainKey === "bsc" ? "BNB Chain" : chainKey) : "Unknown");
-  const marketplaceUrl =
-    owned[0]?.url ||
-    opensea?.url ||
-    art?.url ||
-    `https://opensea.io/item/${chainKey === "polygon" ? "polygon" : chainKey || "ethereum"}/${contract}/${tokenId}`;
-
-  const imageUrl = primary?.url || poster?.url || null;
   const result: ResolvedNft = {
     verified,
     name:
@@ -396,7 +424,7 @@ export async function resolveNftMedia(input: {
       `NFT #${tokenId}`,
     collection:
       owned[0]?.collection_name || alchemy?.collection || reservoir?.collection || opensea?.collection || art?.collection_name || null,
-    chain: chainName,
+    chain: owned[0]?.chain || art?.chain || chainName,
     contractAddress: contract,
     tokenId,
     standard: onchain.standard !== "unknown" ? onchain.standard : alchemy?.standard || "unknown",
@@ -408,11 +436,11 @@ export async function resolveNftMedia(input: {
       opensea?.description ||
       null,
     attributes: reservoir?.attributes || (Array.isArray(onchainMeta?.attributes) ? onchainMeta.attributes : []),
-    marketplaceUrl,
+    marketplaceUrl: owned[0]?.url || opensea?.url || art?.url || marketplaceUrl,
     owner: verified ? wallet : reservoir?.owner || null,
-    image: imageUrl,
+    image: primary?.url || poster?.url || null,
     imageCandidates: [
-      ...new Set([imageUrl, poster?.url, ...(imageUrl ? gatewayUrls(primary?.originalUrl || imageUrl) : [])].filter(Boolean) as string[]),
+      ...new Set([primary?.url, poster?.url, ...(primary?.url ? gatewayUrls(primary?.originalUrl || primary.url) : [])].filter(Boolean) as string[]),
     ],
     media: { primary, animation, posterUrl: poster?.url || null, failure },
     tokenUri: onchain.uri || alchemy?.tokenUri || reservoir?.tokenUri || opensea?.tokenUri || null,
